@@ -1,0 +1,20 @@
+/// §13. Menu sections, ordered by the restaurant.
+model MenuCategory {
+  id           String   @id @default(uuid()) @map("id") @db.Uuid
+  restaurantId String   @map("restaurant_id") @db.Uuid
+  name         String   @map("name")
+  emoji        String   @default("") @map("emoji")
+  sortOrder    Int      @default(0) @map("sort_order")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  createdBy    String?  @map("created_by") @db.Uuid
+  updatedBy    String?  @map("updated_by") @db.Uuid
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  dishes     Dish[]
+
+  @@unique([restaurantId, name])
+  @@index([restaurantId])
+  @@map("menu_categories")
+  @@schema("lets_dine")
+}

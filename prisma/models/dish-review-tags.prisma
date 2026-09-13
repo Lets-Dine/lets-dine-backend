@@ -1,0 +1,16 @@
+/// Join between a review and the tags it carries — the table the "top tags" on a
+/// dish card are counted from.
+model DishReviewTag {
+  id        String   @id @default(uuid()) @map("id") @db.Uuid
+  reviewId  String   @map("review_id") @db.Uuid
+  tagId     String   @map("tag_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  review DishReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  tag    DishTag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([reviewId, tagId])
+  @@index([tagId])
+  @@map("dish_review_tags")
+  @@schema("lets_dine")
+}

@@ -1,0 +1,40 @@
+{
+  "name": "{project-name}",
+  "private": true,
+  "scripts": {
+    "start": "turbo run start",
+    "dev": "turbo run dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "lint:fix": "turbo lint:fix",
+    "test": "turbo test",
+    "prepare": "husky",
+    "db:deploy": "turbo db:deploy"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.0.6",
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
+    "@nestjs/cli": "^11.0.0",
+    "@nestjs/schematics": "^11.0.0",
+    "@nestjs/testing": "^11.0.1",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.10.7",
+    "husky": "^9.1.7",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.5",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "turbo": "^2.5.6",
+    "typescript": "5.8.2"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": ["apps/*", "packages/*"],
+  "packageManager": "npm@10.8.2",
+  "dependencies": {
+    "dotenv": "^16.5.0",
+    "nestjs-zod": "^4.3.1"
+  }
+}

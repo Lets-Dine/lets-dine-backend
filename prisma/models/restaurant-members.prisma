@@ -1,0 +1,29 @@
+/// §50. A user's employment at one restaurant, and the role that decides what
+/// they may do there. A user can belong to more than one restaurant.
+model RestaurantMember {
+  id           String    @id @default(uuid()) @map("id") @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  restaurantId String    @map("restaurant_id") @db.Uuid
+  role         StaffRole @default(STAFF) @map("role")
+  isActive     Boolean   @default(true) @map("is_active")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  createdBy    String?   @map("created_by") @db.Uuid
+  updatedBy    String?   @map("updated_by") @db.Uuid
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@unique([restaurantId, userId])
+  @@index([userId])
+  @@map("restaurant_members")
+  @@schema("lets_dine")
+}
+
+enum StaffRole {
+  OWNER
+  MANAGER
+  STAFF
+
+  @@schema("lets_dine")
+}

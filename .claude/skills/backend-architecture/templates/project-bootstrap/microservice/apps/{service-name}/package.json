@@ -1,0 +1,28 @@
+{
+  "name": "{service-name}",
+  "version": "0.0.1",
+  "private": true,
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "nest build",
+    "start": "node dist/main.js",
+    "dev": "nest start --debug 0.0.0.0:9001 --watch 'node --inspect-brk'",
+    "dev:once": "nest start --debug 0.0.0.0:9001 'node --inspect-brk'",
+    "lint": "biome ci src/",
+    "lint:fix": "biome check --write src/",
+    "test": "jest --passWithNoTests --verbose",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage"
+  },
+  "dependencies": {
+    "{scope}/core": "*",
+    "{scope}/db": "*",
+    "@nestjs/common": "^11.0.1",
+    "@nestjs/core": "^11.0.1",
+    "@nestjs/platform-express": "^11.1.12",
+    "@nestjs/swagger": "^11.4.7",
+    "nestjs-zod": "^4.3.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": ["**/.env.*local"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "!**/*.test.ts", "!**/__tests__/**"],
+      "outputs": ["dist/**"]
+    },
+    "start": {
+      "dependsOn": ["build"],
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {
+      "inputs": ["$TURBO_DEFAULT$", "!dist/**"],
+      "outputs": []
+    },
+    "lint:fix": {
+      "inputs": ["$TURBO_DEFAULT$", "!dist/**"],
+      "outputs": [],
+      "cache": false
+    },
+    "test": {
+      "cache": false,
+      "dependsOn": ["^db:generate"],
+      "inputs": ["$TURBO_DEFAULT$", "!dist/**"],
+      "outputs": ["coverage/**"]
+    },
+    "test:watch": {
+      "cache": false,
+      "persistent": true
+    },
+    "dev": {
+      "dependsOn": ["^db:generate"],
+      "cache": false,
+      "persistent": true
+    },
+    "db:generate": {
+      "dependsOn": ["^db:generate"],
+      "inputs": ["prisma/**", "package.json"],
+      "outputs": ["generated/**"]
+    },
+    "db:migrate": {
+      "cache": false
+    },
+    "db:deploy": {
+      "cache": false
+    },
+    "db:seed": {
+      "cache": false,
+      "dependsOn": ["db:deploy"]
+    },
+    "db:studio": {
+      "cache": false,
+      "persistent": true
+    },
+    "db:status": {
+      "cache": false
+    },
+    "db:format": {
+      "cache": false
+    }
+  }
+}

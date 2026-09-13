@@ -1,0 +1,50 @@
+/// §51. A management action worth being able to point at later. Actor name and
+/// role are snapshots so the log still reads correctly after someone leaves.
+model AuditLog {
+  id           String      @id @default(uuid()) @map("id") @db.Uuid
+  restaurantId String      @map("restaurant_id") @db.Uuid
+  actorId      String      @map("actor_id") @db.Uuid
+  actorName    String      @map("actor_name")
+  actorRole    StaffRole   @map("actor_role")
+  action       AuditAction @map("action")
+  /// Human-readable target, e.g. "Chicken Sekuwa" or "Order #1023".
+  subject      String      @map("subject")
+  /// What actually changed — before/after, already formatted for display.
+  detail       String      @default("") @map("detail")
+  createdAt    DateTime    @default(now()) @map("created_at")
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  actor      User       @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([restaurantId, createdAt])
+  @@map("audit_logs")
+  @@schema("lets_dine")
+}
+
+enum AuditAction {
+  price_changed
+  availability_changed
+  dish_created
+  dish_updated
+  dish_archived
+  dish_restored
+  dish_featured
+  dish_reordered
+  category_created
+  category_renamed
+  category_deleted
+  category_reordered
+  table_created
+  table_renamed
+  table_disabled
+  table_enabled
+  qr_regenerated
+  order_status_changed
+  order_cancelled
+  settings_updated
+  staff_invited
+  staff_role_changed
+  staff_deactivated
+
+  @@schema("lets_dine")
+}

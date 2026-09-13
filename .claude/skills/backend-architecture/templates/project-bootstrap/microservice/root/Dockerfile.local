@@ -1,0 +1,33 @@
+# syntax=docker/dockerfile:1.4
+FROM node:22.16-alpine3.21 as base
+RUN apk add -f --update --no-cache libc6-compat python3 make g++ && npm i -g turbo
+
+#############################################
+FROM base AS pruned
+WORKDIR /app
+ARG APP
+COPY --link . .
+RUN turbo prune --scope=$APP --docker
+
+#############################################
+FROM base AS installer
+WORKDIR /app
+ARG APP
+
+COPY --link --from=pruned /app/out/json/ .
+COPY --link --from=pruned /app/out/package-lock.json /app/package-lock.json
+RUN npm ci
+
+COPY --link --from=pruned /app/out/full/ .
+COPY --link turbo.json turbo.json
+RUN TURBO_CACHE= turbo db:generate --force
+
+#############################################
+FROM node:22.16-alpine3.21 AS runner
+WORKDIR /app
+ARG APP
+ARG START_COMMAND=dev
+
+COPY --link --from=installer /app .
+
+CMD npm run --workspace=apps/${APP} ${START_COMMAND}

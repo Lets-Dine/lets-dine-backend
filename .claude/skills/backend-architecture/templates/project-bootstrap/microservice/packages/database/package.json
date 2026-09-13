@@ -1,0 +1,27 @@
+{
+  "name": "{scope}/db",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "lint": "biome ci src/ prisma/",
+    "lint:fix": "biome check --write src/ prisma/",
+    "db:generate": "prisma generate && tsc -p .",
+    "db:migrate": "prisma migrate dev --create-only",
+    "db:deploy": "prisma migrate deploy",
+    "db:status": "prisma migrate status",
+    "db:format": "prisma format",
+    "db:studio": "prisma studio"
+  },
+  "prisma": {
+    "schema": "./prisma"
+  },
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.0.0"
+  },
+  "devDependencies": {
+    "prisma": "^6.0.0"
+  }
+}

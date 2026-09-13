@@ -1,0 +1,80 @@
+x-defaults: &apiServiceDefaults
+  init: true
+  env_file:
+    - .env
+  networks:
+    - {project-name}-network
+
+networks:
+  {project-name}-network:
+
+volumes:
+  db_data:
+  redis_data:
+  nats_data:
+
+services:
+  nats:
+    container_name: nats
+    image: nats:latest
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    networks:
+      - {project-name}-network
+    command: -js -m 8222 -sd=/data
+    volumes:
+      - nats_data:/data
+    restart: on-failure
+
+  redis:
+    container_name: redis
+    image: redis
+    ports:
+      - "6379:6379"
+    restart: on-failure
+    networks:
+      - {project-name}-network
+    volumes:
+      - redis_data:/data
+
+  db:
+    container_name: db
+    image: postgres:17
+    restart: on-failure
+    networks:
+      - {project-name}-network
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+
+  # Duplicate this block per new service, swapping the name/ports/APP arg.
+  # Give each service its own host ports and its own --debug port (see that
+  # app's package.json dev/dev:once scripts) so multiple services can run at once.
+  {service-name}:
+    <<: *apiServiceDefaults
+    container_name: {service-name}
+    build:
+      context: .
+      dockerfile: ./Dockerfile.local
+      args:
+        APP: {service-name}
+        START_COMMAND: ${DEV_SCRIPT:-dev}
+    ports:
+      - "3001:3001"
+      - "9001:9001"
+    depends_on:
+      - db
+      - redis
+      - nats
+    command: sh -c "cd apps/{service-name} && npm run ${DEV_SCRIPT:-dev}"
+    # The anonymous /app/node_modules volume keeps the container's own Linux-built
+    # node_modules (and Prisma engine) from being shadowed by the host's bind mount.
+    volumes:
+      - ./:/app
+      - /app/node_modules

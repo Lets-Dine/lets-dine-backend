@@ -1,0 +1,33 @@
+/// §14. A dish on the menu. Price is an integer count of minor units (paisa) —
+/// never a float, never a decimal string (§34 in integer form).
+model Dish {
+  id           String   @id @default(uuid()) @map("id") @db.Uuid
+  restaurantId String   @map("restaurant_id") @db.Uuid
+  categoryId   String   @map("category_id") @db.Uuid
+  name         String   @map("name")
+  slug         String   @map("slug")
+  description  String   @default("") @map("description")
+  imageUrl     String?  @map("image_url")
+  price        Int      @map("price")
+  isAvailable  Boolean  @default(true) @map("is_available")
+  /// §28 — a dish with order history is archived, never hard-deleted.
+  isArchived   Boolean  @default(false) @map("is_archived")
+  isFeatured   Boolean  @default(false) @map("is_featured")
+  sortOrder    Int      @default(0) @map("sort_order")
+  spiceLevel   Int      @default(0) @map("spice_level")
+  isVeg        Boolean  @default(false) @map("is_veg")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  createdBy    String?  @map("created_by") @db.Uuid
+  updatedBy    String?  @map("updated_by") @db.Uuid
+
+  restaurant Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  category   MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  orderItems OrderItem[]
+  reviews    DishReview[]
+
+  @@unique([restaurantId, slug])
+  @@index([restaurantId, categoryId])
+  @@map("dishes")
+  @@schema("lets_dine")
+}

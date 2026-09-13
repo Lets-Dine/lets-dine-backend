@@ -1,0 +1,22 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  // One entry per service/bounded context (holista-backend style), plus "public"
+  // which stays listed even though nothing lives there. Add the next service's
+  // schema name here when it gets its own models — never add models to "public".
+  schemas  = ["public", "{service-name}"]
+}
+
+// Add your models here, e.g.:
+// model Feature {
+//   id        Int      @id @default(autoincrement())
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+//   createdBy Int?
+//   updatedBy Int?
+// }

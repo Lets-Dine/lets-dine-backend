@@ -1,0 +1,15 @@
+/// The fixed vocabulary a diner can tag a review with (§9). Free text lives in
+/// the review's comment; tags stay countable.
+model DishTag {
+  id        String   @id @default(uuid()) @map("id") @db.Uuid
+  label     String   @unique @map("label")
+  isActive  Boolean  @default(true) @map("is_active")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  reviewTags DishReviewTag[]
+
+  @@map("dish_tags")
+  @@schema("lets_dine")
+}

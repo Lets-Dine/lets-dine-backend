@@ -1,0 +1,22 @@
+/// §21/§22. One diner's visit to one table, opened by scanning the QR. The token
+/// is the diner's whole identity — no account, no personal data.
+model DiningSession {
+  id                    String    @id @default(uuid()) @map("id") @db.Uuid
+  restaurantId          String    @map("restaurant_id") @db.Uuid
+  tableId               String    @map("table_id") @db.Uuid
+  anonymousSessionToken String    @unique @map("anonymous_session_token")
+  startedAt             DateTime  @default(now()) @map("started_at")
+  expiresAt             DateTime  @map("expires_at")
+  endedAt               DateTime? @map("ended_at")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  restaurant Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  table      DiningTable  @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  orders     Order[]
+  reviews    DishReview[]
+
+  @@index([restaurantId, tableId])
+  @@map("dining_sessions")
+  @@schema("lets_dine")
+}

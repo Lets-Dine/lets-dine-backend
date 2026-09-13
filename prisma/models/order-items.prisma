@@ -1,0 +1,22 @@
+/// A line on an order. Name, image and unit price are snapshots: editing the
+/// dish later must never rewrite what somebody already ordered and paid.
+model OrderItem {
+  id               String   @id @default(uuid()) @map("id") @db.Uuid
+  orderId          String   @map("order_id") @db.Uuid
+  dishId           String   @map("dish_id") @db.Uuid
+  dishNameSnapshot String   @map("dish_name_snapshot")
+  imageUrlSnapshot String?  @map("image_url_snapshot")
+  unitPrice        Int      @map("unit_price")
+  quantity         Int      @map("quantity")
+  notes            String   @default("") @map("notes")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  dish  Dish  @relation(fields: [dishId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@index([dishId])
+  @@map("order_items")
+  @@schema("lets_dine")
+}

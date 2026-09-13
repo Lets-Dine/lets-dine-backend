@@ -1,0 +1,17 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  // "public" stays listed even though nothing lives there — Postgres extensions/
+  // defaults use it. Add every model/enum to "{project-name}" via `@@schema(...)`,
+  // never to "public".
+  schemas  = ["public", "{project-name}"]
+}
+
+// Models live one-per-file under prisma/models/ (see prisma/models/README.md),
+// not in this file — package.json's "prisma.schema": "./prisma" tells Prisma
+// to merge every *.prisma file under this folder into one schema.

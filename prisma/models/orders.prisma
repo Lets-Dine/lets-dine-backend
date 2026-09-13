@@ -1,0 +1,50 @@
+/// §19. A table's order. Every money column is integer minor units and is
+/// computed server-side from prices read at checkout — client totals are never
+/// trusted (§36/§37).
+model Order {
+  id             String      @id @default(uuid()) @map("id") @db.Uuid
+  /// Human-readable ticket number, unique inside the restaurant (#1001, #1002…).
+  reference      String      @map("reference")
+  restaurantId   String      @map("restaurant_id") @db.Uuid
+  tableId        String      @map("table_id") @db.Uuid
+  sessionId      String      @map("session_id") @db.Uuid
+  status         OrderStatus @default(PENDING) @map("status")
+  subtotal       Int         @default(0) @map("subtotal")
+  serviceCharge  Int         @default(0) @map("service_charge")
+  tax            Int         @default(0) @map("tax")
+  discount       Int         @default(0) @map("discount")
+  total          Int         @default(0) @map("total")
+  currency       String      @map("currency")
+  /// §36 — retrying a placement with the same key returns the first order
+  /// instead of creating a second one.
+  idempotencyKey String?     @unique @map("idempotency_key")
+  cancelReason   String?     @map("cancel_reason")
+  completedAt    DateTime?   @map("completed_at")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+  createdBy      String?     @map("created_by") @db.Uuid
+  updatedBy      String?     @map("updated_by") @db.Uuid
+
+  restaurant Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  table      DiningTable   @relation(fields: [tableId], references: [id], onDelete: Restrict)
+  session    DiningSession @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+  items      OrderItem[]
+  reviews    DishReview[]
+
+  @@unique([restaurantId, reference])
+  @@index([restaurantId, status])
+  @@index([sessionId])
+  @@map("orders")
+  @@schema("lets_dine")
+}
+
+enum OrderStatus {
+  PENDING
+  ACCEPTED
+  PREPARING
+  READY
+  COMPLETED
+  CANCELLED
+
+  @@schema("lets_dine")
+}

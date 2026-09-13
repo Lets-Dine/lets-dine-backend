@@ -1,0 +1,37 @@
+{
+  "name": "{scope}/core",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p .",
+    "lint": "biome ci src/",
+    "lint:fix": "biome check --write src/"
+  },
+  "exports": {
+    "./tsconfig-base.json": "./tsconfig-base.json",
+    "./utils": {
+      "types": "./src/utils/index.ts",
+      "default": "./dist/utils/index.js"
+    },
+    "./exceptions": {
+      "types": "./src/exceptions/index.ts",
+      "default": "./dist/exceptions/index.js"
+    },
+    "./interfaces": {
+      "types": "./src/interfaces/index.ts",
+      "default": "./dist/interfaces/index.js"
+    },
+    "./decorators": {
+      "types": "./src/decorators/index.ts",
+      "default": "./dist/decorators/index.js"
+    },
+    "./middleware": {
+      "types": "./src/middleware/index.ts",
+      "default": "./dist/middleware/index.js"
+    }
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.0.1",
+    "@nestjs/core": "^11.0.1"
+  }
+}

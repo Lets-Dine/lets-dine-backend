@@ -1,0 +1,49 @@
+services:
+  db:
+    image: postgres:17
+    container_name: {project-name}-db
+    restart: on-failure
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  # Drop this service if the project has no caching/queue needs
+  redis:
+    image: redis
+    container_name: {project-name}-redis
+    restart: on-failure
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+
+  app:
+    container_name: {project-name}-app
+    build:
+      context: .
+      dockerfile: ./Dockerfile.local
+      args:
+        START_COMMAND: ${DEV_SCRIPT:-dev}
+    init: true
+    env_file:
+      - .env
+    ports:
+      - "${PORT:-3000}:${PORT:-3000}"
+      - "9229:9229"
+    depends_on:
+      - db
+    command: sh -c "npm run ${DEV_SCRIPT:-dev}"
+    # The anonymous /app/node_modules volume keeps the container's own Linux-built
+    # node_modules (and Prisma engine) from being shadowed by the host's bind mount.
+    volumes:
+      - ./:/app
+      - /app/node_modules
+
+volumes:
+  db_data:
+  redis_data:

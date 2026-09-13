@@ -1,0 +1,32 @@
+/// §15. The restaurant itself, including the fee configuration order totals are
+/// built from — never hardcode tax or service charge in domain logic (§41).
+model Restaurant {
+  id                String   @id @default(uuid()) @map("id") @db.Uuid
+  name              String   @map("name")
+  slug              String   @unique @map("slug")
+  tagline           String   @default("") @map("tagline")
+  description       String   @default("") @map("description")
+  coverImageUrl     String?  @map("cover_image_url")
+  currency          String   @default("NPR") @map("currency")
+  timezone          String   @default("Asia/Kathmandu") @map("timezone")
+  /// Ratios, not money — money itself is always integer minor units.
+  serviceChargeRate Float    @default(0) @map("service_charge_rate")
+  taxRate           Float    @default(0) @map("tax_rate")
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  createdBy         String?  @map("created_by") @db.Uuid
+  updatedBy         String?  @map("updated_by") @db.Uuid
+
+  members    RestaurantMember[]
+  tables     DiningTable[]
+  sessions   DiningSession[]
+  categories MenuCategory[]
+  dishes     Dish[]
+  orders     Order[]
+  reviews    DishReview[]
+  auditLogs  AuditLog[]
+
+  @@map("restaurants")
+  @@schema("lets_dine")
+}
