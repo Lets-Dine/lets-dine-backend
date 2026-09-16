@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Patch, UseGuards } from "@nestjs/common";
 import { AbilityGuard, AuthGuard, AuthUser, CheckPolicies, checkPermissionRules } from "../../../../common/auth";
-import { AuthEntity, IHttpResponse } from "../../../../common/interfaces";
+import { type AuthEntity, IHttpResponse } from "../../../../common/interfaces";
 import { buildHttpResponse } from "../../../../common/utils";
 import { UpdateRestaurantDto } from "../../application/dto/update-restaurant.dto";
 import { FetchRestaurantProfileUsecase } from "../../application/use-cases/fetch-restaurant-profile.usecase";

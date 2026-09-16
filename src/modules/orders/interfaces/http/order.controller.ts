@@ -2,7 +2,7 @@ import { Body, Controller, Get, Headers, Param, Post, Query, UseGuards } from "@
 import { IHttpResponse, PaginatedResponse } from "../../../../common/interfaces";
 import { ParseUuidPipe } from "../../../../common/pipes";
 import { buildHttpResponse } from "../../../../common/utils";
-import { IDiningSession } from "../../../dining-sessions/domain/interfaces/dining-session.interface";
+import { type IDiningSession } from "../../../dining-sessions/domain/interfaces/dining-session.interface";
 import { DinerSession } from "../../../dining-sessions/interfaces/http/decorators/diner-session.decorator";
 import { DinerSessionGuard } from "../../../dining-sessions/interfaces/http/guards/diner-session.guard";
 import { CreateOrderDto } from "../../application/dto/create-order.dto";

@@ -12,10 +12,10 @@ import {
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
 import { can } from "../../../../common/auth";
-import { AuthEntity } from "../../../../common/interfaces";
+import { type AuthEntity } from "../../../../common/interfaces";
 import { DiningSessionService } from "../../../dining-sessions/application/dining-session.service";
 import { FetchSessionOrderUsecase } from "../../application/use-cases/fetch-session-order.usecase";
-import { IOrderWithItems } from "../../domain/interfaces/order.interface";
+import { type IOrderWithItems } from "../../domain/interfaces/order.interface";
 
 const orderRoom = (orderId: string) => `order:${orderId}`;
 const restaurantQueueRoom = (restaurantId: string) => `restaurant:${restaurantId}:orders`;

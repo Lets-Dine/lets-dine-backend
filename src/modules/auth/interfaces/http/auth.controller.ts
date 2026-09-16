@@ -1,6 +1,6 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from "@nestjs/common";
 import { AuthGuard, AuthUser } from "../../../../common/auth";
-import { AuthEntity, IHttpResponse } from "../../../../common/interfaces";
+import { type AuthEntity, IHttpResponse } from "../../../../common/interfaces";
 import { buildHttpResponse } from "../../../../common/utils";
 import { SignInStaffDto } from "../../application/dto/sign-in-staff.dto";
 import { FetchAuthProfileUsecase } from "../../application/use-cases/fetch-auth-profile.usecase";

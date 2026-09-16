@@ -1,6 +1,6 @@
 import { Controller, Get, Query, UseGuards } from "@nestjs/common";
 import { AbilityGuard, AuthGuard, AuthUser, CheckPolicies, checkPermissionRules } from "../../../../common/auth";
-import { AuthEntity, IHttpResponse, PaginatedResponse } from "../../../../common/interfaces";
+import { type AuthEntity, IHttpResponse, PaginatedResponse } from "../../../../common/interfaces";
 import { buildHttpResponse } from "../../../../common/utils";
 import { FetchAuditLogsDto } from "../../application/dto/fetch-audit-logs.dto";
 import { FetchAllAuditLogsUsecase } from "../../application/use-cases/fetch-all-audit-logs.usecase";

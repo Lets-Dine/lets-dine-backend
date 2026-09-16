@@ -1,6 +1,6 @@
 import { Controller, Get, Query, UseGuards } from "@nestjs/common";
 import { AbilityGuard, AuthGuard, AuthUser, CheckPolicies, checkPermissionRules } from "../../../../common/auth";
-import { AuthEntity, IHttpResponse } from "../../../../common/interfaces";
+import { type AuthEntity, IHttpResponse } from "../../../../common/interfaces";
 import { buildHttpResponse } from "../../../../common/utils";
 import { FetchAnalyticsDto } from "../../application/dto/fetch-analytics.dto";
 import { FetchAnalyticsOverviewUsecase } from "../../application/use-cases/fetch-analytics-overview.usecase";

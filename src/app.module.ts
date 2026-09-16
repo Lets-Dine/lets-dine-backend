@@ -18,6 +18,7 @@ import { RestaurantsModule } from "./modules/restaurants/restaurants.module";
 import { ReviewsModule } from "./modules/reviews/reviews.module";
 import { TablesModule } from "./modules/tables/tables.module";
 import { UsersModule } from "./modules/users/users.module";
+import { AppController } from "./app.controller";
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { UsersModule } from "./modules/users/users.module";
     ReviewsModule,
     AnalyticsModule,
   ],
+  controllers: [AppController],
   providers: [
     { provide: APP_PIPE, useClass: ZodValidationPipe },
     { provide: APP_FILTER, useClass: DomainExceptionFilter },

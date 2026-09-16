@@ -5,7 +5,7 @@ import { StartDiningSessionDto } from "../../application/dto/start-dining-sessio
 import { FetchCurrentSessionUsecase } from "../../application/use-cases/fetch-current-session.usecase";
 import { StartDiningSessionUsecase } from "../../application/use-cases/start-dining-session.usecase";
 import { DINING_SESSION_SUCCESS_MESSAGES } from "../../domain/constants";
-import { IDiningSession } from "../../domain/interfaces/dining-session.interface";
+import { type IDiningSession } from "../../domain/interfaces/dining-session.interface";
 import { IResolvedSession } from "../../domain/interfaces/resolved-session.interface";
 import { DinerSession } from "./decorators/diner-session.decorator";
 import { DinerSessionGuard } from "./guards/diner-session.guard";

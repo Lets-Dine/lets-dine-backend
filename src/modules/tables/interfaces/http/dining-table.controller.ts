@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { AbilityGuard, AuthGuard, AuthUser, CheckPolicies, checkPermissionRules } from "../../../../common/auth";
-import { AuthEntity, IHttpResponse, PaginatedResponse } from "../../../../common/interfaces";
+import { type AuthEntity, IHttpResponse, PaginatedResponse } from "../../../../common/interfaces";
 import { ParseUuidPipe } from "../../../../common/pipes";
 import { buildHttpResponse } from "../../../../common/utils";
 import { CreateTableDto } from "../../application/dto/create-table.dto";
