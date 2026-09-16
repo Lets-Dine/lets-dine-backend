@@ -5,7 +5,8 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
-    "start": "node dist/main.js",
+    "start": "nest start",
+    "start:prod": "node dist/main",
     "dev": "nest start --debug 0.0.0.0:9229 --watch 'node --inspect-brk'",
     "dev:once": "nest start --debug 0.0.0.0:9229 'node --inspect-brk'",
     "lint": "biome ci src/",
@@ -17,8 +18,7 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
-    "db:seed": "ts-node prisma/seed.ts",
-    "vercel-build": "npm run db:generate && npm run db:deploy && npm run db:seed && npm run build"
+    "db:seed": "ts-node prisma/seed.ts"
   },
   "prisma": {
     "schema": "./prisma",
