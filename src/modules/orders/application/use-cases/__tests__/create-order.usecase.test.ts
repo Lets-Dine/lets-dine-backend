@@ -1,3 +1,4 @@
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Test, TestingModule } from "@nestjs/testing";
 import { BadRequestException, NotFoundException } from "../../../../../common/exceptions";
 import { PrismaTransaction } from "../../../../../common/prisma";
@@ -32,6 +33,7 @@ describe("CreateOrderUsecase", () => {
   let orderRepository: jest.Mocked<OrderRepository>;
   let restaurantRepository: jest.Mocked<RestaurantRepository>;
   let dishRepository: jest.Mocked<DishRepository>;
+  let eventEmitter: jest.Mocked<EventEmitter2>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -47,6 +49,7 @@ describe("CreateOrderUsecase", () => {
         },
         { provide: RestaurantRepository, useValue: { findById: jest.fn() } },
         { provide: DishRepository, useValue: { findManyByIds: jest.fn() } },
+        { provide: EventEmitter2, useValue: { emit: jest.fn() } },
       ],
     }).compile();
 
@@ -54,6 +57,7 @@ describe("CreateOrderUsecase", () => {
     orderRepository = module.get(OrderRepository);
     restaurantRepository = module.get(RestaurantRepository);
     dishRepository = module.get(DishRepository);
+    eventEmitter = module.get(EventEmitter2);
   });
 
   describe("execute", () => {
@@ -79,6 +83,7 @@ describe("CreateOrderUsecase", () => {
         tableId: session.tableId,
         sessionId: session.id,
       });
+      expect(eventEmitter.emit).toHaveBeenCalledWith("order.created", { id: "order-1" });
     });
 
     it("should return the first order when the same idempotency key is retried", async () => {
@@ -92,6 +97,7 @@ describe("CreateOrderUsecase", () => {
       // Assert
       expect(result).toBe(placed);
       expect(orderRepository.create).not.toHaveBeenCalled();
+      expect(eventEmitter.emit).not.toHaveBeenCalled();
     });
 
     it("should throw BadRequestException when a dish has just gone unavailable", async () => {

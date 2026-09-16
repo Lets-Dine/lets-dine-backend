@@ -1,3 +1,4 @@
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Test, TestingModule } from "@nestjs/testing";
 import { AuditAction, OrderStatus } from "@prisma/client";
 import { BadRequestException, NotFoundException } from "../../../../../common/exceptions";
@@ -23,6 +24,7 @@ describe("UpdateOrderStatusUsecase", () => {
   let usecase: UpdateOrderStatusUsecase;
   let orderRepository: jest.Mocked<OrderRepository>;
   let auditLogService: jest.Mocked<AuditLogService>;
+  let eventEmitter: jest.Mocked<EventEmitter2>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -30,12 +32,14 @@ describe("UpdateOrderStatusUsecase", () => {
         UpdateOrderStatusUsecase,
         { provide: OrderRepository, useValue: { findById: jest.fn(), update: jest.fn() } },
         { provide: AuditLogService, useValue: { record: jest.fn() } },
+        { provide: EventEmitter2, useValue: { emit: jest.fn() } },
       ],
     }).compile();
 
     usecase = module.get(UpdateOrderStatusUsecase);
     orderRepository = module.get(OrderRepository);
     auditLogService = module.get(AuditLogService);
+    eventEmitter = module.get(EventEmitter2);
   });
 
   describe("execute", () => {
@@ -53,6 +57,7 @@ describe("UpdateOrderStatusUsecase", () => {
         expect.objectContaining({ action: AuditAction.order_status_changed, detail: "PENDING → ACCEPTED" }),
         authUser
       );
+      expect(eventEmitter.emit).toHaveBeenCalledWith("order.updated", result);
     });
 
     it("should stamp completedAt when the ticket is closed", async () => {

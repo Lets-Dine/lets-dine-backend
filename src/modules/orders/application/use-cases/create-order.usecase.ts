@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { BadRequestException, NotFoundException } from "../../../../common/exceptions";
 import { IDish } from "../../../dishes/domain/interfaces/dish.interface";
 import { DishRepository } from "../../../dishes/domain/repositories/dish.repository";
@@ -25,16 +26,18 @@ export class CreateOrderUsecase {
   constructor(
     private readonly orderRepository: OrderRepository,
     private readonly restaurantRepository: RestaurantRepository,
-    private readonly dishRepository: DishRepository
+    private readonly dishRepository: DishRepository,
+    private readonly eventEmitter: EventEmitter2
   ) {}
 
   async execute(dto: CreateOrderInput, session: IDiningSession, options?: { idempotencyKey?: string }): Promise<IOrderWithItems> {
     if (options?.idempotencyKey) {
       const alreadyPlaced = await this.orderRepository.findByIdempotencyKey(options.idempotencyKey);
+      // A replayed retry, not a new ticket — the pass has already been told once.
       if (alreadyPlaced) return alreadyPlaced;
     }
 
-    return this.orderRepository.$transaction(async tx => {
+    const order = await this.orderRepository.$transaction(async tx => {
       const restaurant = await this.restaurantRepository.findById(session.restaurantId, { tx });
       if (!restaurant || !restaurant.isActive) throw new NotFoundException(RESTAURANT_ERROR_MESSAGES.NOT_FOUND);
 
@@ -59,6 +62,12 @@ export class CreateOrderUsecase {
         { tx }
       );
     });
+
+    // Emitted after the transaction commits — the pass should never be told
+    // about a ticket that a later step in the same transaction might still roll back.
+    this.eventEmitter.emit("order.created", order);
+
+    return order;
   }
 
   private toOrderItem(line: CreateOrderInput["lines"][number], dishes: IDish[], restaurantId: string): IOrderItemCreate {

@@ -14,6 +14,7 @@ import { OrderRepository } from "./domain/repositories/order.repository";
 import OrderRepositoryImpl from "./infrastructure/repositories/order.repository.impl";
 import { OrderController } from "./interfaces/http/order.controller";
 import { RestaurantOrderController } from "./interfaces/http/restaurant-order.controller";
+import { OrdersGateway } from "./interfaces/ws/orders.gateway";
 
 @Module({
   imports: [DiningSessionsModule, RestaurantsModule, DishesModule, AuditLogsModule],
@@ -28,6 +29,7 @@ import { RestaurantOrderController } from "./interfaces/http/restaurant-order.co
     CancelOrderUsecase,
     OrderRepositoryImpl,
     { provide: OrderRepository, useExisting: OrderRepositoryImpl },
+    OrdersGateway,
   ],
   exports: [{ provide: OrderRepository, useExisting: OrderRepositoryImpl }],
 })

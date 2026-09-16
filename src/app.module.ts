@@ -1,5 +1,6 @@
 import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
 import { APP_FILTER, APP_PIPE } from "@nestjs/core";
+import { EventEmitterModule } from "@nestjs/event-emitter";
 import { JwtModule, JwtSignOptions } from "@nestjs/jwt";
 import { ZodValidationPipe } from "nestjs-zod";
 import { DomainExceptionFilter } from "./common/exceptions/filters/domain-exception.filter";
@@ -21,6 +22,7 @@ import { UsersModule } from "./modules/users/users.module";
 @Module({
   imports: [
     PrismaModule,
+    EventEmitterModule.forRoot(),
     JwtModule.register({
       global: true,
       secret: process.env.JWT_SECRET ?? "insecure-development-secret",

@@ -4,29 +4,65 @@ import { IDishStats } from "../interfaces/dish-stats.interface";
 import { DishBadge } from "../interfaces/dish-with-stats.interface";
 
 /**
- * §48 — five stars from two people is not better than 4.6 from three hundred.
- * The prior pulls thin evidence back towards the middle instead of letting it
- * top the menu.
+ * Ranking is always relative to the menu it happens on: the same 4.6 means
+ * something different at a restaurant that averages 4.7 than at one that
+ * averages 3.9, and "busy" only means anything next to the busiest dish.
  */
-export function bayesianRating(stats: IDishStats): number {
-  const { confidenceWeight, priorRating } = MERCH;
-  const total = stats.ratingCount + confidenceWeight;
-  return ((stats.avgRating ?? priorRating) * stats.ratingCount + priorRating * confidenceWeight) / total;
+export interface IRankContext {
+  restaurantMean: number;
+  maxOrders30d: number;
+  maxPrice: number;
 }
 
-/** How much more (or less) the dish is selling than in the previous window. */
+export function buildRankContext(dishes: { price: number; stats: IDishStats }[]): IRankContext {
+  const rated = dishes.filter(dish => dish.stats.avgRating !== null && dish.stats.ratingCount > 0);
+  const totalRatings = rated.reduce((count, dish) => count + dish.stats.ratingCount, 0);
+
+  return {
+    restaurantMean:
+      totalRatings > 0
+        ? rated.reduce((sum, dish) => sum + (dish.stats.avgRating ?? 0) * dish.stats.ratingCount, 0) / totalRatings
+        : MERCH.priorRating,
+    maxOrders30d: Math.max(0, ...dishes.map(dish => dish.stats.orders30d)),
+    maxPrice: Math.max(1, ...dishes.map(dish => dish.price)),
+  };
+}
+
+/**
+ * §48 — five stars from two people is not better than 4.6 from three hundred.
+ * The restaurant's own mean is the prior, so thin evidence is pulled back
+ * towards what this kitchen usually scores rather than an invented constant.
+ */
+export function confidenceScore(stats: IDishStats, restaurantMean: number): number {
+  if (stats.avgRating === null || stats.ratingCount === 0) return restaurantMean * 0.9;
+
+  const weight = MERCH.confidenceWeight;
+  return (restaurantMean * weight + stats.avgRating * stats.ratingCount) / (weight + stats.ratingCount);
+}
+
+/**
+ * How much more (or less) the dish is selling than in the previous window. A
+ * dish with no previous window counts as doubled rather than infinite — the
+ * number ends up in a JSON response, and `Infinity` does not survive that.
+ */
 export function velocityRatio(stats: IDishStats): number {
-  if (stats.ordersPrev30d === 0) return stats.orders30d > 0 ? Number.POSITIVE_INFINITY : 1;
+  if (stats.ordersPrev30d === 0) return stats.orders30d > 0 ? 2 : 1;
   return stats.orders30d / stats.ordersPrev30d;
 }
 
-/** §49 — one score per dish, in 0..1, for "what should be near the top". */
-export function rankScore(stats: IDishStats, maxOrders30d: number): number {
-  const rating = bayesianRating(stats) / 5;
-  const popularity = maxOrders30d > 0 ? stats.orders30d / maxOrders30d : 0;
-  const recommendation = stats.ratingCount >= MERCH.minRatingsForRecommendRate ? (stats.recommendRate ?? 0) : 0;
-  const ratio = velocityRatio(stats);
-  const trend = Number.isFinite(ratio) ? Math.min(1, Math.max(0, (ratio - 1) / 1)) : 1;
+/** 0..1 popularity, normalised against the busiest dish on the menu. */
+function normalisedPopularity(stats: IDishStats, maxOrders30d: number): number {
+  if (maxOrders30d <= 0) return 0;
+  return Math.min(1, stats.orders30d / maxOrders30d);
+}
+
+/** §49 — one score per dish, for "what should be near the top". */
+export function rankScore(dish: { stats: IDishStats }, context: IRankContext): number {
+  const stats = dish.stats;
+  const rating = confidenceScore(stats, context.restaurantMean) / 5;
+  const popularity = normalisedPopularity(stats, context.maxOrders30d);
+  const recommendation = stats.recommendRate ?? 0.5;
+  const trend = Math.min(1, Math.max(0, (velocityRatio(stats) - 0.8) / 1.2));
 
   return (
     rating * RANK_WEIGHTS.rating +
@@ -34,6 +70,11 @@ export function rankScore(stats: IDishStats, maxOrders30d: number): number {
     recommendation * RANK_WEIGHTS.recommendation +
     trend * RANK_WEIGHTS.trend
   );
+}
+
+/** Confidence-adjusted rating per rupee, normalised across the menu. */
+export function valueScore(dish: { price: number; stats: IDishStats }, context: IRankContext): number {
+  return confidenceScore(dish.stats, context.restaurantMean) / (dish.price / context.maxPrice);
 }
 
 /**

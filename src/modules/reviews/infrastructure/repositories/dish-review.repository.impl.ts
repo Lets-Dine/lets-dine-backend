@@ -58,6 +58,7 @@ class DishReviewRepositoryImpl implements DishReviewRepository {
   async fetchAll(query: IDishReviewsFetchQuery, options?: IDishReviewsFetchOptions): Promise<PaginatedResponse<IDishReview>> {
     const prisma = options?.tx ?? this.prisma;
     const { orderBy, ...paginationQuery } = buildPaginationQuery<"createdAt" | "overall">(options ?? {});
+    console.log('orderBy', orderBy);
 
     const where: Prisma.DishReviewWhereInput = {
       ...(query.restaurantId && { restaurantId: query.restaurantId }),

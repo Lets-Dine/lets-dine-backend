@@ -4,7 +4,7 @@ import { IDish } from "../domain/interfaces/dish.interface";
 import { EMPTY_DISH_STATS } from "../domain/interfaces/dish-stats.interface";
 import { IDishWithStats } from "../domain/interfaces/dish-with-stats.interface";
 import { DishStatsRepository } from "../domain/repositories/dish-stats.repository";
-import { dishBadges, rankScore } from "../domain/utils/dish-ranking.util";
+import { buildRankContext, dishBadges, rankScore } from "../domain/utils/dish-ranking.util";
 
 /**
  * Turns plain dish rows into what a screen actually renders: the dish plus its
@@ -34,9 +34,9 @@ export class DishStatsService {
     return withStats;
   }
 
-  /** §49 — highest-scoring first, with the popularity term scaled to this set. */
+  /** §49 — highest-scoring first, scored against this set rather than in the abstract. */
   rank(dishes: IDishWithStats[]): IDishWithStats[] {
-    const maxOrders30d = Math.max(0, ...dishes.map(dish => dish.stats.orders30d));
-    return [...dishes].sort((a, b) => rankScore(b.stats, maxOrders30d) - rankScore(a.stats, maxOrders30d));
+    const context = buildRankContext(dishes);
+    return [...dishes].sort((a, b) => rankScore(b, context) - rankScore(a, context));
   }
 }

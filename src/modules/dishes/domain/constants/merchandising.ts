@@ -13,11 +13,11 @@ export const MERCH = {
   /** The prior itself: the rating an unrated dish is assumed to sit at. */
   priorRating: 4,
 
-  loved: { minRating: 4.4, minRatings: 20 },
+  loved: { minRating: 4.4, minRatings: 20, limit: 6 },
   popular: { minOrders30d: 140 },
-  trending: { minVelocityRatio: 1.35, minOrders30d: 40 },
-  hiddenGem: { minRating: 4.5, minRatings: 8, maxOrders30d: 70 },
-  goodValue: { minRating: 4.2, minRatings: 8 },
+  trending: { minVelocityRatio: 1.35, minOrders30d: 40, limit: 6 },
+  hiddenGem: { minRating: 4.5, minRatings: 8, maxOrders30d: 70, limit: 4 },
+  goodValue: { minRating: 4.2, minRatings: 8, limit: 4 },
 } as const;
 
 /** §49 — how the MVP weighs a dish. Deliberately replaceable. */

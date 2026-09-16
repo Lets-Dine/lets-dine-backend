@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { AuditAction, OrderStatus } from "@prisma/client";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { BadRequestException, NotFoundException } from "../../../../common/exceptions";
 import { AuthEntity } from "../../../../common/interfaces";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
@@ -14,7 +15,8 @@ import { UpdateOrderStatusInput } from "../../interfaces/http/validations/update
 export class UpdateOrderStatusUsecase {
   constructor(
     private readonly orderRepository: OrderRepository,
-    private readonly auditLogService: AuditLogService
+    private readonly auditLogService: AuditLogService,
+    private readonly eventEmitter: EventEmitter2
   ) {}
 
   async execute(id: string, dto: UpdateOrderStatusInput, authEntity: AuthEntity): Promise<IOrderWithItems> {
@@ -47,6 +49,8 @@ export class UpdateOrderStatusUsecase {
       },
       authEntity
     );
+
+    this.eventEmitter.emit("order.updated", updated);
 
     return updated;
   }

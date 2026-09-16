@@ -4,7 +4,7 @@ services:
     container_name: lets-dine-db
     restart: on-failure
     ports:
-      - "${DB_PORT:-5442}:5432"
+      - "${DB_PORT}:5432"
     environment:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USERNAME}

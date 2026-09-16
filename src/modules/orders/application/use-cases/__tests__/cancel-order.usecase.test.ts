@@ -1,3 +1,4 @@
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Test, TestingModule } from "@nestjs/testing";
 import { AuditAction, OrderStatus } from "@prisma/client";
 import { BadRequestException, ConflictException, NotFoundException } from "../../../../../common/exceptions";
@@ -18,6 +19,7 @@ describe("CancelOrderUsecase", () => {
   let usecase: CancelOrderUsecase;
   let orderRepository: jest.Mocked<OrderRepository>;
   let auditLogService: jest.Mocked<AuditLogService>;
+  let eventEmitter: jest.Mocked<EventEmitter2>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -25,12 +27,14 @@ describe("CancelOrderUsecase", () => {
         CancelOrderUsecase,
         { provide: OrderRepository, useValue: { findById: jest.fn(), update: jest.fn() } },
         { provide: AuditLogService, useValue: { record: jest.fn() } },
+        { provide: EventEmitter2, useValue: { emit: jest.fn() } },
       ],
     }).compile();
 
     usecase = module.get(CancelOrderUsecase);
     orderRepository = module.get(OrderRepository);
     auditLogService = module.get(AuditLogService);
+    eventEmitter = module.get(EventEmitter2);
   });
 
   describe("execute", () => {
@@ -53,6 +57,7 @@ describe("CancelOrderUsecase", () => {
         expect.objectContaining({ action: AuditAction.order_cancelled, detail: dto.reason }),
         authUser
       );
+      expect(eventEmitter.emit).toHaveBeenCalledWith("order.updated", result);
     });
 
     it("should throw ConflictException when it is already cancelled", async () => {

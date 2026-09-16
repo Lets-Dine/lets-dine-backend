@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { AuditAction, OrderStatus } from "@prisma/client";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { BadRequestException, ConflictException, NotFoundException } from "../../../../common/exceptions";
 import { AuthEntity } from "../../../../common/interfaces";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
@@ -13,7 +14,8 @@ import { CancelOrderInput } from "../../interfaces/http/validations/cancel-order
 export class CancelOrderUsecase {
   constructor(
     private readonly orderRepository: OrderRepository,
-    private readonly auditLogService: AuditLogService
+    private readonly auditLogService: AuditLogService,
+    private readonly eventEmitter: EventEmitter2
   ) {}
 
   async execute(id: string, dto: CancelOrderInput, authEntity: AuthEntity): Promise<IOrderWithItems> {
@@ -42,6 +44,8 @@ export class CancelOrderUsecase {
       { action: AuditAction.order_cancelled, subject: `Order ${existing.reference}`, detail: dto.reason },
       authEntity
     );
+
+    this.eventEmitter.emit("order.updated", cancelled);
 
     return cancelled;
   }
