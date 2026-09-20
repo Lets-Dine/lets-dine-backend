@@ -1,6 +1,5 @@
 import { Injectable } from "@nestjs/common";
 import { NotFoundException } from "../../../../common/exceptions";
-import { DishStatsService } from "../../../dishes/application/dish-stats.service";
 import { DishRepository } from "../../../dishes/domain/repositories/dish.repository";
 import { MenuCategoryRepository } from "../../../menu-categories/domain/repositories/menu-category.repository";
 import { RESTAURANT_ERROR_MESSAGES } from "../../../restaurants/domain/constants";
@@ -20,8 +19,7 @@ export class FetchMenuUsecase {
     private readonly restaurantRepository: RestaurantRepository,
     private readonly restaurantRatingRepository: RestaurantRatingRepository,
     private readonly menuCategoryRepository: MenuCategoryRepository,
-    private readonly dishRepository: DishRepository,
-    private readonly dishStatsService: DishStatsService
+    private readonly dishRepository: DishRepository
   ) {}
 
   async execute(restaurantSlug: string): Promise<IMenu> {
@@ -31,13 +29,13 @@ export class FetchMenuUsecase {
     const [rating, categories, dishes] = await Promise.all([
       this.restaurantRatingRepository.fetchRating(restaurant.id),
       this.menuCategoryRepository.fetchAll({ restaurantId: restaurant.id }),
-      this.dishRepository.fetchAll({ restaurantId: restaurant.id, isArchived: false }),
+      this.dishRepository.findAllWithStats({ restaurantId: restaurant.id, isArchived: false }),
     ]);
 
     return {
       restaurant: { ...restaurant, ...rating },
       categories: categories.rows,
-      dishes: await this.dishStatsService.attach(dishes.rows),
+      dishes,
     };
   }
 }

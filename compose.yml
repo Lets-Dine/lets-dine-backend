@@ -33,8 +33,11 @@ services:
       - .env
     # Overrides .env's host-oriented DATABASE_URL: inside the network the database
     # answers on the db service's internal port, not the published one.
+    # Do not add ?schema=lets_dine — models live in public (@@schema("public")).
+    # Prisma Client would then SET search_path TO lets_dine, and $queryRaw
+    # (FROM dishes, FROM orders, …) would miss the tables and raise 42P01.
     environment:
-      DATABASE_URL: postgresql://${DB_USERNAME}:${DB_PASSWORD}@db:5432/${DB_NAME}?schema=lets_dine
+      DATABASE_URL: postgresql://${DB_USERNAME}:${DB_PASSWORD}@db:5432/${DB_NAME}
     ports:
       - "${PORT:-3100}:${PORT:-3100}"
       - "9229:9229"

@@ -1,6 +1,7 @@
 import { IPaginationOptions, PaginatedResponse } from "../../../../common/interfaces";
 import { PrismaTransaction } from "../../../../common/prisma";
 import { IDish } from "../interfaces/dish.interface";
+import { IDishWithStats } from "../interfaces/dish-with-stats.interface";
 
 export interface IDishCreate {
   restaurantId: string;
@@ -37,6 +38,12 @@ export interface IDishesFetchOptions extends IPaginationOptions {
   tx?: PrismaTransaction;
 }
 
+export interface IDishesWithStatsOptions {
+  tx?: PrismaTransaction;
+  /** Length of each ordering window, in days. Mirrors DishStatsRepository's §12 windows. */
+  windowDays?: number;
+}
+
 export abstract class DishRepository {
   abstract $transaction<T>(fn: (tx: PrismaTransaction) => Promise<T>): Promise<T>;
   abstract findById(id: string, options?: DishFetchOptions): Promise<IDish | null>;
@@ -45,4 +52,10 @@ export abstract class DishRepository {
   abstract create(data: IDishCreate, options?: { tx?: PrismaTransaction; actorId?: string }): Promise<IDish>;
   abstract update(id: string, data: IDishUpdate, options?: { tx?: PrismaTransaction; actorId?: string }): Promise<IDish>;
   abstract fetchAll(query: IDishesFetchQuery, options?: IDishesFetchOptions): Promise<PaginatedResponse<IDish>>;
+  /**
+   * Every dish of a restaurant with its §12 stats and §49 badges in one round
+   * trip — dish rows plus review/order aggregates joined in SQL instead of the
+   * fetch-then-fan-out-per-stat pattern `fetchAll` + `DishStatsService.attach` uses.
+   */
+  abstract findAllWithStats(query: IDishesFetchQuery, options?: IDishesWithStatsOptions): Promise<IDishWithStats[]>;
 }

@@ -1,6 +1,5 @@
 import { Injectable } from "@nestjs/common";
 import { NotFoundException } from "../../../../common/exceptions";
-import { DishStatsService } from "../../../dishes/application/dish-stats.service";
 import { DishRailKey, IDishRail } from "../../../dishes/domain/interfaces/dish-rail.interface";
 import { DishRepository } from "../../../dishes/domain/repositories/dish.repository";
 import { buildDishRails } from "../../../dishes/domain/utils/dish-rails.util";
@@ -18,16 +17,14 @@ import { FetchMenuHighlightsQuery } from "../../interfaces/http/validations/fetc
 export class FetchMenuHighlightsUsecase {
   constructor(
     private readonly restaurantRepository: RestaurantRepository,
-    private readonly dishRepository: DishRepository,
-    private readonly dishStatsService: DishStatsService
+    private readonly dishRepository: DishRepository
   ) {}
 
   async execute(restaurantSlug: string, query: FetchMenuHighlightsQuery = {}): Promise<IDishRail[]> {
     const restaurant = await this.restaurantRepository.findBySlug(restaurantSlug);
     if (!restaurant || !restaurant.isActive) throw new NotFoundException(RESTAURANT_ERROR_MESSAGES.NOT_FOUND);
 
-    const { rows } = await this.dishRepository.fetchAll({ restaurantId: restaurant.id, isArchived: false });
-    const dishes = await this.dishStatsService.attach(rows);
+    const dishes = await this.dishRepository.findAllWithStats({ restaurantId: restaurant.id, isArchived: false });
 
     return buildDishRails(dishes, { sections: query.sections as DishRailKey[] | undefined, limit: query.limit });
   }
