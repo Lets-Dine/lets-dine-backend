@@ -26,6 +26,7 @@ model Restaurant {
   orders     Order[]
   reviews    DishReview[]
   auditLogs  AuditLog[]
+  payments   Payment[]
 
   @@map("restaurants")
   @@schema("lets_dine")

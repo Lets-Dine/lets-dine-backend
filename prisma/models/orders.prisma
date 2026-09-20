@@ -34,6 +34,7 @@ model Order {
   @@unique([restaurantId, reference])
   @@index([restaurantId, status])
   @@index([sessionId])
+  @@index([tableId, status])
   @@map("orders")
   @@schema("lets_dine")
 }

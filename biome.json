@@ -9,7 +9,11 @@
   "files": {
     "maxSize": 5000000,
     "ignoreUnknown": false,
-    "experimentalScannerIgnores": ["**/node_modules/**", "**/dist/**", "**/generated/**"]
+    "experimentalScannerIgnores": [
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/generated/**"
+    ]
   },
   "assist": {
     "actions": {
@@ -106,7 +110,17 @@
     }
   },
   "javascript": {
-    "globals": ["it", "expect", "describe", "jest", "beforeEach", "afterEach", "beforeAll", "afterAll", "fail"],
+    "globals": [
+      "it",
+      "expect",
+      "describe",
+      "jest",
+      "beforeEach",
+      "afterEach",
+      "beforeAll",
+      "afterAll",
+      "fail"
+    ],
     "formatter": {
       "jsxQuoteStyle": "double",
       "quoteProperties": "asNeeded",

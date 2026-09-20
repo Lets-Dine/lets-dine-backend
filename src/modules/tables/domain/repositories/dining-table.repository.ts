@@ -10,7 +10,9 @@ export interface IDiningTableCreate {
   sortOrder?: number;
 }
 
-export type IDiningTableUpdate = Partial<Pick<IDiningTable, "name" | "capacity" | "isActive" | "sortOrder" | "qrToken">>;
+export type IDiningTableUpdate = Partial<
+  Pick<IDiningTable, "name" | "capacity" | "isActive" | "sortOrder" | "qrToken" | "currentSessionId">
+>;
 
 export interface DiningTableFetchOptions {
   tx?: PrismaTransaction;
@@ -28,6 +30,7 @@ export interface IDiningTablesFetchOptions extends IPaginationOptions {
 
 export abstract class DiningTableRepository {
   abstract $transaction<T>(fn: (tx: PrismaTransaction) => Promise<T>): Promise<T>;
+  abstract lockById(id: string, options: { tx: PrismaTransaction }): Promise<void>;
   abstract findById(id: string, options?: DiningTableFetchOptions): Promise<IDiningTable | null>;
   abstract findByQrToken(qrToken: string, options?: DiningTableFetchOptions): Promise<IDiningTable | null>;
   abstract findByName(restaurantId: string, name: string, options?: DiningTableFetchOptions): Promise<IDiningTable | null>;

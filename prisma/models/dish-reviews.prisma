@@ -17,10 +17,10 @@ model DishReview {
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
-  restaurant Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  dish       Dish           @relation(fields: [dishId], references: [id], onDelete: Cascade)
-  order      Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  session    DiningSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  restaurant Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  dish       Dish            @relation(fields: [dishId], references: [id], onDelete: Cascade)
+  order      Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  session    DiningSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   tags       DishReviewTag[]
 
   /// One review per dish per order — a second attempt is a conflict, not a new row.

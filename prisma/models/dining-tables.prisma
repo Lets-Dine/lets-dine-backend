@@ -1,25 +1,29 @@
 /// §16. A physical table and the opaque token printed on its QR code.
 /// Rotating the token invalidates every code already printed for it.
 model DiningTable {
-  id           String   @id @default(uuid()) @map("id") @db.Uuid
-  restaurantId String   @map("restaurant_id") @db.Uuid
-  name         String   @map("name")
-  qrToken      String   @unique @map("qr_token")
-  capacity     Int      @default(2) @map("capacity")
+  id               String   @id @default(uuid()) @map("id") @db.Uuid
+  restaurantId     String   @map("restaurant_id") @db.Uuid
+  name             String   @map("name")
+  qrToken          String   @unique @map("qr_token")
+  capacity         Int      @default(2) @map("capacity")
+  currentSessionId String?  @map("current_session_id") @db.Uuid
   /// A disabled table stops resolving its QR entirely.
-  isActive     Boolean  @default(true) @map("is_active")
-  sortOrder    Int      @default(0) @map("sort_order")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-  createdBy    String?  @map("created_by") @db.Uuid
-  updatedBy    String?  @map("updated_by") @db.Uuid
+  isActive         Boolean  @default(true) @map("is_active")
+  sortOrder        Int      @default(0) @map("sort_order")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  createdBy        String?  @map("created_by") @db.Uuid
+  updatedBy        String?  @map("updated_by") @db.Uuid
 
-  restaurant Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  sessions   DiningSession[]
-  orders     Order[]
+  restaurant     Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  currentSession DiningSession?  @relation("CurrentSession", fields: [currentSessionId], references: [id], onDelete: SetNull)
+  sessions       DiningSession[] @relation("TableSessions")
+  orders         Order[]
+  payments       Payment[]
 
   @@unique([restaurantId, name])
   @@index([restaurantId])
+  @@index([currentSessionId])
   @@map("dining_tables")
   @@schema("lets_dine")
 }

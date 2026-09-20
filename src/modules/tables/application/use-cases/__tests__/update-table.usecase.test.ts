@@ -17,6 +17,7 @@ function buildTable(overrides: Partial<IDiningTable> = {}): IDiningTable {
     name: "T1",
     qrToken: "token",
     capacity: 4,
+    currentSessionId: null,
     isActive: true,
     sortOrder: 0,
     createdAt: new Date(),

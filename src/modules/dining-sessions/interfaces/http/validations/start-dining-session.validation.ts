@@ -4,6 +4,7 @@ import { z } from "zod";
 export const startDiningSessionSchema = z.object({
   restaurantSlug: z.string().min(1).max(80),
   tableToken: z.string().min(8).max(120),
+  joinSessionId: z.string().uuid().optional(),
 });
 
 export type StartDiningSessionInput = z.infer<typeof startDiningSessionSchema>;

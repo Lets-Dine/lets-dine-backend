@@ -40,7 +40,15 @@ services:
       - "9229:9229"
     depends_on:
       - db
-    command: sh -c "npm run ${DEV_SCRIPT:-dev}"
+    # Generate the client from the bind-mounted schema, apply migrations, then
+    # leave `generate --watch` running so editing prisma/ refreshes the client
+    # in this container's node_modules. Nest's own watcher reloads the process
+    # on the next source save, which is when the new client gets loaded.
+    command: >
+      sh -c "npx prisma generate &&
+      npx prisma migrate deploy &&
+      npx prisma generate --watch >/tmp/prisma-generate-watch.log 2>&1 &
+      npm run ${DEV_SCRIPT:-dev}"
     # The anonymous /app/node_modules volume keeps the container's own Linux-built
     # node_modules (and Prisma engine) from being shadowed by the host's bind mount.
     volumes:

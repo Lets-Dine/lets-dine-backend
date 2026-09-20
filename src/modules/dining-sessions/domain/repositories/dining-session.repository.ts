@@ -17,6 +17,8 @@ export interface DiningSessionFetchOptions {
 export abstract class DiningSessionRepository {
   abstract findById(id: string, options?: DiningSessionFetchOptions): Promise<IDiningSession | null>;
   abstract findByToken(token: string, options?: DiningSessionFetchOptions): Promise<IDiningSession | null>;
+  abstract findOpenByTableId(tableId: string, options?: DiningSessionFetchOptions): Promise<IDiningSession | null>;
+  abstract findActiveByTableId(tableId: string, options?: DiningSessionFetchOptions): Promise<IDiningSession | null>;
   abstract create(data: IDiningSessionCreate, options?: { tx?: PrismaTransaction }): Promise<IDiningSession>;
   abstract update(id: string, data: IDiningSessionUpdate, transaction?: PrismaTransaction): Promise<IDiningSession>;
 }

@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "lets-dine",
+      "type": "node",
+      "request": "attach",
+      "port": 9229,
+      "restart": true,
+      "localRoot": "${workspaceFolder}"
+    },
+    {
+      "name": "lets-dine-backend-docker",
+      "type": "node",
+      "request": "attach",
+      "port": 9229,
+      "restart": true,
+      "remoteRoot": "/app"
+    }
+  ]
+}

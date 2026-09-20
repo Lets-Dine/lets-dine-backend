@@ -1,0 +1,46 @@
+/// A completed charge against one dining session — snapshotting exactly what
+/// the cashier charged for rather than re-deriving it from whatever the
+/// underlying orders happen to look like later.
+model Payment {
+  id            String   @id @default(uuid()) @map("id") @db.Uuid
+  restaurantId  String   @map("restaurant_id") @db.Uuid
+  sessionId     String   @map("session_id") @db.Uuid
+  tableId       String   @map("table_id") @db.Uuid
+  subtotal      Int      @map("subtotal")
+  serviceCharge Int      @map("service_charge")
+  tax           Int      @map("tax")
+  discount      Int      @default(0) @map("discount")
+  total         Int      @map("total")
+  currency      String   @map("currency")
+  createdAt     DateTime @default(now()) @map("created_at")
+  createdBy     String?  @map("created_by") @db.Uuid
+
+  restaurant Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  session    DiningSession @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+  table      DiningTable   @relation(fields: [tableId], references: [id], onDelete: Restrict)
+  items      PaymentItem[]
+
+  @@index([restaurantId, createdAt])
+  @@index([sessionId])
+  @@map("payments")
+  @@schema("lets_dine")
+}
+
+/// One charged line, snapshotted at payment time — immune to the dish's price
+/// or name changing later, the same reasoning as `OrderItem`'s own snapshot.
+/// Defined by the cashier at checkout, not derived from any one order's rows.
+model PaymentItem {
+  id               String   @id @default(uuid()) @map("id") @db.Uuid
+  paymentId        String   @map("payment_id") @db.Uuid
+  dishId           String   @map("dish_id") @db.Uuid
+  dishNameSnapshot String   @map("dish_name_snapshot")
+  unitPrice        Int      @map("unit_price")
+  quantity         Int      @map("quantity")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId])
+  @@map("payment_items")
+  @@schema("lets_dine")
+}

@@ -11,11 +11,16 @@ model DiningSession {
   createdAt             DateTime  @default(now()) @map("created_at")
   updatedAt             DateTime  @updatedAt @map("updated_at")
 
-  restaurant Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  table      DiningTable  @relation(fields: [tableId], references: [id], onDelete: Cascade)
-  orders     Order[]
-  reviews    DishReview[]
+  restaurant   Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  table        DiningTable   @relation("TableSessions", fields: [tableId], references: [id], onDelete: Cascade)
+  orders       Order[]
+  reviews      DishReview[]
+  payments     Payment[]
+  /// Tables that currently have this visit parked as `currentSession`.
+  diningTables DiningTable[] @relation("CurrentSession")
 
+  /// Partial uniqueness for open sessions is enforced by
+  /// `dining_sessions_one_open_per_table_idx` in SQL.
   @@index([restaurantId, tableId])
   @@map("dining_sessions")
   @@schema("lets_dine")

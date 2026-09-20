@@ -21,31 +21,40 @@ class DiningTableRepositoryImpl implements DiningTableRepository {
     return this.prisma.$transaction(fn);
   }
 
+  async lockById(id: string, options: { tx: PrismaTransaction }): Promise<void> {
+    await options.tx.$queryRaw<Array<{ id: string }>>`
+      SELECT "id"
+      FROM "lets_dine"."dining_tables"
+      WHERE "id" = ${id}::uuid
+      FOR UPDATE
+    `;
+  }
+
   async findById(id: string, options?: DiningTableFetchOptions): Promise<IDiningTable | null> {
     const prisma = options?.tx ?? this.prisma;
-    return prisma.diningTable.findUnique({ where: { id } });
+    return prisma.diningTable.findUnique({ where: { id } }) as any;
   }
 
   async findByQrToken(qrToken: string, options?: DiningTableFetchOptions): Promise<IDiningTable | null> {
     const prisma = options?.tx ?? this.prisma;
-    return prisma.diningTable.findUnique({ where: { qrToken } });
+    return prisma.diningTable.findUnique({ where: { qrToken } }) as any;
   }
 
   async findByName(restaurantId: string, name: string, options?: DiningTableFetchOptions): Promise<IDiningTable | null> {
     const prisma = options?.tx ?? this.prisma;
-    return prisma.diningTable.findUnique({ where: { restaurantId_name: { restaurantId, name } } });
+    return prisma.diningTable.findUnique({ where: { restaurantId_name: { restaurantId, name } } }) as any;
   }
 
   async create(data: IDiningTableCreate, options?: { tx?: PrismaTransaction; actorId?: string }): Promise<IDiningTable> {
     const prisma = options?.tx ?? this.prisma;
     return prisma.diningTable.create({
       data: { ...data, createdBy: options?.actorId, updatedBy: options?.actorId },
-    });
+    }) as any;
   }
 
   async update(id: string, data: IDiningTableUpdate, options?: { tx?: PrismaTransaction; actorId?: string }): Promise<IDiningTable> {
     const prisma = options?.tx ?? this.prisma;
-    return prisma.diningTable.update({ where: { id }, data: { ...data, updatedBy: options?.actorId } });
+    return prisma.diningTable.update({ where: { id }, data: { ...data, updatedBy: options?.actorId } }) as any;
   }
 
   async fetchAll(query: IDiningTablesFetchQuery, options?: IDiningTablesFetchOptions): Promise<PaginatedResponse<IDiningTable>> {
@@ -69,7 +78,7 @@ class DiningTableRepositoryImpl implements DiningTableRepository {
       options?.returnCount === false ? Promise.resolve(-1) : prisma.diningTable.count({ where }),
     ]);
 
-    return { rows, count: count ?? 0 };
+    return { rows: rows as IDiningTable[], count: count ?? 0 };
   }
 }
 

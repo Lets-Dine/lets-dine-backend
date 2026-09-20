@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { NotFoundException } from "../../../../common/exceptions";
+import { ConflictException, NotFoundException } from "../../../../common/exceptions";
 import { RESTAURANT_ERROR_MESSAGES } from "../../../restaurants/domain/constants";
 import { RestaurantRepository } from "../../../restaurants/domain/repositories/restaurant.repository";
 import { DiningTableRepository } from "../../../tables/domain/repositories/dining-table.repository";
@@ -33,15 +33,45 @@ export class StartDiningSessionUsecase {
       throw new NotFoundException(DINING_SESSION_ERROR_MESSAGES.TABLE_NOT_FOUND);
     }
 
-    const startedAt = new Date();
-    const session = await this.diningSessionRepository.create({
-      restaurantId: restaurant.id,
-      tableId: table.id,
-      anonymousSessionToken: generateSessionToken(),
-      expiresAt: sessionExpiryFrom(startedAt, this.ttlMinutes()),
-    });
+    return this.diningTableRepository.$transaction(async tx => {
+      await this.diningTableRepository.lockById(table.id, { tx });
+      let currentTable = (await this.diningTableRepository.findById(table.id, { tx })) ?? table;
+      const openSession = await this.diningSessionRepository.findOpenByTableId(table.id, { tx });
+      console.log("openSession", openSession);
 
-    return { session, restaurant, table };
+      if (openSession && openSession.expiresAt.getTime() > Date.now()) {
+        if (currentTable.currentSessionId !== openSession.id) {
+          currentTable = await this.diningTableRepository.update(table.id, { currentSessionId: openSession.id }, { tx });
+        }
+
+        if (!dto.joinSessionId) {
+          throw new ConflictException(DINING_SESSION_ERROR_MESSAGES.TABLE_OCCUPIED);
+        }
+        if (dto.joinSessionId !== openSession.id) {
+          throw new ConflictException(DINING_SESSION_ERROR_MESSAGES.JOIN_MISMATCH);
+        }
+
+        return { session: openSession, restaurant, table: currentTable };
+      }
+
+      if (openSession) {
+        await this.diningSessionRepository.update(openSession.id, { endedAt: new Date() }, tx);
+      }
+
+      const startedAt = new Date();
+      const session = await this.diningSessionRepository.create(
+        {
+          restaurantId: restaurant.id,
+          tableId: table.id,
+          anonymousSessionToken: generateSessionToken(),
+          expiresAt: sessionExpiryFrom(startedAt, this.ttlMinutes()),
+        },
+        { tx }
+      );
+      currentTable = await this.diningTableRepository.update(table.id, { currentSessionId: session.id }, { tx });
+
+      return { session, restaurant, table: currentTable };
+    });
   }
 
   private ttlMinutes(): number {

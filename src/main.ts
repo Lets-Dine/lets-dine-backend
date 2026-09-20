@@ -13,7 +13,6 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.enableCors();
   app.setGlobalPrefix(API_PREFIX);
-  // §38 — order lifecycle events push over this instead of either side polling.
   app.useWebSocketAdapter(new IoAdapter(app));
 
   const swaggerConfig = new DocumentBuilder()

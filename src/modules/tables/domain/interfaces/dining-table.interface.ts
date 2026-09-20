@@ -5,6 +5,7 @@ export interface IDiningTable {
   /** Opaque and printed on the table — §53, never derived from the table name. */
   qrToken: string;
   capacity: number;
+  currentSessionId: string | null;
   isActive: boolean;
   sortOrder: number;
   createdAt: Date;

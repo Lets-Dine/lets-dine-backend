@@ -38,9 +38,14 @@ enum AuditAction {
   table_renamed
   table_disabled
   table_enabled
+  table_session_ended
   qr_regenerated
   order_status_changed
   order_cancelled
+  order_item_added
+  order_item_removed
+  table_settled
+  payment_completed
   settings_updated
   staff_invited
   staff_role_changed

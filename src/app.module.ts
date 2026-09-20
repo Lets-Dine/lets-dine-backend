@@ -14,6 +14,7 @@ import { DishesModule } from "./modules/dishes/dishes.module";
 import { MenuCategoriesModule } from "./modules/menu-categories/menu-categories.module";
 import { MenusModule } from "./modules/menus/menus.module";
 import { OrdersModule } from "./modules/orders/orders.module";
+import { PaymentsModule } from "./modules/payments/payments.module";
 import { RestaurantsModule } from "./modules/restaurants/restaurants.module";
 import { ReviewsModule } from "./modules/reviews/reviews.module";
 import { TablesModule } from "./modules/tables/tables.module";
@@ -39,6 +40,7 @@ import { AppController } from "./app.controller";
     MenusModule,
     DiningSessionsModule,
     OrdersModule,
+    PaymentsModule,
     ReviewsModule,
     AnalyticsModule,
   ],

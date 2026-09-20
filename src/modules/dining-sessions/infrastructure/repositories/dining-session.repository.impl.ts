@@ -22,6 +22,27 @@ class DiningSessionRepositoryImpl implements DiningSessionRepository {
     return prisma.diningSession.findUnique({ where: { anonymousSessionToken: token } });
   }
 
+  async findOpenByTableId(tableId: string, options?: DiningSessionFetchOptions): Promise<IDiningSession | null> {
+    const prisma = options?.tx ?? this.prisma;
+    return prisma.diningSession.findFirst({
+      where: { tableId, endedAt: null },
+      orderBy: { startedAt: "desc" },
+    });
+  }
+
+  async findActiveByTableId(tableId: string, options?: DiningSessionFetchOptions): Promise<IDiningSession | null> {
+    const prisma = options?.tx ?? this.prisma;
+    const now = new Date();
+    return prisma.diningSession.findFirst({
+      where: {
+        tableId,
+        endedAt: null,
+        expiresAt: { gt: now },
+      },
+      orderBy: { startedAt: "desc" },
+    });
+  }
+
   async create(data: IDiningSessionCreate, options?: { tx?: PrismaTransaction }): Promise<IDiningSession> {
     const prisma = options?.tx ?? this.prisma;
     return prisma.diningSession.create({ data });
