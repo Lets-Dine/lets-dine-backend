@@ -23,7 +23,7 @@ model Payment {
   @@index([restaurantId, createdAt])
   @@index([sessionId])
   @@map("payments")
-  @@schema("lets_dine")
+  @@schema("public")
 }
 
 /// One charged line, snapshotted at payment time — immune to the dish's price
@@ -42,5 +42,5 @@ model PaymentItem {
 
   @@index([paymentId])
   @@map("payment_items")
-  @@schema("lets_dine")
+  @@schema("public")
 }

@@ -24,7 +24,7 @@ class DiningTableRepositoryImpl implements DiningTableRepository {
   async lockById(id: string, options: { tx: PrismaTransaction }): Promise<void> {
     await options.tx.$queryRaw<Array<{ id: string }>>`
       SELECT "id"
-      FROM "lets_dine"."dining_tables"
+      FROM "dining_tables"
       WHERE "id" = ${id}::uuid
       FOR UPDATE
     `;

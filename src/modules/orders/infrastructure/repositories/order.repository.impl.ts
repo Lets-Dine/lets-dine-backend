@@ -141,8 +141,8 @@ class OrderRepositoryImpl implements OrderRepository {
         t.name            AS "tableName",
         COALESCE(items.rows, '[]'::json)             AS items,
         COALESCE(reviews.dish_ids, ARRAY[]::uuid[])  AS "reviewedDishIds"
-      FROM lets_dine.orders o
-      JOIN lets_dine.dining_tables t ON t.id = o.table_id
+      FROM orders o
+      JOIN dining_tables t ON t.id = o.table_id
       LEFT JOIN LATERAL (
         SELECT json_agg(
                  json_build_object(
@@ -157,12 +157,12 @@ class OrderRepositoryImpl implements OrderRepository {
                  )
                  ORDER BY oi.created_at ASC
                ) AS rows
-        FROM lets_dine.order_items oi
+        FROM order_items oi
         WHERE oi.order_id = o.id
       ) items ON true
       LEFT JOIN LATERAL (
         SELECT array_agg(DISTINCT dr.dish_id) AS dish_ids
-        FROM lets_dine.dish_reviews dr
+        FROM dish_reviews dr
         WHERE dr.order_id = o.id
       ) reviews ON true
       -- both sides of the WHERE are indexed (orders_sessionId_idx, orders_restaurantId_status_idx's

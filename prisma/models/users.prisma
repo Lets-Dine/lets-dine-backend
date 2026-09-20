@@ -16,5 +16,5 @@ model User {
   auditLogs   AuditLog[]
 
   @@map("users")
-  @@schema("lets_dine")
+  @@schema("public")
 }

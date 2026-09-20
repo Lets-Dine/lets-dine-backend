@@ -12,5 +12,5 @@ model DishReviewTag {
   @@unique([reviewId, tagId])
   @@index([tagId])
   @@map("dish_review_tags")
-  @@schema("lets_dine")
+  @@schema("public")
 }

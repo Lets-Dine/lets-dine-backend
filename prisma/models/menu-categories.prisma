@@ -16,5 +16,5 @@ model MenuCategory {
   @@unique([restaurantId, name])
   @@index([restaurantId])
   @@map("menu_categories")
-  @@schema("lets_dine")
+  @@schema("public")
 }

@@ -6,8 +6,8 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
   // "public" stays listed even though nothing lives there — Postgres extensions/
-  // defaults use it. Every model and enum belongs to "lets_dine" via @@schema.
-  schemas  = ["public", "lets_dine"]
+  // defaults use it. Every model and enum belongs to "public" via @@schema.
+  schemas  = ["public"]
 }
 
 // Models live one-per-file under prisma/models/ — package.json's

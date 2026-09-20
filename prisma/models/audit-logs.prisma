@@ -18,7 +18,7 @@ model AuditLog {
 
   @@index([restaurantId, createdAt])
   @@map("audit_logs")
-  @@schema("lets_dine")
+  @@schema("public")
 }
 
 enum AuditAction {
@@ -51,5 +51,5 @@ enum AuditAction {
   staff_role_changed
   staff_deactivated
 
-  @@schema("lets_dine")
+  @@schema("public")
 }

@@ -23,5 +23,5 @@ model DiningSession {
   /// `dining_sessions_one_open_per_table_idx` in SQL.
   @@index([restaurantId, tableId])
   @@map("dining_sessions")
-  @@schema("lets_dine")
+  @@schema("public")
 }

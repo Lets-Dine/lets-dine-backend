@@ -11,5 +11,5 @@ model DishTag {
   reviewTags DishReviewTag[]
 
   @@map("dish_tags")
-  @@schema("lets_dine")
+  @@schema("public")
 }

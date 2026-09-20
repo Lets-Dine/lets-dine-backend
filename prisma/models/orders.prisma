@@ -36,7 +36,7 @@ model Order {
   @@index([sessionId])
   @@index([tableId, status])
   @@map("orders")
-  @@schema("lets_dine")
+  @@schema("public")
 }
 
 enum OrderStatus {
@@ -47,5 +47,5 @@ enum OrderStatus {
   COMPLETED
   CANCELLED
 
-  @@schema("lets_dine")
+  @@schema("public")
 }

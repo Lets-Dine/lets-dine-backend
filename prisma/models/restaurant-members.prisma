@@ -17,7 +17,7 @@ model RestaurantMember {
   @@unique([restaurantId, userId])
   @@index([userId])
   @@map("restaurant_members")
-  @@schema("lets_dine")
+  @@schema("public")
 }
 
 enum StaffRole {
@@ -25,5 +25,5 @@ enum StaffRole {
   MANAGER
   STAFF
 
-  @@schema("lets_dine")
+  @@schema("public")
 }

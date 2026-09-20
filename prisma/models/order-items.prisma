@@ -18,5 +18,5 @@ model OrderItem {
   @@index([orderId])
   @@index([dishId])
   @@map("order_items")
-  @@schema("lets_dine")
+  @@schema("public")
 }

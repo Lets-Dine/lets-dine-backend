@@ -28,5 +28,5 @@ model DishReview {
   @@index([dishId])
   @@index([restaurantId])
   @@map("dish_reviews")
-  @@schema("lets_dine")
+  @@schema("public")
 }

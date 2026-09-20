@@ -25,5 +25,5 @@ model DiningTable {
   @@index([restaurantId])
   @@index([currentSessionId])
   @@map("dining_tables")
-  @@schema("lets_dine")
+  @@schema("public")
 }

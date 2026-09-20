@@ -29,5 +29,5 @@ model Dish {
   @@unique([restaurantId, slug])
   @@index([restaurantId, categoryId])
   @@map("dishes")
-  @@schema("lets_dine")
+  @@schema("public")
 }

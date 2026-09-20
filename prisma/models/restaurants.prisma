@@ -29,5 +29,5 @@ model Restaurant {
   payments   Payment[]
 
   @@map("restaurants")
-  @@schema("lets_dine")
+  @@schema("public")
 }
