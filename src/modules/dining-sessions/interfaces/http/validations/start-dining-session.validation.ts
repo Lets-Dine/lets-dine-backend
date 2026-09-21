@@ -4,7 +4,10 @@ import { z } from "zod";
 export const startDiningSessionSchema = z.object({
   restaurantSlug: z.string().min(1).max(80),
   tableToken: z.string().min(8).max(120),
-  joinSessionId: z.string().uuid().optional(),
+  joinSessionId: z
+    .string()
+    .regex(/^\d{8}$/, "Session code must be 8 digits")
+    .optional(),
 });
 
 export type StartDiningSessionInput = z.infer<typeof startDiningSessionSchema>;

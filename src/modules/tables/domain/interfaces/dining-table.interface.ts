@@ -6,6 +6,7 @@ export interface IDiningTable {
   qrToken: string;
   capacity: number;
   currentSessionId: string | null;
+  currentSession?: { anonymousSessionToken: string };
   isActive: boolean;
   sortOrder: number;
   createdAt: Date;

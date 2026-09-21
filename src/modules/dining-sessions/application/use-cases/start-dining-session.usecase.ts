@@ -23,12 +23,13 @@ export class StartDiningSessionUsecase {
     if (!table || !table.isActive) throw new NotFoundException(DINING_SESSION_ERROR_MESSAGES.TABLE_NOT_FOUND);
 
     return this.diningTableRepository.$transaction(async tx => {
-      const activeSession = table.currentSessionId;
-      if (activeSession) {
+      const activeSessionId = table.currentSessionId;
+      if (activeSessionId) {
         if (!dto.joinSessionId) throw new ConflictException(DINING_SESSION_ERROR_MESSAGES.TABLE_OCCUPIED);
-        if (dto.joinSessionId !== activeSession) throw new ConflictException(DINING_SESSION_ERROR_MESSAGES.JOIN_MISMATCH);
-        const session = await this.diningSessionRepository.findById(activeSession, { tx });
-        if (!session) throw new NotFoundException(DINING_SESSION_ERROR_MESSAGES.JOIN_MISMATCH);
+        const session = await this.diningSessionRepository.findById(activeSessionId, { tx });
+        if (!session || dto.joinSessionId !== session.anonymousSessionToken) {
+          throw new ConflictException(DINING_SESSION_ERROR_MESSAGES.JOIN_MISMATCH);
+        }
 
         return { session, table };
       }

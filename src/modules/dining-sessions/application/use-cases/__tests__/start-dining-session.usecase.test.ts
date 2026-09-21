@@ -31,6 +31,7 @@ describe("StartDiningSessionUsecase", () => {
           provide: DiningSessionRepository,
           useValue: {
             create: jest.fn(),
+            findById: jest.fn(),
             findOpenByTableId: jest.fn(),
             update: jest.fn(),
           },
@@ -77,7 +78,7 @@ describe("StartDiningSessionUsecase", () => {
         table: { ...table, currentSessionId: "session-1" },
       });
       const [created] = diningSessionRepository.create.mock.calls[0];
-      expect(created.anonymousSessionToken).toHaveLength(43);
+      expect(created.anonymousSessionToken).toMatch(/^\d{8}$/);
       expect(created.expiresAt.getTime()).toBeGreaterThan(Date.now());
       expect(diningTableRepository.update).toHaveBeenCalledWith(table.id, { currentSessionId: "session-1" }, { tx });
     });
@@ -96,32 +97,39 @@ describe("StartDiningSessionUsecase", () => {
       expect(diningSessionRepository.create).not.toHaveBeenCalled();
     });
 
-    it("should join only when the supplied id matches the active session", async () => {
+    it("should join only when the supplied code matches the active session's token", async () => {
+      const activeSessionId = "session-1";
       const active = {
-        id: "9ec7521f-a8c9-4260-ae56-42a88e6d9f29",
+        id: activeSessionId,
+        anonymousSessionToken: "12345678",
         expiresAt: new Date(Date.now() + 60_000),
         endedAt: null,
       } as any;
+      const occupiedTable = { ...table, currentSessionId: activeSessionId };
       restaurantRepository.findBySlug.mockResolvedValue(restaurant);
-      diningTableRepository.findByQrToken.mockResolvedValue(table);
-      diningSessionRepository.findOpenByTableId.mockResolvedValue(active);
+      diningTableRepository.findByQrToken.mockResolvedValue(occupiedTable);
+      diningSessionRepository.findById.mockResolvedValue(active);
 
-      const result = await usecase.execute({ ...dto, joinSessionId: active.id });
+      const result = await usecase.execute({ ...dto, joinSessionId: active.anonymousSessionToken });
 
       expect(result.session).toBe(active);
+      expect(diningSessionRepository.findById).toHaveBeenCalledWith(activeSessionId, { tx });
       expect(diningSessionRepository.create).not.toHaveBeenCalled();
     });
 
-    it("should reject a join id that does not match the active session", async () => {
-      diningSessionRepository.findOpenByTableId.mockResolvedValue({
-        id: "9ec7521f-a8c9-4260-ae56-42a88e6d9f29",
+    it("should reject a join code that does not match the active session's token", async () => {
+      const activeSessionId = "session-1";
+      const occupiedTable = { ...table, currentSessionId: activeSessionId };
+      restaurantRepository.findBySlug.mockResolvedValue(restaurant);
+      diningTableRepository.findByQrToken.mockResolvedValue(occupiedTable);
+      diningSessionRepository.findById.mockResolvedValue({
+        id: activeSessionId,
+        anonymousSessionToken: "12345678",
         expiresAt: new Date(Date.now() + 60_000),
         endedAt: null,
       } as any);
-      restaurantRepository.findBySlug.mockResolvedValue(restaurant);
-      diningTableRepository.findByQrToken.mockResolvedValue(table);
 
-      await expect(usecase.execute({ ...dto, joinSessionId: "b995dd4a-406a-49d0-a608-11509b69da7d" })).rejects.toThrow(
+      await expect(usecase.execute({ ...dto, joinSessionId: "87654321" })).rejects.toThrow(
         new ConflictException(DINING_SESSION_ERROR_MESSAGES.JOIN_MISMATCH)
       );
     });

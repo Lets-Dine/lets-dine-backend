@@ -1,8 +1,8 @@
-import { randomBytes } from "node:crypto";
-
-/** §22/§52 — opaque, unguessable, and the only credential a diner ever holds. */
+/** §22/§52 — the diner's whole identity, kept short enough to read aloud or type from across the table. */
 export function generateSessionToken(): string {
-  return randomBytes(32).toString("base64url");
+  let out = "";
+  for (let i = 0; i < 8; i++) out += Math.floor(Math.random() * 10);
+  return out;
 }
 
 export function sessionExpiryFrom(startedAt: Date, ttlMinutes: number): Date {

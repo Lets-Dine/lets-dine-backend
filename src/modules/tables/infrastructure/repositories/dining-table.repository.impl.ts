@@ -72,6 +72,7 @@ class DiningTableRepositoryImpl implements DiningTableRepository {
         ? Promise.resolve([])
         : prisma.diningTable.findMany({
             where,
+            include: { currentSession: { select: { anonymousSessionToken: true } } },
             ...paginationQuery,
             orderBy: orderBy ?? [{ sortOrder: "asc" }, { name: "asc" }],
           }),
