@@ -1,12 +1,12 @@
 import { Injectable } from "@nestjs/common";
-import { Prisma } from "@prisma/client";
+import { OrderItemStatus, Prisma } from "@prisma/client";
 import { buildPaginationQuery } from "../../../../common/helpers";
 import { PaginatedResponse } from "../../../../common/interfaces";
 import { PrismaService, PrismaTransaction } from "../../../../common/prisma";
 import { IOrderWithItems } from "../../domain/interfaces/order.interface";
 import {
   IOrderCreate,
-  IOrderItemCreate,
+  IOrderItemSyncChanges,
   IOrdersFetchOptions,
   IOrdersFetchQuery,
   IOrderTotalsUpdate,
@@ -119,7 +119,7 @@ class OrderRepositoryImpl implements OrderRepository {
    * via lateral joins rather than fetched separately.
    */
   async findBySessionId(sessionId: string, restaurantId: string): Promise<IOrderWithItems[]> {
-    return this.prisma.$queryRaw<IOrderWithItems[]>`
+    const rows = await this.prisma.$queryRaw<IOrderWithItems[]>`
       SELECT
         o.id,
         o.reference,
@@ -135,6 +135,8 @@ class OrderRepositoryImpl implements OrderRepository {
         o.currency,
         o.idempotency_key AS "idempotencyKey",
         o.cancel_reason   AS "cancelReason",
+        o.accepted_at     AS "acceptedAt",
+        o.cancelled_at    AS "cancelledAt",
         o.completed_at    AS "completedAt",
         o.created_at      AS "createdAt",
         o.updated_at      AS "updatedAt",
@@ -153,7 +155,9 @@ class OrderRepositoryImpl implements OrderRepository {
                    'imageUrlSnapshot', oi.image_url_snapshot,
                    'unitPrice', oi.unit_price,
                    'quantity', oi.quantity,
-                   'notes', oi.notes
+                   'notes', oi.notes,
+                   'status', oi.status,
+                   'statusUpdatedAt', oi.status_updated_at
                  )
                  ORDER BY oi.created_at ASC
                ) AS rows
@@ -171,6 +175,14 @@ class OrderRepositoryImpl implements OrderRepository {
         AND o.restaurant_id = ${restaurantId}::uuid
       ORDER BY o.created_at DESC
     `;
+
+    // `items` comes back as a `json` column, so Postgres has no column-level type
+    // metadata to hand the driver for the timestamp nested inside it — unlike every
+    // top-level column above, it arrives as a plain string and needs converting by hand.
+    return rows.map(row => ({
+      ...row,
+      items: row.items.map(item => ({ ...item, statusUpdatedAt: new Date(item.statusUpdatedAt) })),
+    }));
   }
 
   async findLatestByTableId(tableId: string, restaurantId: string, options?: OrderFetchOptions): Promise<IOrderWithItems | null> {
@@ -193,20 +205,48 @@ class OrderRepositoryImpl implements OrderRepository {
     return orders.map(order => this.toOrder(order));
   }
 
-  async replaceItems(
+  async findOpenBySessionId(sessionId: string, restaurantId: string, options?: OrderFetchOptions): Promise<IOrderWithItems[]> {
+    const prisma = options?.tx ?? this.prisma;
+    const orders = await prisma.order.findMany({
+      where: { sessionId, restaurantId, status: { in: OPEN_ORDER_STATUSES } },
+      include: ORDER_INCLUDE,
+      orderBy: { createdAt: "asc" },
+    });
+    return orders.map(order => this.toOrder(order));
+  }
+
+  async syncItems(
     orderId: string,
-    items: IOrderItemCreate[],
+    changes: IOrderItemSyncChanges,
     totals: IOrderTotalsUpdate,
     options?: { tx?: PrismaTransaction }
   ): Promise<IOrderWithItems> {
     const prisma = options?.tx ?? this.prisma;
-    await prisma.orderItem.deleteMany({ where: { orderId } });
-    if (items.length > 0) {
+
+    if (changes.deleteIds.length > 0) {
+      await prisma.orderItem.deleteMany({ where: { id: { in: changes.deleteIds }, orderId } });
+    }
+    for (const line of changes.updateQuantity) {
+      await prisma.orderItem.update({ where: { id: line.id }, data: { quantity: line.quantity } });
+    }
+    if (changes.create.length > 0) {
       await prisma.orderItem.createMany({
-        data: items.map(item => ({ ...item, notes: item.notes ?? "", orderId })),
+        data: changes.create.map(item => ({ ...item, notes: item.notes ?? "", orderId })),
       });
     }
+
     const order = await prisma.order.update({ where: { id: orderId }, data: totals, include: ORDER_INCLUDE });
+    return this.toOrder(order);
+  }
+
+  async updateItemStatus(itemId: string, status: OrderItemStatus, options?: { tx?: PrismaTransaction }): Promise<IOrderWithItems> {
+    const prisma = options?.tx ?? this.prisma;
+    const item = await prisma.orderItem.update({
+      where: { id: itemId },
+      data: { status, statusUpdatedAt: new Date() },
+      select: { orderId: true },
+    });
+    const order = await prisma.order.findUniqueOrThrow({ where: { id: item.orderId }, include: ORDER_INCLUDE });
     return this.toOrder(order);
   }
 
@@ -223,15 +263,6 @@ class OrderRepositoryImpl implements OrderRepository {
 
     const orders = await prisma.order.findMany({ where: { id: { in: ids } }, include: ORDER_INCLUDE, orderBy: { createdAt: "asc" } });
     return orders.map(order => this.toOrder(order));
-  }
-
-  async settleOpenBySessionId(sessionId: string, restaurantId: string, options?: { tx?: PrismaTransaction }): Promise<number> {
-    const prisma = options?.tx ?? this.prisma;
-    const { count } = await prisma.order.updateMany({
-      where: { sessionId, restaurantId, status: { in: OPEN_ORDER_STATUSES } },
-      data: { status: "COMPLETED", completedAt: new Date() },
-    });
-    return count;
   }
 
   private toOrder(order: OrderRow): IOrderWithItems {

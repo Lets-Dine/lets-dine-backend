@@ -1,5 +1,5 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { OrderStatus } from "@prisma/client";
+import { OrderItemStatus, OrderStatus } from "@prisma/client";
 import { BadRequestException, ConflictException, NotFoundException } from "../../../../../common/exceptions";
 import { IDiningSession } from "../../../../dining-sessions/domain/interfaces/dining-session.interface";
 import { OrderRepository } from "../../../../orders/domain/repositories/order.repository";
@@ -27,7 +27,7 @@ function buildOrder(overrides: Record<string, unknown> = {}) {
     restaurantId: "restaurant-1",
     sessionId: "session-1",
     status: OrderStatus.COMPLETED,
-    items: [{ dishId: "dish-1" }],
+    items: [{ dishId: "dish-1", status: OrderItemStatus.SERVED }],
     ...overrides,
   } as any;
 }
@@ -86,21 +86,55 @@ describe("CreateDishReviewUsecase", () => {
       await expect(usecase.execute(dto, session)).rejects.toThrow(new NotFoundException(DISH_REVIEW_ERROR_MESSAGES.ORDER_NOT_FOUND));
     });
 
-    it("should throw BadRequestException while the order is still being cooked", async () => {
+    it("should throw BadRequestException while the dish itself is still cooking", async () => {
       // Arrange
-      orderRepository.findById.mockResolvedValue(buildOrder({ status: OrderStatus.PREPARING }));
+      orderRepository.findById.mockResolvedValue(
+        buildOrder({ status: OrderStatus.PREPARING, items: [{ dishId: "dish-1", status: OrderItemStatus.PREPARING }] })
+      );
 
       // Act & Assert
-      await expect(usecase.execute(dto, session)).rejects.toThrow(new BadRequestException(DISH_REVIEW_ERROR_MESSAGES.ORDER_NOT_COMPLETED));
+      await expect(usecase.execute(dto, session)).rejects.toThrow(new BadRequestException(DISH_REVIEW_ERROR_MESSAGES.DISH_NOT_SERVED));
       expect(dishReviewRepository.create).not.toHaveBeenCalled();
+    });
+
+    it("should allow rating a dish the moment it's served, even while the rest of the order is still cooking", async () => {
+      // Arrange
+      orderRepository.findById.mockResolvedValue(
+        buildOrder({
+          status: OrderStatus.PREPARING,
+          items: [
+            { dishId: "dish-1", status: OrderItemStatus.SERVED },
+            { dishId: "dish-2", status: OrderItemStatus.PREPARING },
+          ],
+        })
+      );
+      dishReviewRepository.findByOrderAndDish.mockResolvedValue(null);
+      dishTagRepository.findByLabels.mockResolvedValue([{ id: "tag-1", label: "Juicy" } as any]);
+      dishReviewRepository.create.mockResolvedValue({ id: "review-1" } as any);
+
+      // Act
+      const result = await usecase.execute(dto, session);
+
+      // Assert
+      expect(result.id).toBe("review-1");
+      expect(dishReviewRepository.create).toHaveBeenCalled();
     });
 
     it("should throw BadRequestException when the dish was not on that order", async () => {
       // Arrange
-      orderRepository.findById.mockResolvedValue(buildOrder({ items: [{ dishId: "dish-9" }] }));
+      orderRepository.findById.mockResolvedValue(buildOrder({ items: [{ dishId: "dish-9", status: OrderItemStatus.SERVED }] }));
 
       // Act & Assert
       await expect(usecase.execute(dto, session)).rejects.toThrow(new BadRequestException(DISH_REVIEW_ERROR_MESSAGES.DISH_NOT_IN_ORDER));
+    });
+
+    it("should throw BadRequestException when a whole-order cancel voids a served dish's review", async () => {
+      // Arrange
+      orderRepository.findById.mockResolvedValue(buildOrder({ status: OrderStatus.CANCELLED }));
+
+      // Act & Assert
+      await expect(usecase.execute(dto, session)).rejects.toThrow(new BadRequestException(DISH_REVIEW_ERROR_MESSAGES.DISH_NOT_SERVED));
+      expect(dishReviewRepository.create).not.toHaveBeenCalled();
     });
 
     it("should throw ConflictException on a second rating of the same dish", async () => {

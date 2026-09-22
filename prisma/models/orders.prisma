@@ -19,6 +19,10 @@ model Order {
   /// instead of creating a second one.
   idempotencyKey String?     @unique @map("idempotency_key")
   cancelReason   String?     @map("cancel_reason")
+  /// §27 — the one remaining whole-order transition staff make by hand; every
+  /// other move forward is driven by the items (`OrderItem.status`).
+  acceptedAt     DateTime?   @map("accepted_at")
+  cancelledAt    DateTime?   @map("cancelled_at")
   completedAt    DateTime?   @map("completed_at")
   createdAt      DateTime    @default(now()) @map("created_at")
   updatedAt      DateTime    @updatedAt @map("updated_at")

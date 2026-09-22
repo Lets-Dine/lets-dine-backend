@@ -60,25 +60,36 @@ describe("UpdateOrderStatusUsecase", () => {
       expect(eventEmitter.emit).toHaveBeenCalledWith("order.updated", result);
     });
 
-    it("should stamp completedAt when the ticket is closed", async () => {
+    it("should stamp acceptedAt when the ticket is accepted", async () => {
       // Arrange
-      orderRepository.findById.mockResolvedValue(buildOrder(OrderStatus.READY));
-      orderRepository.update.mockResolvedValue(buildOrder(OrderStatus.COMPLETED));
+      orderRepository.findById.mockResolvedValue(buildOrder(OrderStatus.PENDING));
+      orderRepository.update.mockResolvedValue(buildOrder(OrderStatus.ACCEPTED));
 
       // Act
-      await usecase.execute("order-1", { status: OrderStatus.COMPLETED }, authUser);
+      await usecase.execute("order-1", { status: OrderStatus.ACCEPTED }, authUser);
 
       // Assert
       const [, patch] = orderRepository.update.mock.calls[0];
-      expect(patch.completedAt).toBeInstanceOf(Date);
+      expect(patch.acceptedAt).toBeInstanceOf(Date);
     });
 
-    it("should throw BadRequestException when the move skips a stage", async () => {
+    it("should refuse any target other than ACCEPTED — status past that point follows its items", async () => {
       // Arrange
-      orderRepository.findById.mockResolvedValue(buildOrder(OrderStatus.PENDING));
+      orderRepository.findById.mockResolvedValue(buildOrder(OrderStatus.PREPARING));
 
       // Act & Assert
       await expect(usecase.execute("order-1", { status: OrderStatus.READY }, authUser)).rejects.toThrow(
+        new BadRequestException(ORDER_ERROR_MESSAGES.STATUS_FOLLOWS_ITEMS)
+      );
+      expect(orderRepository.update).not.toHaveBeenCalled();
+    });
+
+    it("should still refuse skipping straight to ACCEPTED from a non-PENDING order", async () => {
+      // Arrange
+      orderRepository.findById.mockResolvedValue(buildOrder(OrderStatus.ACCEPTED));
+
+      // Act & Assert
+      await expect(usecase.execute("order-1", { status: OrderStatus.ACCEPTED }, authUser)).rejects.toThrow(
         new BadRequestException(ORDER_ERROR_MESSAGES.INVALID_TRANSITION)
       );
       expect(orderRepository.update).not.toHaveBeenCalled();

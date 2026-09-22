@@ -44,6 +44,7 @@ enum AuditAction {
   order_cancelled
   order_item_added
   order_item_removed
+  order_item_cancelled
   table_settled
   payment_completed
   settings_updated

@@ -1,4 +1,4 @@
-import { OrderStatus } from "@prisma/client";
+import { OrderItemStatus, OrderStatus } from "@prisma/client";
 
 export interface IOrderItem {
   id: string;
@@ -10,6 +10,8 @@ export interface IOrderItem {
   unitPrice: number;
   quantity: number;
   notes: string;
+  status: OrderItemStatus;
+  statusUpdatedAt: Date;
 }
 
 export interface IOrder {
@@ -27,6 +29,8 @@ export interface IOrder {
   currency: string;
   idempotencyKey: string | null;
   cancelReason: string | null;
+  acceptedAt: Date | null;
+  cancelledAt: Date | null;
   completedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;

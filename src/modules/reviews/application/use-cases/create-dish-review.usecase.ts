@@ -11,8 +11,9 @@ import { CreateDishReviewInput } from "../../interfaces/http/validations/create-
 
 /**
  * §10/§11 — the only way a review exists. Four things have to hold: the order is
- * this session's, it is complete, it actually contained the dish, and the dish
- * has not been rated on that order before.
+ * this session's, it actually contained the dish, that dish has been served
+ * (no need to wait for the rest of the order), and it has not been rated on
+ * that order before.
  */
 @Injectable()
 export class CreateDishReviewUsecase {
@@ -28,15 +29,15 @@ export class CreateDishReviewUsecase {
       throw new NotFoundException(DISH_REVIEW_ERROR_MESSAGES.ORDER_NOT_FOUND);
     }
 
-    if (!new Order(order).isReviewable()) {
-      throw new BadRequestException({
-        ...DISH_REVIEW_ERROR_MESSAGES.ORDER_NOT_COMPLETED,
-        detail: { status: order.status },
-      });
-    }
-
     if (!order.items.some(item => item.dishId === dto.dishId)) {
       throw new BadRequestException(DISH_REVIEW_ERROR_MESSAGES.DISH_NOT_IN_ORDER);
+    }
+
+    if (!new Order(order).isDishReviewable(order.items, dto.dishId)) {
+      throw new BadRequestException({
+        ...DISH_REVIEW_ERROR_MESSAGES.DISH_NOT_SERVED,
+        detail: { status: order.status },
+      });
     }
 
     const existing = await this.dishReviewRepository.findByOrderAndDish(dto.orderId, dto.dishId);

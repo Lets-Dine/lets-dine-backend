@@ -1,4 +1,4 @@
-import { OrderStatus } from "@prisma/client";
+import { OrderItemStatus, OrderStatus } from "@prisma/client";
 import { IPaginationOptions, PaginatedResponse } from "../../../../common/interfaces";
 import { PrismaTransaction } from "../../../../common/prisma";
 import { IOrderWithItems } from "../interfaces/order.interface";
@@ -26,18 +26,32 @@ export interface IOrderCreate {
   items: IOrderItemCreate[];
 }
 
-export interface IOrderUpdate {
-  status?: OrderStatus;
-  cancelReason?: string | null;
-  completedAt?: Date | null;
-}
-
 export interface IOrderTotalsUpdate {
   subtotal: number;
   serviceCharge: number;
   tax: number;
   discount: number;
   total: number;
+}
+
+export interface IOrderUpdate extends Partial<IOrderTotalsUpdate> {
+  status?: OrderStatus;
+  cancelReason?: string | null;
+  acceptedAt?: Date | null;
+  cancelledAt?: Date | null;
+  completedAt?: Date | null;
+}
+
+/**
+ * A surgical alternative to rebuilding an order's whole item list: only the
+ * rows that actually changed are touched, so an existing row's `status` (and
+ * `id`) survive an add/remove that leaves it alone. A created line is always
+ * born PENDING — `status` is not settable from here.
+ */
+export interface IOrderItemSyncChanges {
+  create: IOrderItemCreate[];
+  updateQuantity: { id: string; quantity: number }[];
+  deleteIds: string[];
 }
 
 export interface OrderFetchOptions {
@@ -72,15 +86,21 @@ export abstract class OrderRepository {
   abstract findLatestByTableId(tableId: string, restaurantId: string, options?: OrderFetchOptions): Promise<IOrderWithItems | null>;
   /** Every order this table still owes on, to close out together on settle. */
   abstract findOpenByTableId(tableId: string, restaurantId: string, options?: OrderFetchOptions): Promise<IOrderWithItems[]>;
-  /** Replaces an order's lines wholesale and stamps the totals recomputed from them. */
-  abstract replaceItems(
+  /** Every order this visit left open, to reconcile together when its session ends. */
+  abstract findOpenBySessionId(sessionId: string, restaurantId: string, options?: OrderFetchOptions): Promise<IOrderWithItems[]>;
+  /**
+   * Applies only the item rows that actually changed (create/quantity-update/
+   * delete) and stamps the totals recomputed from the resulting set — unlike
+   * a wholesale replace, every untouched row (and its `status`) survives.
+   */
+  abstract syncItems(
     orderId: string,
-    items: IOrderItemCreate[],
+    changes: IOrderItemSyncChanges,
     totals: IOrderTotalsUpdate,
     options?: { tx?: PrismaTransaction }
   ): Promise<IOrderWithItems>;
+  /** One line's kitchen status — accept/item-advance/item-cancel all funnel through this. */
+  abstract updateItemStatus(itemId: string, status: OrderItemStatus, options?: { tx?: PrismaTransaction }): Promise<IOrderWithItems>;
   /** Marks every currently-open order on this table COMPLETED in one motion — the till. */
   abstract settleOpenByTableId(tableId: string, restaurantId: string, options?: { tx?: PrismaTransaction }): Promise<IOrderWithItems[]>;
-  /** Marks every currently-open order on this session COMPLETED in one motion — what ending a visit does to whatever it leaves behind. */
-  abstract settleOpenBySessionId(sessionId: string, restaurantId: string, options?: { tx?: PrismaTransaction }): Promise<number>;
 }

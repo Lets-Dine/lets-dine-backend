@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { AuditAction } from "@prisma/client";
+import { AuditAction, OrderItemStatus } from "@prisma/client";
 import { NotFoundException } from "../../../../common/exceptions";
 import { AuthEntity } from "../../../../common/interfaces";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
@@ -9,7 +9,7 @@ import { RestaurantRepository } from "../../../restaurants/domain/repositories/r
 import { DiningTableRepository } from "../../../tables/domain/repositories/dining-table.repository";
 import { ORDER_ERROR_MESSAGES } from "../../domain/constants";
 import { IOrderWithItems } from "../../domain/interfaces/order.interface";
-import { IOrderItemCreate, OrderRepository } from "../../domain/repositories/order.repository";
+import { OrderRepository } from "../../domain/repositories/order.repository";
 import { calculateOrderTotals } from "../../domain/utils/money.util";
 import { AddOrderItemInput } from "../../interfaces/http/validations/add-order-item.validation";
 
@@ -18,6 +18,13 @@ import { AddOrderItemInput } from "../../interfaces/http/validations/add-order-i
  * from the payment sheet. It always lands on the table's most recent order,
  * whatever that order's status, so a correction after settling works the same
  * way as one mid-service.
+ *
+ * §20 — merging into an existing line only makes sense while the kitchen
+ * hasn't touched it yet: bumping the quantity on a line that's already
+ * PREPARING/READY/SERVED would silently mark the new unit as already cooked.
+ * So a repeat of a dish only merges into a still-PENDING line for it; once
+ * that line has started, a second helping gets its own fresh PENDING line —
+ * the same way a real kitchen treats a re-order as a new ticket.
  */
 @Injectable()
 export class AddOrderItemUsecase {
@@ -47,28 +54,34 @@ export class AddOrderItemUsecase {
       const restaurant = await this.restaurantRepository.findById(authEntity.restaurantId, { tx });
       if (!restaurant) throw new NotFoundException(RESTAURANT_ERROR_MESSAGES.NOT_FOUND);
 
-      const existing = order.items.some(item => item.dishId === dish.id);
-      const items: IOrderItemCreate[] = order.items.map(item => ({
-        dishId: item.dishId,
-        dishNameSnapshot: item.dishNameSnapshot,
-        imageUrlSnapshot: item.imageUrlSnapshot,
-        unitPrice: item.unitPrice,
-        quantity: item.dishId === dish.id ? item.quantity + 1 : item.quantity,
-        notes: item.notes,
-      }));
-      if (!existing) {
-        items.push({
-          dishId: dish.id,
-          dishNameSnapshot: dish.name,
-          imageUrlSnapshot: dish.imageUrl,
-          unitPrice: dish.price,
-          quantity: 1,
-          notes: "",
-        });
-      }
+      const mergeable = order.items.find(item => item.dishId === dish.id && item.status === OrderItemStatus.PENDING);
 
-      const totals = calculateOrderTotals(items, restaurant);
-      const updated = await this.orderRepository.replaceItems(order.id, items, totals, { tx });
+      const resultingLines = mergeable
+        ? order.items.map(item => (item.id === mergeable.id ? { ...item, quantity: item.quantity + 1 } : item))
+        : [...order.items, { dishId: dish.id, unitPrice: dish.price, quantity: 1 }];
+
+      const totals = calculateOrderTotals(resultingLines, restaurant);
+      const updated = await this.orderRepository.syncItems(
+        order.id,
+        {
+          create: mergeable
+            ? []
+            : [
+                {
+                  dishId: dish.id,
+                  dishNameSnapshot: dish.name,
+                  imageUrlSnapshot: dish.imageUrl,
+                  unitPrice: dish.price,
+                  quantity: 1,
+                  notes: "",
+                },
+              ],
+          updateQuantity: mergeable ? [{ id: mergeable.id, quantity: mergeable.quantity + 1 }] : [],
+          deleteIds: [],
+        },
+        totals,
+        { tx }
+      );
 
       await this.auditLogService.record(
         { action: AuditAction.order_item_added, subject: `Order ${order.reference}`, detail: `+1 ${dish.name}` },

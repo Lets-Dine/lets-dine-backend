@@ -1,5 +1,5 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { AuditAction } from "@prisma/client";
+import { AuditAction, OrderItemStatus } from "@prisma/client";
 import { NotFoundException } from "../../../../../common/exceptions";
 import { buildAuthEntity } from "../../../../../common/testing";
 import { AuditLogService } from "../../../../audit-logs/application/audit-log.service";
@@ -29,7 +29,7 @@ describe("AddOrderItemUsecase", () => {
         AddOrderItemUsecase,
         {
           provide: OrderRepository,
-          useValue: { $transaction: jest.fn(fn => fn(tx)), findLatestByTableId: jest.fn(), replaceItems: jest.fn() },
+          useValue: { $transaction: jest.fn(fn => fn(tx)), findLatestByTableId: jest.fn(), syncItems: jest.fn() },
         },
         { provide: DiningTableRepository, useValue: { findById: jest.fn() } },
         { provide: DishRepository, useValue: { findById: jest.fn() } },
@@ -54,15 +54,25 @@ describe("AddOrderItemUsecase", () => {
       // Arrange
       const order = { id: "order-1", reference: "#1001", items: [] };
       orderRepository.findLatestByTableId.mockResolvedValue(order as any);
-      dishRepository.findById.mockResolvedValue({ id: "dish-1", restaurantId: authUser.restaurantId, name: "Momo", imageUrl: null, price: 200 } as any);
-      orderRepository.replaceItems.mockResolvedValue({ id: "order-1" } as any);
+      dishRepository.findById.mockResolvedValue({
+        id: "dish-1",
+        restaurantId: authUser.restaurantId,
+        name: "Momo",
+        imageUrl: null,
+        price: 200,
+      } as any);
+      orderRepository.syncItems.mockResolvedValue({ id: "order-1" } as any);
 
       // Act
       await usecase.execute("table-1", { dishId: "dish-1" }, authUser);
 
       // Assert
-      const [, items, totals] = orderRepository.replaceItems.mock.calls[0];
-      expect(items).toEqual([{ dishId: "dish-1", dishNameSnapshot: "Momo", imageUrlSnapshot: null, unitPrice: 200, quantity: 1, notes: "" }]);
+      const [, changes, totals] = orderRepository.syncItems.mock.calls[0];
+      expect(changes).toEqual({
+        create: [{ dishId: "dish-1", dishNameSnapshot: "Momo", imageUrlSnapshot: null, unitPrice: 200, quantity: 1, notes: "" }],
+        updateQuantity: [],
+        deleteIds: [],
+      });
       expect(totals.subtotal).toBe(200);
       expect(auditLogService.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: AuditAction.order_item_added, subject: "Order #1001" }),
@@ -71,24 +81,79 @@ describe("AddOrderItemUsecase", () => {
       );
     });
 
-    it("should increment the existing line instead of duplicating it", async () => {
+    it("should increment the existing line instead of duplicating it, while it's still PENDING", async () => {
       // Arrange
       const order = {
         id: "order-1",
         reference: "#1001",
-        items: [{ dishId: "dish-1", dishNameSnapshot: "Momo", imageUrlSnapshot: null, unitPrice: 200, quantity: 1, notes: "" }],
+        items: [
+          {
+            id: "item-1",
+            dishId: "dish-1",
+            dishNameSnapshot: "Momo",
+            imageUrlSnapshot: null,
+            unitPrice: 200,
+            quantity: 1,
+            notes: "",
+            status: OrderItemStatus.PENDING,
+          },
+        ],
       };
       orderRepository.findLatestByTableId.mockResolvedValue(order as any);
-      dishRepository.findById.mockResolvedValue({ id: "dish-1", restaurantId: authUser.restaurantId, name: "Momo", imageUrl: null, price: 200 } as any);
-      orderRepository.replaceItems.mockResolvedValue({ id: "order-1" } as any);
+      dishRepository.findById.mockResolvedValue({
+        id: "dish-1",
+        restaurantId: authUser.restaurantId,
+        name: "Momo",
+        imageUrl: null,
+        price: 200,
+      } as any);
+      orderRepository.syncItems.mockResolvedValue({ id: "order-1" } as any);
 
       // Act
       await usecase.execute("table-1", { dishId: "dish-1" }, authUser);
 
       // Assert
-      const [, items] = orderRepository.replaceItems.mock.calls[0];
-      expect(items).toHaveLength(1);
-      expect(items[0].quantity).toBe(2);
+      const [, changes] = orderRepository.syncItems.mock.calls[0];
+      expect(changes).toEqual({ create: [], updateQuantity: [{ id: "item-1", quantity: 2 }], deleteIds: [] });
+    });
+
+    it("should append a fresh line instead of merging once the existing line has started cooking", async () => {
+      // Arrange
+      const order = {
+        id: "order-1",
+        reference: "#1001",
+        items: [
+          {
+            id: "item-1",
+            dishId: "dish-1",
+            dishNameSnapshot: "Momo",
+            imageUrlSnapshot: null,
+            unitPrice: 200,
+            quantity: 1,
+            notes: "",
+            status: OrderItemStatus.PREPARING,
+          },
+        ],
+      };
+      orderRepository.findLatestByTableId.mockResolvedValue(order as any);
+      dishRepository.findById.mockResolvedValue({
+        id: "dish-1",
+        restaurantId: authUser.restaurantId,
+        name: "Momo",
+        imageUrl: null,
+        price: 200,
+      } as any);
+      orderRepository.syncItems.mockResolvedValue({ id: "order-1" } as any);
+
+      // Act
+      await usecase.execute("table-1", { dishId: "dish-1" }, authUser);
+
+      // Assert
+      const [, changes] = orderRepository.syncItems.mock.calls[0];
+      expect(changes.updateQuantity).toEqual([]);
+      expect(changes.create).toEqual([
+        { dishId: "dish-1", dishNameSnapshot: "Momo", imageUrlSnapshot: null, unitPrice: 200, quantity: 1, notes: "" },
+      ]);
     });
 
     it("should throw NotFoundException when the table isn't this restaurant's", async () => {

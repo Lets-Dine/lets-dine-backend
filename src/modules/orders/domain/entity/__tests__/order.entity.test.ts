@@ -1,9 +1,13 @@
-import { OrderStatus } from "@prisma/client";
+import { OrderItemStatus, OrderStatus } from "@prisma/client";
 import { IOrder } from "../../interfaces/order.interface";
 import { Order } from "../order.entity";
 
 function buildOrder(status: OrderStatus, sessionId = "session-1"): Order {
   return new Order({ status, sessionId } as IOrder);
+}
+
+function item(status: OrderItemStatus) {
+  return { status };
 }
 
 describe("Order", () => {
@@ -33,13 +37,43 @@ describe("Order", () => {
       expect(buildOrder(OrderStatus.PREPARING).isCancellable()).toBe(true);
       expect(buildOrder(OrderStatus.READY).isCancellable()).toBe(false);
     });
+
+    it("should stay cancellable while every item is still untouched", () => {
+      // Arrange & Act & Assert
+      expect(buildOrder(OrderStatus.PREPARING).isCancellable([item(OrderItemStatus.PENDING)])).toBe(true);
+      expect(buildOrder(OrderStatus.PREPARING).isCancellable([item(OrderItemStatus.PENDING), item(OrderItemStatus.PENDING)])).toBe(true);
+    });
+
+    it("should refuse once a single item has left PENDING, even mid-transition order status", () => {
+      // Arrange & Act & Assert
+      expect(buildOrder(OrderStatus.PREPARING).isCancellable([item(OrderItemStatus.PENDING), item(OrderItemStatus.PREPARING)])).toBe(false);
+    });
   });
 
-  describe("isReviewable", () => {
-    it("should only allow reviewing a completed order", () => {
+  describe("hasStartedItems", () => {
+    it("should report true once any item has left PENDING", () => {
       // Arrange & Act & Assert
-      expect(buildOrder(OrderStatus.COMPLETED).isReviewable()).toBe(true);
-      expect(buildOrder(OrderStatus.READY).isReviewable()).toBe(false);
+      expect(buildOrder(OrderStatus.PREPARING).hasStartedItems([item(OrderItemStatus.PENDING)])).toBe(false);
+      expect(buildOrder(OrderStatus.PREPARING).hasStartedItems([item(OrderItemStatus.PREPARING)])).toBe(true);
+    });
+  });
+
+  describe("isDishReviewable", () => {
+    it("should allow rating a dish the moment it's served, even mid-order", () => {
+      // Arrange
+      const items = [{ dishId: "dish-1", ...item(OrderItemStatus.SERVED) }, { dishId: "dish-2", ...item(OrderItemStatus.PREPARING) }];
+
+      // Act & Assert
+      expect(buildOrder(OrderStatus.PREPARING).isDishReviewable(items, "dish-1")).toBe(true);
+      expect(buildOrder(OrderStatus.PREPARING).isDishReviewable(items, "dish-2")).toBe(false);
+    });
+
+    it("should void a served dish's review once the whole order is cancelled", () => {
+      // Arrange
+      const items = [{ dishId: "dish-1", ...item(OrderItemStatus.SERVED) }];
+
+      // Act & Assert
+      expect(buildOrder(OrderStatus.CANCELLED).isDishReviewable(items, "dish-1")).toBe(false);
     });
   });
 

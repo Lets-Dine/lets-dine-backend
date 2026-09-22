@@ -22,7 +22,7 @@ describe("RemoveOrderItemUsecase", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RemoveOrderItemUsecase,
-        { provide: OrderRepository, useValue: { $transaction: jest.fn(fn => fn(tx)), findById: jest.fn(), replaceItems: jest.fn() } },
+        { provide: OrderRepository, useValue: { $transaction: jest.fn(fn => fn(tx)), findById: jest.fn(), syncItems: jest.fn() } },
         { provide: RestaurantRepository, useValue: { findById: jest.fn() } },
         { provide: AuditLogService, useValue: { record: jest.fn() } },
       ],
@@ -43,17 +43,19 @@ describe("RemoveOrderItemUsecase", () => {
         id: "order-1",
         reference: "#1001",
         restaurantId: authUser.restaurantId,
-        items: [{ id: "item-1", dishId: "dish-1", dishNameSnapshot: "Momo", imageUrlSnapshot: null, unitPrice: 200, quantity: 2, notes: "" }],
+        items: [
+          { id: "item-1", dishId: "dish-1", dishNameSnapshot: "Momo", imageUrlSnapshot: null, unitPrice: 200, quantity: 2, notes: "" },
+        ],
       };
       orderRepository.findById.mockResolvedValue(order as any);
-      orderRepository.replaceItems.mockResolvedValue({ id: "order-1" } as any);
+      orderRepository.syncItems.mockResolvedValue({ id: "order-1" } as any);
 
       // Act
       await usecase.execute("order-1", "item-1", authUser);
 
       // Assert
-      const [, items] = orderRepository.replaceItems.mock.calls[0];
-      expect(items).toEqual([{ dishId: "dish-1", dishNameSnapshot: "Momo", imageUrlSnapshot: null, unitPrice: 200, quantity: 1, notes: "" }]);
+      const [, changes] = orderRepository.syncItems.mock.calls[0];
+      expect(changes).toEqual({ create: [], updateQuantity: [{ id: "item-1", quantity: 1 }], deleteIds: [] });
       expect(auditLogService.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: AuditAction.order_item_removed, subject: "Order #1001" }),
         authUser,
@@ -67,17 +69,19 @@ describe("RemoveOrderItemUsecase", () => {
         id: "order-1",
         reference: "#1001",
         restaurantId: authUser.restaurantId,
-        items: [{ id: "item-1", dishId: "dish-1", dishNameSnapshot: "Momo", imageUrlSnapshot: null, unitPrice: 200, quantity: 1, notes: "" }],
+        items: [
+          { id: "item-1", dishId: "dish-1", dishNameSnapshot: "Momo", imageUrlSnapshot: null, unitPrice: 200, quantity: 1, notes: "" },
+        ],
       };
       orderRepository.findById.mockResolvedValue(order as any);
-      orderRepository.replaceItems.mockResolvedValue({ id: "order-1" } as any);
+      orderRepository.syncItems.mockResolvedValue({ id: "order-1" } as any);
 
       // Act
       await usecase.execute("order-1", "item-1", authUser);
 
       // Assert
-      const [, items] = orderRepository.replaceItems.mock.calls[0];
-      expect(items).toEqual([]);
+      const [, changes] = orderRepository.syncItems.mock.calls[0];
+      expect(changes).toEqual({ create: [], updateQuantity: [], deleteIds: ["item-1"] });
     });
 
     it("should allow removing an item from an order that's already completed", async () => {
@@ -87,10 +91,12 @@ describe("RemoveOrderItemUsecase", () => {
         reference: "#1001",
         restaurantId: authUser.restaurantId,
         status: "COMPLETED",
-        items: [{ id: "item-1", dishId: "dish-1", dishNameSnapshot: "Momo", imageUrlSnapshot: null, unitPrice: 200, quantity: 1, notes: "" }],
+        items: [
+          { id: "item-1", dishId: "dish-1", dishNameSnapshot: "Momo", imageUrlSnapshot: null, unitPrice: 200, quantity: 1, notes: "" },
+        ],
       };
       orderRepository.findById.mockResolvedValue(order as any);
-      orderRepository.replaceItems.mockResolvedValue({ id: "order-1" } as any);
+      orderRepository.syncItems.mockResolvedValue({ id: "order-1" } as any);
 
       // Act & Assert
       await expect(usecase.execute("order-1", "item-1", authUser)).resolves.toBeDefined();

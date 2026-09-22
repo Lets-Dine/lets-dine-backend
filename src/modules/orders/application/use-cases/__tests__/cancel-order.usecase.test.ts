@@ -1,6 +1,6 @@
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Test, TestingModule } from "@nestjs/testing";
-import { AuditAction, OrderStatus } from "@prisma/client";
+import { AuditAction, OrderItemStatus, OrderStatus } from "@prisma/client";
 import { BadRequestException, ConflictException, NotFoundException } from "../../../../../common/exceptions";
 import { buildAuthEntity } from "../../../../../common/testing";
 import { AuditLogService } from "../../../../audit-logs/application/audit-log.service";
@@ -11,8 +11,8 @@ import { CancelOrderUsecase } from "../cancel-order.usecase";
 const authUser = buildAuthEntity();
 const dto = { reason: "Kitchen ran out of chicken" };
 
-function buildOrder(status: OrderStatus) {
-  return { id: "order-1", reference: "#1001", restaurantId: authUser.restaurantId, status } as any;
+function buildOrder(status: OrderStatus, items: { status: OrderItemStatus }[] = []) {
+  return { id: "order-1", reference: "#1001", restaurantId: authUser.restaurantId, status, items } as any;
 }
 
 describe("CancelOrderUsecase", () => {
@@ -50,7 +50,7 @@ describe("CancelOrderUsecase", () => {
       expect(result.status).toBe(OrderStatus.CANCELLED);
       expect(orderRepository.update).toHaveBeenCalledWith(
         "order-1",
-        { status: OrderStatus.CANCELLED, cancelReason: dto.reason },
+        { status: OrderStatus.CANCELLED, cancelReason: dto.reason, cancelledAt: expect.any(Date) },
         { actorId: authUser.sub }
       );
       expect(auditLogService.record).toHaveBeenCalledWith(
@@ -73,6 +73,19 @@ describe("CancelOrderUsecase", () => {
     it("should throw BadRequestException once the food is ready", async () => {
       // Arrange
       orderRepository.findById.mockResolvedValue(buildOrder(OrderStatus.READY));
+
+      // Act & Assert
+      await expect(usecase.execute("order-1", dto, authUser)).rejects.toThrow(
+        new BadRequestException(ORDER_ERROR_MESSAGES.NOT_CANCELLABLE)
+      );
+      expect(orderRepository.update).not.toHaveBeenCalled();
+    });
+
+    it("should throw BadRequestException once any single item has started, even though the order itself is still PREPARING", async () => {
+      // Arrange
+      orderRepository.findById.mockResolvedValue(
+        buildOrder(OrderStatus.PREPARING, [{ status: OrderItemStatus.PENDING }, { status: OrderItemStatus.PREPARING }])
+      );
 
       // Act & Assert
       await expect(usecase.execute("order-1", dto, authUser)).rejects.toThrow(

@@ -5,6 +5,8 @@ import { DishesModule } from "../dishes/dishes.module";
 import { RestaurantsModule } from "../restaurants/restaurants.module";
 import { TablesModule } from "../tables/tables.module";
 import { AddOrderItemUsecase } from "./application/use-cases/add-order-item.usecase";
+import { AdvanceOrderItemStatusUsecase } from "./application/use-cases/advance-order-item-status.usecase";
+import { CancelOrderItemUsecase } from "./application/use-cases/cancel-order-item.usecase";
 import { CancelOrderUsecase } from "./application/use-cases/cancel-order.usecase";
 import { CreateOrderUsecase } from "./application/use-cases/create-order.usecase";
 import { FetchAllOrdersUsecase } from "./application/use-cases/fetch-all-orders.usecase";
@@ -37,6 +39,8 @@ import { OrdersGateway } from "./interfaces/ws/orders.gateway";
     CancelOrderUsecase,
     AddOrderItemUsecase,
     RemoveOrderItemUsecase,
+    AdvanceOrderItemStatusUsecase,
+    CancelOrderItemUsecase,
     SettleTableUsecase,
     OrderRepositoryImpl,
     { provide: OrderRepository, useExisting: OrderRepositoryImpl },

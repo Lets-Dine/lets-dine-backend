@@ -1,9 +1,9 @@
 export const DISH_REVIEW_ERROR_MESSAGES = {
   NOT_FOUND: { key: "DISH_REVIEW_NOT_FOUND", message: "Review not found" },
   ORDER_NOT_FOUND: { key: "DISH_REVIEW_ORDER_NOT_FOUND", message: "That order is not yours to review" },
-  ORDER_NOT_COMPLETED: {
-    key: "DISH_REVIEW_ORDER_NOT_COMPLETED",
-    message: "You can rate these dishes once the order is complete",
+  DISH_NOT_SERVED: {
+    key: "DISH_REVIEW_DISH_NOT_SERVED",
+    message: "You can rate this dish once it has been served",
   },
   DISH_NOT_IN_ORDER: { key: "DISH_REVIEW_DISH_NOT_IN_ORDER", message: "You did not order this dish" },
   ALREADY_REVIEWED: { key: "DISH_REVIEW_ALREADY_REVIEWED", message: "You have already rated this dish on this order" },

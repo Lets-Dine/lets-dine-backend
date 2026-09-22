@@ -27,7 +27,7 @@ export class CancelOrderUsecase {
     if (existing.status === OrderStatus.CANCELLED) {
       throw new ConflictException(ORDER_ERROR_MESSAGES.ALREADY_CANCELLED);
     }
-    if (!new Order(existing).isCancellable()) {
+    if (!new Order(existing).isCancellable(existing.items)) {
       throw new BadRequestException({
         ...ORDER_ERROR_MESSAGES.NOT_CANCELLABLE,
         detail: { status: existing.status },
@@ -36,7 +36,7 @@ export class CancelOrderUsecase {
 
     const cancelled = await this.orderRepository.update(
       id,
-      { status: OrderStatus.CANCELLED, cancelReason: dto.reason },
+      { status: OrderStatus.CANCELLED, cancelReason: dto.reason, cancelledAt: new Date() },
       { actorId: authEntity.sub }
     );
 

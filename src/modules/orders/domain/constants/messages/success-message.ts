@@ -6,5 +6,7 @@ export const ORDER_SUCCESS_MESSAGES = {
   ORDER_CANCELLED: { key: "ORDER_CANCELLED", message: "Order cancelled successfully" },
   ORDER_ITEM_ADDED: { key: "ORDER_ITEM_ADDED", message: "Item added" },
   ORDER_ITEM_REMOVED: { key: "ORDER_ITEM_REMOVED", message: "Item removed" },
+  ORDER_ITEM_STATUS_UPDATED: { key: "ORDER_ITEM_STATUS_UPDATED", message: "Item status updated successfully" },
+  ORDER_ITEM_CANCELLED: { key: "ORDER_ITEM_CANCELLED", message: "Item cancelled" },
   TABLE_SETTLED: { key: "TABLE_SETTLED", message: "Table settled up" },
 };

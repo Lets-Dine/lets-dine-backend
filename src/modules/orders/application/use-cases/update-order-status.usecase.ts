@@ -10,7 +10,12 @@ import { IOrderWithItems } from "../../domain/interfaces/order.interface";
 import { OrderRepository } from "../../domain/repositories/order.repository";
 import { UpdateOrderStatusInput } from "../../interfaces/http/validations/update-order-status.validation";
 
-/** §20/§27 — one move forward at a time, and every move is on the record. */
+/**
+ * §20/§27 — with items now carrying their own kitchen status, this endpoint
+ * is left with exactly one manual move: accepting a new ticket. Everything
+ * past that (`PREPARING`/`READY`/`COMPLETED`) is read off the items via
+ * `deriveOrderStatus`, not set directly here.
+ */
 @Injectable()
 export class UpdateOrderStatusUsecase {
   constructor(
@@ -25,6 +30,10 @@ export class UpdateOrderStatusUsecase {
       throw new NotFoundException(ORDER_ERROR_MESSAGES.NOT_FOUND);
     }
 
+    if (dto.status !== OrderStatus.ACCEPTED) {
+      throw new BadRequestException(ORDER_ERROR_MESSAGES.STATUS_FOLLOWS_ITEMS);
+    }
+
     if (!new Order(existing).canTransitionTo(dto.status)) {
       throw new BadRequestException({
         ...ORDER_ERROR_MESSAGES.INVALID_TRANSITION,
@@ -32,14 +41,7 @@ export class UpdateOrderStatusUsecase {
       });
     }
 
-    const updated = await this.orderRepository.update(
-      id,
-      {
-        status: dto.status,
-        completedAt: dto.status === OrderStatus.COMPLETED ? new Date() : existing.completedAt,
-      },
-      { actorId: authEntity.sub }
-    );
+    const updated = await this.orderRepository.update(id, { status: dto.status, acceptedAt: new Date() }, { actorId: authEntity.sub });
 
     await this.auditLogService.record(
       {

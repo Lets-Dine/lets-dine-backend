@@ -4,10 +4,12 @@ import { type AuthEntity, IHttpResponse, PaginatedResponse } from "../../../../c
 import { ParseUuidPipe } from "../../../../common/pipes";
 import { buildHttpResponse } from "../../../../common/utils";
 import { AddOrderItemDto } from "../../application/dto/add-order-item.dto";
+import { AdvanceOrderItemStatusDto } from "../../application/dto/advance-order-item-status.dto";
 import { CancelOrderDto } from "../../application/dto/cancel-order.dto";
 import { FetchOrdersDto } from "../../application/dto/fetch-orders.dto";
 import { UpdateOrderStatusDto } from "../../application/dto/update-order-status.dto";
 import { AddOrderItemUsecase } from "../../application/use-cases/add-order-item.usecase";
+import { AdvanceOrderItemStatusUsecase } from "../../application/use-cases/advance-order-item-status.usecase";
 import { CancelOrderUsecase } from "../../application/use-cases/cancel-order.usecase";
 import { FetchAllOrdersUsecase } from "../../application/use-cases/fetch-all-orders.usecase";
 import { FetchOrderByIdUsecase } from "../../application/use-cases/fetch-order-by-id.usecase";
@@ -28,6 +30,7 @@ export class RestaurantOrderController {
     private readonly cancelOrderUsecase: CancelOrderUsecase,
     private readonly addOrderItemUsecase: AddOrderItemUsecase,
     private readonly removeOrderItemUsecase: RemoveOrderItemUsecase,
+    private readonly advanceOrderItemStatusUsecase: AdvanceOrderItemStatusUsecase,
     private readonly settleTableUsecase: SettleTableUsecase
   ) {}
 
@@ -120,5 +123,18 @@ export class RestaurantOrderController {
   ): Promise<IHttpResponse<IOrderWithItems>> {
     const order = await this.removeOrderItemUsecase.execute(orderId, itemId, authEntity);
     return buildHttpResponse(order, ORDER_SUCCESS_MESSAGES.ORDER_ITEM_REMOVED);
+  }
+
+  @Patch("/:orderId/items/:itemId/status")
+  @UseGuards(AuthGuard, AbilityGuard)
+  @CheckPolicies(checkPermissionRules([["orders:advance"]]))
+  async advanceItemStatus(
+    @Param("orderId", ParseUuidPipe) orderId: string,
+    @Param("itemId", ParseUuidPipe) itemId: string,
+    @Body() dto: AdvanceOrderItemStatusDto,
+    @AuthUser() authEntity: AuthEntity
+  ): Promise<IHttpResponse<IOrderWithItems>> {
+    const order = await this.advanceOrderItemStatusUsecase.execute(orderId, itemId, dto, authEntity);
+    return buildHttpResponse(order, ORDER_SUCCESS_MESSAGES.ORDER_ITEM_STATUS_UPDATED);
   }
 }
