@@ -1,3 +1,5 @@
+import { PaymentMethod } from "@prisma/client";
+
 export interface IPaymentItem {
   id: string;
   paymentId: string;
@@ -18,6 +20,7 @@ export interface IPayment {
   tax: number;
   discount: number;
   total: number;
+  method: PaymentMethod;
   currency: string;
   createdAt: Date;
   createdBy: string | null;

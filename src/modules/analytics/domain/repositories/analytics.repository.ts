@@ -1,5 +1,13 @@
 import { PrismaTransaction } from "../../../../common/prisma";
-import { IAnalyticsRange, IDishPerformance, IFeedbackSummary, IHourlyOrders, IOrderSummary } from "../interfaces/analytics.interface";
+import {
+  IAnalyticsRange,
+  IDishPerformance,
+  IFeedbackSummary,
+  IHourlyOrders,
+  IOrderComparisonTotals,
+  IOrderSummary,
+  IRevenueTotals,
+} from "../interfaces/analytics.interface";
 
 export interface AnalyticsFetchOptions {
   tx?: PrismaTransaction;
@@ -12,4 +20,16 @@ export abstract class AnalyticsRepository {
   abstract fetchDishPerformance(restaurantId: string, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<IDishPerformance[]>;
   abstract fetchFeedbackSummary(restaurantId: string, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<IFeedbackSummary>;
   abstract fetchBusiestHours(restaurantId: string, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<IHourlyOrders[]>;
+  abstract fetchRevenueComparison(
+    restaurantId: string,
+    currentRange: IAnalyticsRange,
+    previousRange: IAnalyticsRange,
+    options?: AnalyticsFetchOptions
+  ): Promise<IRevenueTotals>;
+  abstract fetchOrderComparison(
+    restaurantId: string,
+    currentRange: IAnalyticsRange,
+    previousRange: IAnalyticsRange,
+    options?: AnalyticsFetchOptions
+  ): Promise<IOrderComparisonTotals>;
 }

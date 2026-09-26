@@ -1,19 +1,29 @@
+/// How a settled charge was actually taken — CARD stands in for anything
+/// taken off-cash (card machine today, a real gateway later).
+enum PaymentMethod {
+  CASH
+  CARD
+
+  @@schema("public")
+}
+
 /// A completed charge against one dining session — snapshotting exactly what
 /// the cashier charged for rather than re-deriving it from whatever the
 /// underlying orders happen to look like later.
 model Payment {
-  id            String   @id @default(uuid()) @map("id") @db.Uuid
-  restaurantId  String   @map("restaurant_id") @db.Uuid
-  sessionId     String   @map("session_id") @db.Uuid
-  tableId       String   @map("table_id") @db.Uuid
-  subtotal      Int      @map("subtotal")
-  serviceCharge Int      @map("service_charge")
-  tax           Int      @map("tax")
-  discount      Int      @default(0) @map("discount")
-  total         Int      @map("total")
-  currency      String   @map("currency")
-  createdAt     DateTime @default(now()) @map("created_at")
-  createdBy     String?  @map("created_by") @db.Uuid
+  id            String        @id @default(uuid()) @map("id") @db.Uuid
+  restaurantId  String        @map("restaurant_id") @db.Uuid
+  sessionId     String        @map("session_id") @db.Uuid
+  tableId       String        @map("table_id") @db.Uuid
+  subtotal      Int           @map("subtotal")
+  serviceCharge Int           @map("service_charge")
+  tax           Int           @map("tax")
+  discount      Int           @default(0) @map("discount")
+  total         Int           @map("total")
+  method        PaymentMethod @default(CASH) @map("method")
+  currency      String        @map("currency")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  createdBy     String?       @map("created_by") @db.Uuid
 
   restaurant Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   session    DiningSession @relation(fields: [sessionId], references: [id], onDelete: Restrict)

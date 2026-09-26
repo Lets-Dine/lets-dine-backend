@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { AuditAction } from "@prisma/client";
-import { ConflictException, NotFoundException } from "../../../../common/exceptions";
+import { can } from "../../../../common/auth";
+import { ConflictException, ForbiddenException, NotFoundException } from "../../../../common/exceptions";
 import { AuthEntity } from "../../../../common/interfaces";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
 import { DiningSessionService } from "../../../dining-sessions/application/dining-session.service";
@@ -34,6 +35,11 @@ export class CompletePaymentUsecase {
     if (session.endedAt) throw new ConflictException(PAYMENT_ERROR_MESSAGES.SESSION_ALREADY_ENDED);
     if (!restaurant) throw new NotFoundException(RESTAURANT_ERROR_MESSAGES.NOT_FOUND);
 
+    const discount = dto.discount ?? 0;
+    if (discount > 0 && !can(authEntity.role, "payments:discount")) {
+      throw new ForbiddenException(PAYMENT_ERROR_MESSAGES.DISCOUNT_NOT_ALLOWED);
+    }
+
     return this.paymentRepository.$transaction(async tx => {
       const dishes = await this.dishRepository.findManyByIds(
         dto.items.map(line => line.dishId),
@@ -48,7 +54,8 @@ export class CompletePaymentUsecase {
         return { dishId: dish.id, dishNameSnapshot: dish.name, unitPrice: dish.price, quantity: line.quantity };
       });
 
-      const totals = calculateOrderTotals(items, restaurant);
+      const totals = calculateOrderTotals(items, restaurant, discount);
+      if (totals.total < 0) throw new ConflictException(PAYMENT_ERROR_MESSAGES.DISCOUNT_EXCEEDS_TOTAL);
 
       const payment = await this.paymentRepository.create(
         {
@@ -56,6 +63,7 @@ export class CompletePaymentUsecase {
           sessionId: session.id,
           tableId: session.tableId,
           ...totals,
+          method: dto.method,
           currency: restaurant.currency,
           createdBy: authEntity.sub,
           items,
@@ -64,7 +72,11 @@ export class CompletePaymentUsecase {
       );
 
       await this.auditLogService.record(
-        { action: AuditAction.payment_completed, subject: `Session ${session.id}`, detail: `Charged ${payment.total} ${payment.currency}` },
+        {
+          action: AuditAction.payment_completed,
+          subject: `Session ${session.id}`,
+          detail: `Charged ${payment.total} ${payment.currency} via ${payment.method}${discount > 0 ? ` (${discount} discount)` : ""}`,
+        },
         authEntity,
         tx
       );

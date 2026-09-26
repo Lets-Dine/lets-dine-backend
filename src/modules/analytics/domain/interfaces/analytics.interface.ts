@@ -45,3 +45,23 @@ export interface IAnalyticsOverview {
   feedback: IFeedbackSummary;
   busiestHours: IHourlyOrders[];
 }
+
+export type ComparisonPeriod = "today" | "week" | "month";
+
+export interface IRevenueTotals {
+  current: number;
+  previous: number;
+}
+
+export interface IRevenueComparison extends IRevenueTotals {
+  differencePercentage: number;
+}
+
+export interface IOrderComparisonTotals {
+  current: number;
+  previous: number;
+}
+
+export interface IOrderComparison extends IOrderComparisonTotals {
+  differencePercentage: number;
+}

@@ -17,9 +17,11 @@ export type Permission =
   | "analytics:view"
   | "settings:view"
   | "settings:edit"
-  | "audit:view";
+  | "audit:view"
+  | "payments:view"
+  | "payments:discount";
 
-const STAFF: Permission[] = ["orders:view", "orders:advance", "menu:view"];
+const STAFF: Permission[] = ["orders:view", "orders:advance", "menu:view", "payments:view"];
 
 const MANAGER: Permission[] = [
   ...STAFF,
@@ -32,6 +34,7 @@ const MANAGER: Permission[] = [
   "analytics:view",
   "settings:view",
   "audit:view",
+  "payments:discount",
 ];
 
 export const ROLE_GRANTS: Record<StaffRole, Permission[]> = {

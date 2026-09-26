@@ -6,7 +6,9 @@ import {
   IDishPerformance,
   IFeedbackSummary,
   IHourlyOrders,
+  IOrderComparisonTotals,
   IOrderSummary,
+  IRevenueTotals,
 } from "../../domain/interfaces/analytics.interface";
 import { AnalyticsFetchOptions, AnalyticsRepository } from "../../domain/repositories/analytics.repository";
 
@@ -148,6 +150,55 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
     }
 
     return hours.map((count, hour) => ({ hour, orders: count }));
+  }
+
+  async fetchRevenueComparison(
+    restaurantId: string,
+    currentRange: IAnalyticsRange,
+    previousRange: IAnalyticsRange,
+    options?: AnalyticsFetchOptions
+  ): Promise<IRevenueTotals> {
+    const prisma = options?.tx ?? this.prisma;
+
+    const [row] = await prisma.$queryRaw<{ current: bigint; previous: bigint }[]>`
+      SELECT
+        COALESCE(SUM(total) FILTER (WHERE created_at >= ${currentRange.from} AND created_at < ${currentRange.to}), 0)::bigint AS current,
+        COALESCE(SUM(total) FILTER (WHERE created_at >= ${previousRange.from} AND created_at < ${previousRange.to}), 0)::bigint AS previous
+      FROM payments
+      WHERE restaurant_id = ${restaurantId}::uuid
+        AND created_at >= ${previousRange.from}
+        AND created_at < ${currentRange.to}
+    `;
+
+    return { current: Number(row?.current ?? 0n), previous: Number(row?.previous ?? 0n) };
+  }
+
+  /**
+   * §31 — same single-scan shape as `fetchRevenueComparison`. Unlike
+   * `payments`, `orders` has no `(restaurant_id, created_at)` index yet
+   * (only `(restaurant_id, status)`), so this still walks every one of the
+   * restaurant's orders in the combined window rather than a tight range
+   * scan; add that index if this ever shows up as slow.
+   */
+  async fetchOrderComparison(
+    restaurantId: string,
+    currentRange: IAnalyticsRange,
+    previousRange: IAnalyticsRange,
+    options?: AnalyticsFetchOptions
+  ): Promise<IOrderComparisonTotals> {
+    const prisma = options?.tx ?? this.prisma;
+
+    const [row] = await prisma.$queryRaw<{ current: bigint; previous: bigint }[]>`
+      SELECT
+        COUNT(*) FILTER (WHERE created_at >= ${currentRange.from} AND created_at < ${currentRange.to})::bigint AS current,
+        COUNT(*) FILTER (WHERE created_at >= ${previousRange.from} AND created_at < ${previousRange.to})::bigint AS previous
+      FROM orders
+      WHERE restaurant_id = ${restaurantId}::uuid
+        AND created_at >= ${previousRange.from}
+        AND created_at < ${currentRange.to}
+    `;
+
+    return { current: Number(row?.current ?? 0n), previous: Number(row?.previous ?? 0n) };
   }
 
   private ordersWhere(restaurantId: string, range: IAnalyticsRange): Prisma.OrderWhereInput {

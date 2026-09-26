@@ -1,6 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { AuditAction } from "@prisma/client";
-import { ConflictException, NotFoundException } from "../../../../../common/exceptions";
+import { AuditAction, StaffRole } from "@prisma/client";
+import { ConflictException, ForbiddenException, NotFoundException } from "../../../../../common/exceptions";
 import { buildAuthEntity } from "../../../../../common/testing";
 import { AuditLogService } from "../../../../audit-logs/application/audit-log.service";
 import { DiningSessionService } from "../../../../dining-sessions/application/dining-session.service";
@@ -17,6 +17,7 @@ const session = { id: "session-1", restaurantId: authUser.restaurantId, tableId:
 const restaurant = { id: authUser.restaurantId, serviceChargeRate: 0.1, taxRate: 0.13, currency: "NPR" };
 const dish = { id: "dish-1", restaurantId: authUser.restaurantId, name: "Momo", price: 200 };
 const requestItems = [{ dishId: "dish-1", quantity: 2 }];
+const method = "CASH" as const;
 
 describe("CompletePaymentUsecase", () => {
   let usecase: CompletePaymentUsecase;
@@ -60,7 +61,7 @@ describe("CompletePaymentUsecase", () => {
       paymentRepository.create.mockResolvedValue(payment as any);
 
       // Act
-      const result = await usecase.execute({ sessionId: "session-1", items: requestItems }, authUser);
+      const result = await usecase.execute({ sessionId: "session-1", items: requestItems, method }, authUser);
 
       // Assert
       expect(result).toBe(payment);
@@ -82,7 +83,7 @@ describe("CompletePaymentUsecase", () => {
       paymentRepository.create.mockResolvedValue({ id: "payment-1", total: 452, currency: "NPR" } as any);
 
       // Act
-      await usecase.execute({ sessionId: "session-1", items: requestItems, endSession: true }, authUser);
+      await usecase.execute({ sessionId: "session-1", items: requestItems, method, endSession: true }, authUser);
 
       // Assert
       expect(diningSessionService.endSession).toHaveBeenCalledWith(session, authUser, tx);
@@ -93,7 +94,7 @@ describe("CompletePaymentUsecase", () => {
       diningSessionRepository.findById.mockResolvedValue(null);
 
       // Act & Assert
-      await expect(usecase.execute({ sessionId: "session-1", items: requestItems }, authUser)).rejects.toThrow(
+      await expect(usecase.execute({ sessionId: "session-1", items: requestItems, method }, authUser)).rejects.toThrow(
         new NotFoundException(PAYMENT_ERROR_MESSAGES.SESSION_NOT_FOUND)
       );
     });
@@ -103,7 +104,7 @@ describe("CompletePaymentUsecase", () => {
       diningSessionRepository.findById.mockResolvedValue({ ...session, endedAt: new Date() } as any);
 
       // Act & Assert
-      await expect(usecase.execute({ sessionId: "session-1", items: requestItems }, authUser)).rejects.toThrow(
+      await expect(usecase.execute({ sessionId: "session-1", items: requestItems, method }, authUser)).rejects.toThrow(
         new ConflictException(PAYMENT_ERROR_MESSAGES.SESSION_ALREADY_ENDED)
       );
     });
@@ -113,7 +114,38 @@ describe("CompletePaymentUsecase", () => {
       dishRepository.findManyByIds.mockResolvedValue([]);
 
       // Act & Assert
-      await expect(usecase.execute({ sessionId: "session-1", items: requestItems }, authUser)).rejects.toThrow(NotFoundException);
+      await expect(usecase.execute({ sessionId: "session-1", items: requestItems, method }, authUser)).rejects.toThrow(NotFoundException);
+    });
+
+    it("should persist the method and pass the discount through to the totals", async () => {
+      // Arrange
+      paymentRepository.create.mockResolvedValue({ id: "payment-1", total: 402, currency: "NPR" } as any);
+
+      // Act
+      await usecase.execute({ sessionId: "session-1", items: requestItems, method: "CARD", discount: 50 }, authUser);
+
+      // Assert
+      const [createArgs] = paymentRepository.create.mock.calls[0];
+      expect(createArgs.method).toBe("CARD");
+      expect(createArgs.discount).toBe(50);
+      expect(createArgs.total).toBe(400 + 40 + 57 - 50);
+    });
+
+    it("should throw ForbiddenException when a role without payments:discount tries to discount", async () => {
+      // Arrange
+      const staffUser = buildAuthEntity({ role: StaffRole.STAFF });
+
+      // Act & Assert
+      await expect(usecase.execute({ sessionId: "session-1", items: requestItems, method, discount: 50 }, staffUser)).rejects.toThrow(
+        new ForbiddenException(PAYMENT_ERROR_MESSAGES.DISCOUNT_NOT_ALLOWED)
+      );
+    });
+
+    it("should throw ConflictException when the discount exceeds the bill", async () => {
+      // Act & Assert
+      await expect(
+        usecase.execute({ sessionId: "session-1", items: requestItems, method, discount: 100000 }, authUser)
+      ).rejects.toThrow(new ConflictException(PAYMENT_ERROR_MESSAGES.DISCOUNT_EXCEEDS_TOTAL));
     });
   });
 });
