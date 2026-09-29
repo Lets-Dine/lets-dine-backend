@@ -11,6 +11,7 @@ import { RegisterRestaurantUsecase } from "../register-restaurant.usecase";
 const dto = {
   name: "Newa Kitchen",
   slug: "newa-kitchen",
+  coverImageUrl: "https://static.vecteezy.com/system/resources/thumbnails/054/611/336/small_2x/wide-angle-foodgraphy-for-restaurant-with-copy-space-photo.jpg",
   owner: { name: "Aarati Shrestha", email: "aarati@lets-dine.test", pin: "4821" },
 };
 
