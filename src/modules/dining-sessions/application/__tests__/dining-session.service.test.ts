@@ -142,6 +142,34 @@ describe("DiningSessionService", () => {
     });
   });
 
+  describe("resolveAny", () => {
+    it("should return a session that has already ended", async () => {
+      // Arrange
+      const ended = {
+        id: "session-1",
+        tableId: "table-1",
+        expiresAt: new Date(Date.now() - 60_000),
+        endedAt: new Date(),
+      } as any;
+      diningSessionRepository.findByToken.mockResolvedValue(ended);
+
+      // Act
+      const result = await service.resolveAny("token");
+
+      // Assert
+      expect(result).toBe(ended);
+      expect(diningTableRepository.findById).not.toHaveBeenCalled();
+    });
+
+    it("should throw UnauthorizedException for an unknown token", async () => {
+      // Arrange
+      diningSessionRepository.findByToken.mockResolvedValue(null);
+
+      // Act & Assert
+      await expect(service.resolveAny("token")).rejects.toThrow(new UnauthorizedException(DINING_SESSION_ERROR_MESSAGES.NOT_FOUND));
+    });
+  });
+
   describe("endSession", () => {
     const endedSession = { ...session, endedAt: new Date() };
 

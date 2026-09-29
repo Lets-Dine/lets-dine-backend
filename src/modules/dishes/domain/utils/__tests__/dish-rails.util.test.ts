@@ -17,11 +17,13 @@ function buildDish(id: string, price: number, stats: Partial<IDishStats>, overri
     isFeatured: false,
     sortOrder: 0,
     spiceLevel: 0,
-    isVeg: false,
+    dietaryType: "NON_VEG",
     createdAt: new Date(),
     updatedAt: new Date(),
     stats: { ...EMPTY_DISH_STATS, ...stats },
     badges: [],
+    addOnIds: [],
+    variants: [],
     ...overrides,
   };
 }

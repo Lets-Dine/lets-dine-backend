@@ -1,3 +1,12 @@
+enum DishDietaryType {
+  VEG
+  NON_VEG
+  VEGAN
+  HALAL
+
+  @@schema("public")
+}
+
 /// §14. A dish on the menu. Price is an integer count of minor units (paisa) —
 /// never a float, never a decimal string (§34 in integer form).
 model Dish {
@@ -15,16 +24,18 @@ model Dish {
   isFeatured   Boolean  @default(false) @map("is_featured")
   sortOrder    Int      @default(0) @map("sort_order")
   spiceLevel   Int      @default(0) @map("spice_level")
-  isVeg        Boolean  @default(false) @map("is_veg")
+  dietaryType  DishDietaryType @default(NON_VEG) @map("dietary_type")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
   createdBy    String?  @map("created_by") @db.Uuid
   updatedBy    String?  @map("updated_by") @db.Uuid
 
-  restaurant Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  category   MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  restaurant Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  category   MenuCategory  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   orderItems OrderItem[]
   reviews    DishReview[]
+  addOnLinks DishAddOn[]
+  variants   DishVariant[]
 
   @@unique([restaurantId, slug])
   @@index([restaurantId, categoryId])

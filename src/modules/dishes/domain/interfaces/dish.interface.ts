@@ -1,3 +1,5 @@
+import { DishDietaryType } from "@prisma/client";
+
 export interface IDish {
   id: string;
   restaurantId: string;
@@ -13,7 +15,7 @@ export interface IDish {
   isFeatured: boolean;
   sortOrder: number;
   spiceLevel: number;
-  isVeg: boolean;
+  dietaryType: DishDietaryType;
   createdAt: Date;
   updatedAt: Date;
 }

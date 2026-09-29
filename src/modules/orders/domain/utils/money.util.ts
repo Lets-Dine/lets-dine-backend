@@ -21,6 +21,10 @@ export interface IOrderTotals {
 /**
  * §37/§41 — totals are always recomputed here from server-side prices and the
  * restaurant's own fee configuration. A client-sent total is never used.
+ *
+ * The discount comes off the subtotal before service charge and tax are
+ * computed, not off the final bill — a discounted dish is charged service
+ * and tax on what it actually costs, not on the pre-discount price.
  */
 export function calculateOrderTotals(
   lines: { unitPrice: number; quantity: number }[],
@@ -28,14 +32,15 @@ export function calculateOrderTotals(
   discount = 0
 ): IOrderTotals {
   const subtotal = sumLines(lines);
-  const serviceCharge = percentOf(subtotal, fees.serviceChargeRate);
-  const tax = percentOf(subtotal + serviceCharge, fees.taxRate);
+  const discountedSubtotal = subtotal - discount;
+  const serviceCharge = percentOf(discountedSubtotal, fees.serviceChargeRate);
+  const tax = percentOf(discountedSubtotal + serviceCharge, fees.taxRate);
 
   return {
     subtotal,
     serviceCharge,
     tax,
     discount,
-    total: subtotal + serviceCharge + tax - discount,
+    total: discountedSubtotal + serviceCharge + tax,
   };
 }

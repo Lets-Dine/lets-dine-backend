@@ -11,6 +11,8 @@ export const createOrderSchema = z.object({
         dishId: z.string().uuid(),
         quantity: z.number().int().min(1).max(50),
         note: z.string().max(280).optional(),
+        addOnIds: z.array(z.string().uuid()).max(20).optional().default([]),
+        variantId: z.string().uuid().optional(),
       })
     )
     .min(1)

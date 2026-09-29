@@ -13,16 +13,6 @@ import { OrderRepository } from "../../domain/repositories/order.repository";
 import { calculateOrderTotals } from "../../domain/utils/money.util";
 import { deriveOrderStatus } from "../../domain/utils/order-status.util";
 
-/**
- * §20/§27 — the diner's own cancel, one line at a time, and only before the
- * kitchen has touched it. Ownership is checked the same way
- * `FetchSessionOrderUsecase` does — a `NotFoundException` on mismatch, so a
- * prober can't tell another table's order id even exists.
- *
- * Not audit-logged: `audit_logs.actor_id` is a foreign key to `users`
- * (`actor_role` a `StaffRole`) — an anonymous dining session has neither, so
- * this stays outside §51's staff/management trail rather than faking an actor.
- */
 @Injectable()
 export class CancelOrderItemUsecase {
   constructor(
@@ -54,7 +44,7 @@ export class CancelOrderItemUsecase {
         .filter(line => line.status !== OrderItemStatus.CANCELLED)
         .map(line => ({ unitPrice: line.unitPrice, quantity: line.quantity }));
       const totals = calculateOrderTotals(billableLines, restaurant, order.discount);
-      const status = deriveOrderStatus(afterItemUpdate.items, order.acceptedAt, order.cancelledAt);
+      const status = deriveOrderStatus(afterItemUpdate.items, order.cancelledAt);
 
       const updated = await this.orderRepository.update(orderId, { status, ...totals }, { tx });
 

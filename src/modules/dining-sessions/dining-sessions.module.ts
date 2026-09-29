@@ -8,9 +8,11 @@ import { EndDiningSessionUsecase } from "./application/use-cases/end-dining-sess
 import { FetchActiveSessionForTableUsecase } from "./application/use-cases/fetch-active-session-for-table.usecase";
 import { FetchCurrentSessionUsecase } from "./application/use-cases/fetch-current-session.usecase";
 import { StartDiningSessionUsecase } from "./application/use-cases/start-dining-session.usecase";
+import { StartTableSessionUsecase } from "./application/use-cases/start-table-session.usecase";
 import { DiningSessionRepository } from "./domain/repositories/dining-session.repository";
 import DiningSessionRepositoryImpl from "./infrastructure/repositories/dining-session.repository.impl";
 import { DiningSessionController } from "./interfaces/http/dining-session.controller";
+import { DinerSessionAnyGuard } from "./interfaces/http/guards/diner-session-any.guard";
 import { DinerSessionGuard } from "./interfaces/http/guards/diner-session.guard";
 import { RestaurantDiningSessionController } from "./interfaces/http/restaurant-dining-session.controller";
 
@@ -23,7 +25,9 @@ import { RestaurantDiningSessionController } from "./interfaces/http/restaurant-
   providers: [
     DiningSessionService,
     DinerSessionGuard,
+    DinerSessionAnyGuard,
     StartDiningSessionUsecase,
+    StartTableSessionUsecase,
     FetchCurrentSessionUsecase,
     EndDiningSessionUsecase,
     DiningSessionRepositoryImpl,
@@ -32,6 +36,7 @@ import { RestaurantDiningSessionController } from "./interfaces/http/restaurant-
   exports: [
     DiningSessionService,
     DinerSessionGuard,
+    DinerSessionAnyGuard,
     { provide: DiningSessionRepository, useExisting: DiningSessionRepositoryImpl },
   ],
 })

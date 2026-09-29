@@ -1,0 +1,29 @@
+/// A required, single-choice option that changes the base dish/price (e.g. Small/
+/// Medium/Large, or Steam/Jhol/Chilly). The mere existence of any non-archived row
+/// here is what requires a diner to pick exactly one for that dish. Unlike AddOn,
+/// a variant has no cross-dish reuse case, so it's embedded flat under its dish —
+/// no join table, no restaurant-wide catalog.
+model DishVariant {
+  id          String   @id @default(uuid()) @map("id") @db.Uuid
+  dishId      String   @map("dish_id") @db.Uuid
+  name        String   @map("name")
+  /// Own absolute price, integer minor units (paisa) — never a delta off Dish.price.
+  price       Int      @map("price")
+  isAvailable Boolean  @default(true) @map("is_available")
+  /// A variant with order history is archived, never hard-deleted — mirrors Dish/AddOn (§28).
+  isArchived  Boolean  @default(false) @map("is_archived")
+  sortOrder   Int      @default(0) @map("sort_order")
+  spiceLevel  Int      @default(0) @map("spice_level")
+  dietaryType DishDietaryType @default(NON_VEG) @map("dietary_type")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdBy   String?  @map("created_by") @db.Uuid
+  updatedBy   String?  @map("updated_by") @db.Uuid
+
+  dish       Dish        @relation(fields: [dishId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+
+  @@index([dishId])
+  @@map("dish_variants")
+  @@schema("public")
+}

@@ -3,11 +3,21 @@ export const ORDER_ERROR_MESSAGES = {
   EMPTY_CART: { key: "ORDER_EMPTY_CART", message: "Add something to the cart before ordering" },
   DISH_NOT_FOUND: { key: "ORDER_DISH_NOT_FOUND", message: "One of these dishes is no longer on the menu" },
   DISH_UNAVAILABLE: { key: "ORDER_DISH_UNAVAILABLE", message: "One of these dishes just became unavailable" },
+  ADD_ON_UNAVAILABLE: {
+    key: "ORDER_ADD_ON_UNAVAILABLE",
+    message: "One of these add-ons isn't available for that dish right now",
+  },
+  VARIANT_REQUIRED: { key: "ORDER_VARIANT_REQUIRED", message: "Choose an option for this dish before ordering" },
+  VARIANT_UNAVAILABLE: { key: "ORDER_VARIANT_UNAVAILABLE", message: "That option isn't available for this dish right now" },
   INVALID_TRANSITION: { key: "ORDER_INVALID_TRANSITION", message: "This order cannot move to that status" },
   ALREADY_CANCELLED: { key: "ORDER_ALREADY_CANCELLED", message: "This order has already been cancelled" },
   NOT_CANCELLABLE: { key: "ORDER_NOT_CANCELLABLE", message: "This order has gone too far to be cancelled" },
   TABLE_NOT_FOUND: { key: "ORDER_TABLE_NOT_FOUND", message: "That table no longer exists" },
   NO_ORDER_FOR_TABLE: { key: "ORDER_NO_ORDER_FOR_TABLE", message: "This table has no order to add to" },
+  NO_OPEN_VISIT_FOR_TABLE: {
+    key: "ORDER_NO_OPEN_VISIT_FOR_TABLE",
+    message: "Seat this table before adding an order",
+  },
   ITEM_NOT_FOUND: { key: "ORDER_ITEM_NOT_FOUND", message: "That item is no longer on the bill" },
   NO_OPEN_ORDERS: { key: "ORDER_NO_OPEN_ORDERS", message: "This table has no open orders to settle" },
   /** §20 — once an order is accepted, its status only ever moves by advancing items. */

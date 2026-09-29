@@ -66,6 +66,7 @@ export class CompletePaymentUsecase {
           method: dto.method,
           currency: restaurant.currency,
           createdBy: authEntity.sub,
+          createdByName: authEntity.name,
           items,
         },
         { tx }

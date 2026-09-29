@@ -24,6 +24,10 @@ model Payment {
   currency      String        @map("currency")
   createdAt     DateTime      @default(now()) @map("created_at")
   createdBy     String?       @map("created_by") @db.Uuid
+  /// Snapshot of the staff member's name at the moment of payment — same
+  /// reasoning as `AuditLog.actorName`, so the receipt still reads right
+  /// after that person is renamed or removed.
+  createdByName String?       @map("created_by_name")
 
   restaurant Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   session    DiningSession @relation(fields: [sessionId], references: [id], onDelete: Restrict)

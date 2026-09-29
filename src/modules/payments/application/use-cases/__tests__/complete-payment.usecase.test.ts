@@ -124,11 +124,11 @@ describe("CompletePaymentUsecase", () => {
       // Act
       await usecase.execute({ sessionId: "session-1", items: requestItems, method: "CARD", discount: 50 }, authUser);
 
-      // Assert
+      // Assert — the discount comes off the subtotal (400 - 50 = 350) before service (35) and tax (50) are computed.
       const [createArgs] = paymentRepository.create.mock.calls[0];
       expect(createArgs.method).toBe("CARD");
       expect(createArgs.discount).toBe(50);
-      expect(createArgs.total).toBe(400 + 40 + 57 - 50);
+      expect(createArgs.total).toBe(350 + 35 + 50);
     });
 
     it("should throw ForbiddenException when a role without payments:discount tries to discount", async () => {

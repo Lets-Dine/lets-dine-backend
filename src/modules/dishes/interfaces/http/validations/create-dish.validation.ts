@@ -1,3 +1,4 @@
+import { DishDietaryType } from "@prisma/client";
 import { z } from "zod";
 
 export const createDishSchema = z.object({
@@ -11,7 +12,7 @@ export const createDishSchema = z.object({
   isFeatured: z.boolean().optional(),
   sortOrder: z.number().int().min(0).optional(),
   spiceLevel: z.number().int().min(0).max(3).optional(),
-  isVeg: z.boolean().optional(),
+  dietaryType: z.nativeEnum(DishDietaryType).optional(),
 });
 
 export type CreateDishInput = z.infer<typeof createDishSchema>;

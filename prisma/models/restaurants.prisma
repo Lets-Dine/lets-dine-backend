@@ -23,6 +23,7 @@ model Restaurant {
   sessions   DiningSession[]
   categories MenuCategory[]
   dishes     Dish[]
+  addOns     AddOn[]
   orders     Order[]
   reviews    DishReview[]
   auditLogs  AuditLog[]

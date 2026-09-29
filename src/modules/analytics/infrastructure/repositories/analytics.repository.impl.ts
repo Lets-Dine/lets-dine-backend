@@ -194,6 +194,7 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
         COUNT(*) FILTER (WHERE created_at >= ${previousRange.from} AND created_at < ${previousRange.to})::bigint AS previous
       FROM orders
       WHERE restaurant_id = ${restaurantId}::uuid
+        AND status <> ${OrderStatus.CANCELLED}::"OrderStatus"
         AND created_at >= ${previousRange.from}
         AND created_at < ${currentRange.to}
     `;

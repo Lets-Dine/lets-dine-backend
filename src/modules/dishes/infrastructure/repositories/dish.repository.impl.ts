@@ -132,7 +132,7 @@ class DishRepositoryImpl implements DishRepository {
         d.is_featured    AS "isFeatured",
         d.sort_order     AS "sortOrder",
         d.spice_level    AS "spiceLevel",
-        d.is_veg         AS "isVeg",
+        d.dietary_type   AS "dietaryType",
         d.created_at     AS "createdAt",
         d.updated_at     AS "updatedAt",
         json_build_object(
@@ -206,7 +206,9 @@ class DishRepositoryImpl implements DishRepository {
       ORDER BY d.sort_order ASC, d.name ASC
     `;
 
-    return rows.map(row => ({ ...row, badges: dishBadges(row, row.stats) }));
+    // addOnIds/variants are resolved and filled in by the calling use-case (each needs a
+    // separate lookup this raw query doesn't do); left empty here just to satisfy the row shape.
+    return rows.map(row => ({ ...row, badges: dishBadges(row, row.stats), addOnIds: [], variants: [] }));
   }
 }
 

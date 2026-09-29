@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { NotFoundException } from "../../../../common/exceptions";
+import { RESTAURANT_ERROR_MESSAGES } from "../../../restaurants/domain/constants";
 import { RestaurantRepository } from "../../../restaurants/domain/repositories/restaurant.repository";
 import { DINING_TABLE_ERROR_MESSAGES } from "../../../tables/domain/constants";
 import { DiningTableRepository } from "../../../tables/domain/repositories/dining-table.repository";
@@ -18,6 +19,9 @@ export class FetchCurrentSessionUsecase {
     const table = await this.diningTableRepository.findById(session.tableId);
     if (!table) throw new NotFoundException(DINING_TABLE_ERROR_MESSAGES.NOT_FOUND);
 
-    return { session, table };
+    const restaurant = await this.restaurantRepository.findById(table.restaurantId);
+    if (!restaurant) throw new NotFoundException(RESTAURANT_ERROR_MESSAGES.NOT_FOUND);
+
+    return { session, restaurant, table };
   }
 }

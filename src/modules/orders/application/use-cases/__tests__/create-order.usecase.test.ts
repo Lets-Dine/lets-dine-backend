@@ -2,6 +2,8 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Test, TestingModule } from "@nestjs/testing";
 import { BadRequestException, NotFoundException } from "../../../../../common/exceptions";
 import { PrismaTransaction } from "../../../../../common/prisma";
+import { AddOnRepository } from "../../../../add-ons/domain/repositories/add-on.repository";
+import { DishVariantRepository } from "../../../../dish-variants/domain/repositories/dish-variant.repository";
 import { DishRepository } from "../../../../dishes/domain/repositories/dish.repository";
 import { IDiningSession } from "../../../../dining-sessions/domain/interfaces/dining-session.interface";
 import { RESTAURANT_ERROR_MESSAGES } from "../../../../restaurants/domain/constants";
@@ -27,12 +29,16 @@ const dish = {
   isAvailable: true,
   isArchived: false,
 } as any;
+const extraSpice = { id: "addon-1", restaurantId: "restaurant-1", name: "Extra Spice", price: 1000, isAvailable: true, isArchived: false };
+const large = { id: "variant-1", dishId: "dish-1", name: "Large", price: 50000, isAvailable: true, isArchived: false };
 
 describe("CreateOrderUsecase", () => {
   let usecase: CreateOrderUsecase;
   let orderRepository: jest.Mocked<OrderRepository>;
   let restaurantRepository: jest.Mocked<RestaurantRepository>;
   let dishRepository: jest.Mocked<DishRepository>;
+  let addOnRepository: jest.Mocked<AddOnRepository>;
+  let dishVariantRepository: jest.Mocked<DishVariantRepository>;
   let eventEmitter: jest.Mocked<EventEmitter2>;
 
   beforeEach(async () => {
@@ -49,6 +55,8 @@ describe("CreateOrderUsecase", () => {
         },
         { provide: RestaurantRepository, useValue: { findById: jest.fn() } },
         { provide: DishRepository, useValue: { findManyByIds: jest.fn() } },
+        { provide: AddOnRepository, useValue: { findLinkedToDish: jest.fn() } },
+        { provide: DishVariantRepository, useValue: { findManyByDishIds: jest.fn() } },
         { provide: EventEmitter2, useValue: { emit: jest.fn() } },
       ],
     }).compile();
@@ -57,7 +65,10 @@ describe("CreateOrderUsecase", () => {
     orderRepository = module.get(OrderRepository);
     restaurantRepository = module.get(RestaurantRepository);
     dishRepository = module.get(DishRepository);
+    addOnRepository = module.get(AddOnRepository);
+    dishVariantRepository = module.get(DishVariantRepository);
     eventEmitter = module.get(EventEmitter2);
+    dishVariantRepository.findManyByDishIds.mockResolvedValue({});
   });
 
   describe("execute", () => {
@@ -68,12 +79,12 @@ describe("CreateOrderUsecase", () => {
       orderRepository.create.mockResolvedValue({ id: "order-1" } as any);
 
       // Act
-      const result = await usecase.execute({ lines: [{ dishId: "dish-1", quantity: 2 }] }, session);
+      const result = await usecase.execute({ lines: [{ dishId: "dish-1", quantity: 2, addOnIds: [] }] }, session);
 
       // Assert
       expect(result.id).toBe("order-1");
       const [created] = orderRepository.create.mock.calls[0];
-      expect(created.items[0]).toMatchObject({ unitPrice: 45000, quantity: 2, dishNameSnapshot: "Chicken Sekuwa" });
+      expect(created.items[0]).toMatchObject({ unitPrice: 45000, quantity: 2, dishNameSnapshot: "Chicken Sekuwa", addOns: [] });
       expect(created).toMatchObject({
         subtotal: 90000,
         serviceCharge: 9000,
@@ -86,13 +97,107 @@ describe("CreateOrderUsecase", () => {
       expect(eventEmitter.emit).toHaveBeenCalledWith("order.created", { id: "order-1" });
     });
 
+    it("should charge the dish price plus every selected add-on's price", async () => {
+      // Arrange
+      restaurantRepository.findById.mockResolvedValue(restaurant);
+      dishRepository.findManyByIds.mockResolvedValue([dish]);
+      addOnRepository.findLinkedToDish.mockResolvedValue([extraSpice] as any);
+      orderRepository.create.mockResolvedValue({ id: "order-1" } as any);
+
+      // Act
+      await usecase.execute({ lines: [{ dishId: "dish-1", quantity: 1, addOnIds: [extraSpice.id] }] }, session);
+
+      // Assert
+      const [created] = orderRepository.create.mock.calls[0];
+      expect(created.items[0]).toMatchObject({
+        unitPrice: 46000,
+        addOns: [{ addOnId: extraSpice.id, nameSnapshot: extraSpice.name, priceSnapshot: extraSpice.price }],
+      });
+      expect(created.subtotal).toBe(46000);
+    });
+
+    it("should price the line from the selected variant instead of the dish price", async () => {
+      // Arrange
+      restaurantRepository.findById.mockResolvedValue(restaurant);
+      dishRepository.findManyByIds.mockResolvedValue([dish]);
+      dishVariantRepository.findManyByDishIds.mockResolvedValue({ "dish-1": [large] } as any);
+      orderRepository.create.mockResolvedValue({ id: "order-1" } as any);
+
+      // Act
+      await usecase.execute({ lines: [{ dishId: "dish-1", quantity: 1, addOnIds: [], variantId: large.id }] }, session);
+
+      // Assert
+      const [created] = orderRepository.create.mock.calls[0];
+      expect(created.items[0]).toMatchObject({
+        unitPrice: large.price,
+        variantId: large.id,
+        variantNameSnapshot: large.name,
+        variantPriceSnapshot: large.price,
+      });
+      expect(created.subtotal).toBe(large.price);
+    });
+
+    it("should throw BadRequestException when the dish has variants but none was chosen", async () => {
+      // Arrange
+      restaurantRepository.findById.mockResolvedValue(restaurant);
+      dishRepository.findManyByIds.mockResolvedValue([dish]);
+      dishVariantRepository.findManyByDishIds.mockResolvedValue({ "dish-1": [large] } as any);
+
+      // Act & Assert
+      await expect(usecase.execute({ lines: [{ dishId: "dish-1", quantity: 1, addOnIds: [] }] }, session)).rejects.toThrow(
+        new BadRequestException(ORDER_ERROR_MESSAGES.VARIANT_REQUIRED)
+      );
+      expect(orderRepository.create).not.toHaveBeenCalled();
+    });
+
+    it("should throw BadRequestException when the chosen variant doesn't belong to the dish", async () => {
+      // Arrange
+      restaurantRepository.findById.mockResolvedValue(restaurant);
+      dishRepository.findManyByIds.mockResolvedValue([dish]);
+      dishVariantRepository.findManyByDishIds.mockResolvedValue({});
+
+      // Act & Assert
+      await expect(
+        usecase.execute({ lines: [{ dishId: "dish-1", quantity: 1, addOnIds: [], variantId: large.id }] }, session)
+      ).rejects.toThrow(new BadRequestException(ORDER_ERROR_MESSAGES.VARIANT_UNAVAILABLE));
+      expect(orderRepository.create).not.toHaveBeenCalled();
+    });
+
+    it("should reject an add-on that isn't linked to the dish", async () => {
+      // Arrange
+      restaurantRepository.findById.mockResolvedValue(restaurant);
+      dishRepository.findManyByIds.mockResolvedValue([dish]);
+      addOnRepository.findLinkedToDish.mockResolvedValue([]);
+
+      // Act & Assert
+      await expect(usecase.execute({ lines: [{ dishId: "dish-1", quantity: 1, addOnIds: [extraSpice.id] }] }, session)).rejects.toThrow(
+        new BadRequestException(ORDER_ERROR_MESSAGES.ADD_ON_UNAVAILABLE)
+      );
+      expect(orderRepository.create).not.toHaveBeenCalled();
+    });
+
+    it("should reject an add-on that's currently unavailable", async () => {
+      // Arrange
+      restaurantRepository.findById.mockResolvedValue(restaurant);
+      dishRepository.findManyByIds.mockResolvedValue([dish]);
+      addOnRepository.findLinkedToDish.mockResolvedValue([{ ...extraSpice, isAvailable: false }] as any);
+
+      // Act & Assert
+      await expect(usecase.execute({ lines: [{ dishId: "dish-1", quantity: 1, addOnIds: [extraSpice.id] }] }, session)).rejects.toThrow(
+        new BadRequestException(ORDER_ERROR_MESSAGES.ADD_ON_UNAVAILABLE)
+      );
+      expect(orderRepository.create).not.toHaveBeenCalled();
+    });
+
     it("should return the first order when the same idempotency key is retried", async () => {
       // Arrange
       const placed = { id: "order-1" } as any;
       orderRepository.findByIdempotencyKey.mockResolvedValue(placed);
 
       // Act
-      const result = await usecase.execute({ lines: [{ dishId: "dish-1", quantity: 1 }] }, session, { idempotencyKey: "retry-key" });
+      const result = await usecase.execute({ lines: [{ dishId: "dish-1", quantity: 1, addOnIds: [] }] }, session, {
+        idempotencyKey: "retry-key",
+      });
 
       // Assert
       expect(result).toBe(placed);
@@ -106,7 +211,7 @@ describe("CreateOrderUsecase", () => {
       dishRepository.findManyByIds.mockResolvedValue([{ ...dish, isAvailable: false }]);
 
       // Act & Assert
-      await expect(usecase.execute({ lines: [{ dishId: "dish-1", quantity: 1 }] }, session)).rejects.toThrow(
+      await expect(usecase.execute({ lines: [{ dishId: "dish-1", quantity: 1, addOnIds: [] }] }, session)).rejects.toThrow(
         new BadRequestException(ORDER_ERROR_MESSAGES.DISH_UNAVAILABLE)
       );
       expect(orderRepository.create).not.toHaveBeenCalled();
@@ -118,7 +223,7 @@ describe("CreateOrderUsecase", () => {
       dishRepository.findManyByIds.mockResolvedValue([{ ...dish, restaurantId: "restaurant-9" }]);
 
       // Act & Assert
-      await expect(usecase.execute({ lines: [{ dishId: "dish-1", quantity: 1 }] }, session)).rejects.toThrow(
+      await expect(usecase.execute({ lines: [{ dishId: "dish-1", quantity: 1, addOnIds: [] }] }, session)).rejects.toThrow(
         new NotFoundException(ORDER_ERROR_MESSAGES.DISH_NOT_FOUND)
       );
     });
@@ -128,7 +233,7 @@ describe("CreateOrderUsecase", () => {
       restaurantRepository.findById.mockResolvedValue({ ...restaurant, isActive: false });
 
       // Act & Assert
-      await expect(usecase.execute({ lines: [{ dishId: "dish-1", quantity: 1 }] }, session)).rejects.toThrow(
+      await expect(usecase.execute({ lines: [{ dishId: "dish-1", quantity: 1, addOnIds: [] }] }, session)).rejects.toThrow(
         new NotFoundException(RESTAURANT_ERROR_MESSAGES.NOT_FOUND)
       );
     });

@@ -30,7 +30,7 @@ export class DiningSessionService {
     private readonly orderRepository: OrderRepository,
     private readonly restaurantRepository: RestaurantRepository,
     private readonly auditLogService: AuditLogService,
-    private readonly eventEmitter: EventEmitter2,
+    private readonly eventEmitter: EventEmitter2
   ) {}
 
   async resolveActive(token: string, options?: { tx?: PrismaTransaction }): Promise<IDiningSession> {
@@ -45,6 +45,20 @@ export class DiningSessionService {
     if (!table || table.currentSessionId !== session.id) {
       throw new UnauthorizedException(DINING_SESSION_ERROR_MESSAGES.EXPIRED);
     }
+
+    return session;
+  }
+
+  /**
+   * §10 — a diner rating a dish, or checking an order, is asking about the
+   * past, not the table's current state — so unlike `resolveActive`, ending
+   * or expiring the visit is not a reason to reject the token. Only a token
+   * that never resolved to a real session is. Ownership of any particular
+   * order/review still comes from that session's id, checked by the caller.
+   */
+  async resolveAny(token: string, options?: { tx?: PrismaTransaction }): Promise<IDiningSession> {
+    const session = await this.diningSessionRepository.findByToken(token, options);
+    if (!session) throw new UnauthorizedException(DINING_SESSION_ERROR_MESSAGES.NOT_FOUND);
 
     return session;
   }
@@ -112,7 +126,7 @@ export class DiningSessionService {
       // it would read as still PENDING forever, so this is the one place
       // that sets it by hand (mirroring what accepting it never got to).
       const cancelledAt = order.acceptedAt ? order.cancelledAt : new Date();
-      const status = deriveOrderStatus(items, order.acceptedAt, cancelledAt);
+      const status = deriveOrderStatus(items, cancelledAt);
       const billable = items.filter(item => item.status !== OrderItemStatus.CANCELLED);
       const totals = calculateOrderTotals(billable, restaurant, order.discount);
 

@@ -1,5 +1,7 @@
-import { Module } from "@nestjs/common";
+import { forwardRef, Module } from "@nestjs/common";
+import { AddOnsModule } from "../add-ons/add-ons.module";
 import { AuditLogsModule } from "../audit-logs/audit-logs.module";
+import { DishVariantsModule } from "../dish-variants/dish-variants.module";
 import { MenuCategoriesModule } from "../menu-categories/menu-categories.module";
 import { DishStatsService } from "./application/dish-stats.service";
 import { ArchiveDishUsecase } from "./application/use-cases/archive-dish.usecase";
@@ -17,7 +19,9 @@ import { DishController } from "./interfaces/http/dish.controller";
 import { PublicDishController } from "./interfaces/http/public-dish.controller";
 
 @Module({
-  imports: [MenuCategoriesModule, AuditLogsModule],
+  // AddOnsModule and DishVariantsModule also depend on this module (their use cases need
+  // DishRepository to validate dish ownership) — genuine cycles, broken with forwardRef on both sides.
+  imports: [MenuCategoriesModule, AuditLogsModule, forwardRef(() => AddOnsModule), forwardRef(() => DishVariantsModule)],
   controllers: [DishController, PublicDishController],
   providers: [
     DishStatsService,

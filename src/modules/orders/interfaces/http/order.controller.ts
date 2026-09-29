@@ -4,6 +4,7 @@ import { ParseUuidPipe } from "../../../../common/pipes";
 import { buildHttpResponse } from "../../../../common/utils";
 import { type IDiningSession } from "../../../dining-sessions/domain/interfaces/dining-session.interface";
 import { DinerSession } from "../../../dining-sessions/interfaces/http/decorators/diner-session.decorator";
+import { DinerSessionAnyGuard } from "../../../dining-sessions/interfaces/http/guards/diner-session-any.guard";
 import { DinerSessionGuard } from "../../../dining-sessions/interfaces/http/guards/diner-session.guard";
 import { CreateOrderDto } from "../../application/dto/create-order.dto";
 import { FetchOrdersDto } from "../../application/dto/fetch-orders.dto";
@@ -16,7 +17,6 @@ import { IOrderWithItems } from "../../domain/interfaces/order.interface";
 
 /** The diner half of ordering — authorised by the table session, not an account. */
 @Controller("orders")
-@UseGuards(DinerSessionGuard)
 export class OrderController {
   constructor(
     private readonly createOrderUsecase: CreateOrderUsecase,
@@ -26,6 +26,7 @@ export class OrderController {
   ) {}
 
   @Post()
+  @UseGuards(DinerSessionGuard)
   async create(
     @Body() dto: CreateOrderDto,
     @DinerSession() session: IDiningSession,
@@ -35,7 +36,9 @@ export class OrderController {
     return buildHttpResponse(order, ORDER_SUCCESS_MESSAGES.ORDER_CREATED);
   }
 
+  /** Also used to check on orders from a visit that has since ended — §10, a diner rating a dish still needs this. */
   @Get()
+  @UseGuards(DinerSessionAnyGuard)
   async fetchAll(
     @Query() query: FetchOrdersDto,
     @DinerSession() session: IDiningSession
@@ -44,7 +47,9 @@ export class OrderController {
     return buildHttpResponse(orders, ORDER_SUCCESS_MESSAGES.ORDERS_FETCHED);
   }
 
+  /** §10 — the review flow reads this after the visit (and its session) has ended, so it must not require an active one. */
   @Get("/:id")
+  @UseGuards(DinerSessionAnyGuard)
   async fetchById(
     @Param("id", ParseUuidPipe) id: string,
     @DinerSession() session: IDiningSession
@@ -53,8 +58,9 @@ export class OrderController {
     return buildHttpResponse(order, ORDER_SUCCESS_MESSAGES.ORDER_FETCHED);
   }
 
-  /** §20/§27 — a diner can still pull one line of their own order before the kitchen has touched it. */
+  /** §20/§27 — a diner can still pull one line of their own order before the kitchen has touched it. The visit must still be open to do that. */
   @Post("/:orderId/items/:itemId/cancel")
+  @UseGuards(DinerSessionGuard)
   async cancelItem(
     @Param("orderId", ParseUuidPipe) orderId: string,
     @Param("itemId", ParseUuidPipe) itemId: string,

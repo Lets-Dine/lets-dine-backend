@@ -23,7 +23,7 @@ const FIRST_REFERENCE = 1000;
  * which of its dishes have been rated (§10). It is read, never written, here.
  */
 const ORDER_INCLUDE = {
-  items: { orderBy: { createdAt: "asc" as const } },
+  items: { orderBy: { createdAt: "asc" as const }, include: { addOns: true } },
   table: { select: { name: true } },
   reviews: { select: { dishId: true } },
 } satisfies Prisma.OrderInclude;
@@ -64,7 +64,13 @@ class OrderRepositoryImpl implements OrderRepository {
       data: {
         ...order,
         reference: await this.nextReference(order.restaurantId, options),
-        items: { create: items.map(item => ({ ...item, notes: item.notes ?? "" })) },
+        items: {
+          create: items.map(({ addOns, ...item }) => ({
+            ...item,
+            notes: item.notes ?? "",
+            addOns: addOns?.length ? { create: addOns } : undefined,
+          })),
+        },
       },
       include: ORDER_INCLUDE,
     });
@@ -153,15 +159,26 @@ class OrderRepositoryImpl implements OrderRepository {
                    'dishId', oi.dish_id,
                    'dishNameSnapshot', oi.dish_name_snapshot,
                    'imageUrlSnapshot', oi.image_url_snapshot,
+                   'variantId', oi.variant_id,
+                   'variantNameSnapshot', oi.variant_name_snapshot,
+                   'variantPriceSnapshot', oi.variant_price_snapshot,
                    'unitPrice', oi.unit_price,
                    'quantity', oi.quantity,
                    'notes', oi.notes,
                    'status', oi.status,
-                   'statusUpdatedAt', oi.status_updated_at
+                   'statusUpdatedAt', oi.status_updated_at,
+                   'addOns', COALESCE(item_add_ons.rows, '[]'::json)
                  )
                  ORDER BY oi.created_at ASC
                ) AS rows
         FROM order_items oi
+        LEFT JOIN LATERAL (
+          SELECT json_agg(
+                   json_build_object('addOnId', oia.add_on_id, 'nameSnapshot', oia.name_snapshot, 'priceSnapshot', oia.price_snapshot)
+                 ) AS rows
+          FROM order_item_add_ons oia
+          WHERE oia.order_item_id = oi.id
+        ) item_add_ons ON true
         WHERE oi.order_id = o.id
       ) items ON true
       LEFT JOIN LATERAL (
@@ -229,9 +246,11 @@ class OrderRepositoryImpl implements OrderRepository {
     for (const line of changes.updateQuantity) {
       await prisma.orderItem.update({ where: { id: line.id }, data: { quantity: line.quantity } });
     }
-    if (changes.create.length > 0) {
-      await prisma.orderItem.createMany({
-        data: changes.create.map(item => ({ ...item, notes: item.notes ?? "", orderId })),
+    // One `create` per line, not `createMany` — `createMany` can't create the nested
+    // `OrderItemAddOn` rows in the same call.
+    for (const { addOns, ...item } of changes.create) {
+      await prisma.orderItem.create({
+        data: { ...item, notes: item.notes ?? "", orderId, addOns: addOns?.length ? { create: addOns } : undefined },
       });
     }
 

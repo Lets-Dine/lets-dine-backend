@@ -30,6 +30,15 @@ enum AuditAction {
   dish_restored
   dish_featured
   dish_reordered
+  addon_created
+  addon_updated
+  addon_archived
+  addon_restored
+  dish_add_ons_updated
+  dish_variant_created
+  dish_variant_updated
+  dish_variant_archived
+  dish_variant_restored
   category_created
   category_renamed
   category_deleted
@@ -38,6 +47,7 @@ enum AuditAction {
   table_renamed
   table_disabled
   table_enabled
+  table_session_started
   table_session_ended
   qr_regenerated
   order_status_changed

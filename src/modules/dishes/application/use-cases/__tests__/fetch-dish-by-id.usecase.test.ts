@@ -1,5 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { NotFoundException } from "../../../../../common/exceptions";
+import { AddOnRepository } from "../../../../add-ons/domain/repositories/add-on.repository";
+import { DishVariantRepository } from "../../../../dish-variants/domain/repositories/dish-variant.repository";
 import { DISH_ERROR_MESSAGES } from "../../../domain/constants";
 import { DishRepository } from "../../../domain/repositories/dish.repository";
 import { FetchDishByIdUsecase } from "../fetch-dish-by-id.usecase";
@@ -7,28 +9,54 @@ import { FetchDishByIdUsecase } from "../fetch-dish-by-id.usecase";
 describe("FetchDishByIdUsecase", () => {
   let usecase: FetchDishByIdUsecase;
   let dishRepository: jest.Mocked<DishRepository>;
+  let addOnRepository: jest.Mocked<AddOnRepository>;
+  let dishVariantRepository: jest.Mocked<DishVariantRepository>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [FetchDishByIdUsecase, { provide: DishRepository, useValue: { findAllWithStats: jest.fn() } }],
+      providers: [
+        FetchDishByIdUsecase,
+        { provide: DishRepository, useValue: { findAllWithStats: jest.fn() } },
+        { provide: AddOnRepository, useValue: { findLinkedIdsByDishIds: jest.fn() } },
+        { provide: DishVariantRepository, useValue: { findByDishId: jest.fn() } },
+      ],
     }).compile();
 
     usecase = module.get(FetchDishByIdUsecase);
     dishRepository = module.get(DishRepository);
+    addOnRepository = module.get(AddOnRepository);
+    dishVariantRepository = module.get(DishVariantRepository);
+    addOnRepository.findLinkedIdsByDishIds.mockResolvedValue({});
+    dishVariantRepository.findByDishId.mockResolvedValue([]);
   });
 
   describe("execute", () => {
-    it("should return the dish with its stats attached", async () => {
+    it("should return the dish with its stats and linked add-on ids attached", async () => {
       // Arrange
       const withStats = { id: "dish-1", isArchived: false, stats: {}, badges: [] } as any;
       dishRepository.findAllWithStats.mockResolvedValue([withStats]);
+      addOnRepository.findLinkedIdsByDishIds.mockResolvedValue({ "dish-1": ["addon-1"] });
 
       // Act
       const result = await usecase.execute("dish-1");
 
       // Assert
-      expect(result).toBe(withStats);
+      expect(result).toMatchObject({ id: "dish-1", addOnIds: ["addon-1"] });
       expect(dishRepository.findAllWithStats).toHaveBeenCalledWith({ ids: ["dish-1"] });
+      expect(addOnRepository.findLinkedIdsByDishIds).toHaveBeenCalledWith(["dish-1"]);
+    });
+
+    it("should default to no linked add-ons when none are found", async () => {
+      // Arrange
+      const withStats = { id: "dish-1", isArchived: false, stats: {}, badges: [] } as any;
+      dishRepository.findAllWithStats.mockResolvedValue([withStats]);
+      addOnRepository.findLinkedIdsByDishIds.mockResolvedValue({});
+
+      // Act
+      const result = await usecase.execute("dish-1");
+
+      // Assert
+      expect(result.addOnIds).toEqual([]);
     });
 
     it("should hide an archived dish from the public lookup", async () => {

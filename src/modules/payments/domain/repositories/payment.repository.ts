@@ -22,6 +22,7 @@ export interface IPaymentCreate {
   method: PaymentMethod;
   currency: string;
   createdBy?: string | null;
+  createdByName?: string | null;
   items: IPaymentItemCreate[];
 }
 

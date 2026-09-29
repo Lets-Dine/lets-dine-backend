@@ -6,11 +6,13 @@ import { ZodValidationPipe } from "nestjs-zod";
 import { DomainExceptionFilter } from "./common/exceptions/filters/domain-exception.filter";
 import { RequestLoggerMiddleware } from "./common/middleware/request-logger.middleware";
 import { PrismaModule } from "./common/prisma";
+import { AddOnsModule } from "./modules/add-ons/add-ons.module";
 import { AnalyticsModule } from "./modules/analytics/analytics.module";
 import { AuditLogsModule } from "./modules/audit-logs/audit-logs.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { DiningSessionsModule } from "./modules/dining-sessions/dining-sessions.module";
 import { DishesModule } from "./modules/dishes/dishes.module";
+import { DishVariantsModule } from "./modules/dish-variants/dish-variants.module";
 import { MenuCategoriesModule } from "./modules/menu-categories/menu-categories.module";
 import { MenusModule } from "./modules/menus/menus.module";
 import { OrdersModule } from "./modules/orders/orders.module";
@@ -37,6 +39,8 @@ import { AppController } from "./app.controller";
     TablesModule,
     MenuCategoriesModule,
     DishesModule,
+    DishVariantsModule,
+    AddOnsModule,
     MenusModule,
     DiningSessionsModule,
     OrdersModule,

@@ -24,6 +24,7 @@ export interface IPayment {
   currency: string;
   createdAt: Date;
   createdBy: string | null;
+  createdByName: string | null;
 }
 
 /** What both the receipt and any later lookup actually need: the charge and exactly what it was for. */

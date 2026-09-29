@@ -1,8 +1,12 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, Put, Query, UseGuards } from "@nestjs/common";
 import { AbilityGuard, AuthGuard, AuthUser, CheckPolicies, checkPermissionRules } from "../../../../common/auth";
 import { type AuthEntity, IHttpResponse, PaginatedResponse } from "../../../../common/interfaces";
 import { ParseUuidPipe } from "../../../../common/pipes";
 import { buildHttpResponse } from "../../../../common/utils";
+import { SetDishAddOnsDto } from "../../../add-ons/application/dto/set-dish-add-ons.dto";
+import { SetDishAddOnsUsecase } from "../../../add-ons/application/use-cases/set-dish-add-ons.usecase";
+import { ADD_ON_SUCCESS_MESSAGES } from "../../../add-ons/domain/constants";
+import { IAddOn } from "../../../add-ons/domain/interfaces/add-on.interface";
 import { CreateDishDto } from "../../application/dto/create-dish.dto";
 import { FetchDishesDto } from "../../application/dto/fetch-dishes.dto";
 import { ReorderDishesDto } from "../../application/dto/reorder-dishes.dto";
@@ -27,7 +31,8 @@ export class DishController {
     private readonly restoreDishUsecase: RestoreDishUsecase,
     private readonly reorderDishesUsecase: ReorderDishesUsecase,
     private readonly fetchAllDishesUsecase: FetchAllDishesUsecase,
-    private readonly fetchDishByIdUsecase: FetchDishByIdUsecase
+    private readonly fetchDishByIdUsecase: FetchDishByIdUsecase,
+    private readonly setDishAddOnsUsecase: SetDishAddOnsUsecase
   ) {}
 
   @Post()
@@ -91,5 +96,17 @@ export class DishController {
   async restore(@Param("id", ParseUuidPipe) id: string, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IDish>> {
     const dish = await this.restoreDishUsecase.execute(id, authEntity);
     return buildHttpResponse(dish, DISH_SUCCESS_MESSAGES.DISH_RESTORED);
+  }
+
+  @Put("/:id/add-ons")
+  @UseGuards(AuthGuard, AbilityGuard)
+  @CheckPolicies(checkPermissionRules([["menu:edit"]]))
+  async setAddOns(
+    @Param("id", ParseUuidPipe) id: string,
+    @Body() dto: SetDishAddOnsDto,
+    @AuthUser() authEntity: AuthEntity
+  ): Promise<IHttpResponse<IAddOn[]>> {
+    const addOns = await this.setDishAddOnsUsecase.execute(id, dto, authEntity);
+    return buildHttpResponse(addOns, ADD_ON_SUCCESS_MESSAGES.DISH_ADD_ONS_UPDATED);
   }
 }

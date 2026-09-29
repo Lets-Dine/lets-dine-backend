@@ -1,7 +1,9 @@
 import { forwardRef, Module } from "@nestjs/common";
+import { AddOnsModule } from "../add-ons/add-ons.module";
 import { AuditLogsModule } from "../audit-logs/audit-logs.module";
 import { DiningSessionsModule } from "../dining-sessions/dining-sessions.module";
 import { DishesModule } from "../dishes/dishes.module";
+import { DishVariantsModule } from "../dish-variants/dish-variants.module";
 import { RestaurantsModule } from "../restaurants/restaurants.module";
 import { TablesModule } from "../tables/tables.module";
 import { AddOrderItemUsecase } from "./application/use-cases/add-order-item.usecase";
@@ -26,7 +28,15 @@ import { OrdersGateway } from "./interfaces/ws/orders.gateway";
 @Module({
   // `DiningSessionsModule` now also depends on this module (`EndDiningSessionService`
   // needs `OrderRepository`) — a genuine cycle, broken with `forwardRef` on both sides.
-  imports: [forwardRef(() => DiningSessionsModule), RestaurantsModule, DishesModule, TablesModule, AuditLogsModule],
+  imports: [
+    forwardRef(() => DiningSessionsModule),
+    RestaurantsModule,
+    DishesModule,
+    TablesModule,
+    AuditLogsModule,
+    AddOnsModule,
+    DishVariantsModule,
+  ],
   controllers: [OrderController, RestaurantOrderController],
   providers: [
     CreateOrderUsecase,

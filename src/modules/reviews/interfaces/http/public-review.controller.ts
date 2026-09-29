@@ -4,7 +4,7 @@ import { ParseUuidPipe } from "../../../../common/pipes";
 import { buildHttpResponse } from "../../../../common/utils";
 import { type IDiningSession } from "../../../dining-sessions/domain/interfaces/dining-session.interface";
 import { DinerSession } from "../../../dining-sessions/interfaces/http/decorators/diner-session.decorator";
-import { DinerSessionGuard } from "../../../dining-sessions/interfaces/http/guards/diner-session.guard";
+import { DinerSessionAnyGuard } from "../../../dining-sessions/interfaces/http/guards/diner-session-any.guard";
 import { CreateDishReviewDto } from "../../application/dto/create-dish-review.dto";
 import { FetchDishReviewsDto } from "../../application/dto/fetch-dish-reviews.dto";
 import { CreateDishReviewUsecase } from "../../application/use-cases/create-dish-review.usecase";
@@ -37,8 +37,9 @@ export class PublicReviewController {
     return buildHttpResponse(tags, DISH_REVIEW_SUCCESS_MESSAGES.DISH_TAGS_FETCHED);
   }
 
+  /** §10 — rating a dish is about a visit that is often already over, so this must not require an active session. */
   @Post("reviews")
-  @UseGuards(DinerSessionGuard)
+  @UseGuards(DinerSessionAnyGuard)
   async create(@Body() dto: CreateDishReviewDto, @DinerSession() session: IDiningSession): Promise<IHttpResponse<IDishReview>> {
     const review = await this.createDishReviewUsecase.execute(dto, session);
     return buildHttpResponse(review, DISH_REVIEW_SUCCESS_MESSAGES.DISH_REVIEW_CREATED);

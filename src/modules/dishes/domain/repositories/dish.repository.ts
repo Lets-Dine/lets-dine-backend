@@ -1,3 +1,4 @@
+import { DishDietaryType } from "@prisma/client";
 import { IPaginationOptions, PaginatedResponse } from "../../../../common/interfaces";
 import { PrismaTransaction } from "../../../../common/prisma";
 import { IDish } from "../interfaces/dish.interface";
@@ -15,7 +16,7 @@ export interface IDishCreate {
   isFeatured?: boolean;
   sortOrder?: number;
   spiceLevel?: number;
-  isVeg?: boolean;
+  dietaryType?: DishDietaryType;
 }
 
 export type IDishUpdate = Partial<Omit<IDishCreate, "restaurantId">> & { isArchived?: boolean };

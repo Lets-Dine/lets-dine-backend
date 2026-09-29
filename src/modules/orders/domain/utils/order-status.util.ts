@@ -7,20 +7,8 @@ export function isOrderOpen(status: OrderStatus): boolean {
   return OPEN_ORDER_STATUSES.includes(status);
 }
 
-/**
- * §20/§27 — `Order.status` is no longer set directly once an order is
- * accepted; it is read off its items. Every mutation that touches acceptance,
- * item status or item cancellation must finish by calling this and persisting
- * the result, so every reader (kitchen pass, diner tracker, billing) sees one
- * consistent value.
- */
-export function deriveOrderStatus(
-  items: Pick<{ status: OrderItemStatus }, "status">[],
-  acceptedAt: Date | null,
-  cancelledAt: Date | null
-): OrderStatus {
+export function deriveOrderStatus(items: Pick<{ status: OrderItemStatus }, "status">[], cancelledAt: Date | null): OrderStatus {
   if (cancelledAt) return OrderStatus.CANCELLED;
-  if (!acceptedAt) return OrderStatus.PENDING;
 
   const live = items.filter(item => item.status !== OrderItemStatus.CANCELLED);
   if (live.length === 0) return OrderStatus.CANCELLED;

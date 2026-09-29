@@ -22,11 +22,13 @@ function buildDish(id: string, stats: Partial<IDishStats>): IDishWithStats {
     isFeatured: false,
     sortOrder: 0,
     spiceLevel: 0,
-    isVeg: false,
+    dietaryType: "NON_VEG",
     createdAt: new Date(),
     updatedAt: new Date(),
     stats: { ...EMPTY_DISH_STATS, ...stats },
     badges: [],
+    addOnIds: [],
+    variants: [],
   };
 }
 

@@ -1,5 +1,12 @@
 import { OrderItemStatus, OrderStatus } from "@prisma/client";
 
+export interface IOrderItemAddOn {
+  addOnId: string;
+  /** Snapshots — editing or archiving the add-on later must not rewrite a placed order. */
+  nameSnapshot: string;
+  priceSnapshot: number;
+}
+
 export interface IOrderItem {
   id: string;
   orderId: string;
@@ -7,11 +14,17 @@ export interface IOrderItem {
   /** Snapshots — editing the dish later must not rewrite a placed order. */
   dishNameSnapshot: string;
   imageUrlSnapshot: string | null;
+  /** Dish price plus every selected add-on's price, for one unit. */
   unitPrice: number;
   quantity: number;
   notes: string;
   status: OrderItemStatus;
   statusUpdatedAt: Date;
+  addOns: IOrderItemAddOn[];
+  /** The selected DishVariant, if the dish had any — null otherwise. Snapshots, same reasoning as dishNameSnapshot. */
+  variantId: string | null;
+  variantNameSnapshot: string | null;
+  variantPriceSnapshot: number | null;
 }
 
 export interface IOrder {

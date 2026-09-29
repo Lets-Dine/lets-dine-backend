@@ -1,5 +1,7 @@
 import { Injectable } from "@nestjs/common";
+import { AddOnRepository } from "../../add-ons/domain/repositories/add-on.repository";
 import { PrismaTransaction } from "../../../common/prisma";
+import { DishVariantRepository } from "../../dish-variants/domain/repositories/dish-variant.repository";
 import { IDish } from "../domain/interfaces/dish.interface";
 import { EMPTY_DISH_STATS } from "../domain/interfaces/dish-stats.interface";
 import { IDishWithStats } from "../domain/interfaces/dish-with-stats.interface";
@@ -13,19 +15,31 @@ import { buildRankContext, dishBadges, rankScore } from "../domain/utils/dish-ra
  */
 @Injectable()
 export class DishStatsService {
-  constructor(private readonly dishStatsRepository: DishStatsRepository) {}
+  constructor(
+    private readonly dishStatsRepository: DishStatsRepository,
+    private readonly addOnRepository: AddOnRepository,
+    private readonly dishVariantRepository: DishVariantRepository
+  ) {}
 
   async attach(dishes: IDish[], options?: { tx?: PrismaTransaction }): Promise<IDishWithStats[]> {
     if (dishes.length === 0) return [];
 
-    const stats = await this.dishStatsRepository.fetchStatsFor(
-      dishes.map(dish => dish.id),
-      options
-    );
+    const dishIds = dishes.map(dish => dish.id);
+    const [stats, addOnIdsByDish, variantsByDish] = await Promise.all([
+      this.dishStatsRepository.fetchStatsFor(dishIds, options),
+      this.addOnRepository.findLinkedIdsByDishIds(dishIds, options),
+      this.dishVariantRepository.findManyByDishIds(dishIds, options),
+    ]);
 
     return dishes.map(dish => {
       const dishStats = stats.get(dish.id) ?? EMPTY_DISH_STATS;
-      return { ...dish, stats: dishStats, badges: dishBadges(dish, dishStats) };
+      return {
+        ...dish,
+        stats: dishStats,
+        badges: dishBadges(dish, dishStats),
+        addOnIds: addOnIdsByDish[dish.id] ?? [],
+        variants: variantsByDish[dish.id] ?? [],
+      };
     });
   }
 

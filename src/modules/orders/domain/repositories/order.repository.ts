@@ -1,7 +1,7 @@
 import { OrderItemStatus, OrderStatus } from "@prisma/client";
 import { IPaginationOptions, PaginatedResponse } from "../../../../common/interfaces";
 import { PrismaTransaction } from "../../../../common/prisma";
-import { IOrderWithItems } from "../interfaces/order.interface";
+import { IOrderItemAddOn, IOrderWithItems } from "../interfaces/order.interface";
 
 export interface IOrderItemCreate {
   dishId: string;
@@ -10,6 +10,10 @@ export interface IOrderItemCreate {
   unitPrice: number;
   quantity: number;
   notes?: string;
+  addOns?: IOrderItemAddOn[];
+  variantId?: string | null;
+  variantNameSnapshot?: string | null;
+  variantPriceSnapshot?: number | null;
 }
 
 export interface IOrderCreate {

@@ -27,7 +27,7 @@ function buildDish(overrides: Partial<IDish> = {}): IDish {
     isFeatured: false,
     sortOrder: 0,
     spiceLevel: 1,
-    isVeg: false,
+    dietaryType: "NON_VEG",
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,

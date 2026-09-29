@@ -43,7 +43,7 @@ export class AdvanceOrderItemStatusUsecase {
       }
 
       const afterItemUpdate = await this.orderRepository.updateItemStatus(itemId, dto.status, { tx });
-      const status = deriveOrderStatus(afterItemUpdate.items, order.acceptedAt, order.cancelledAt);
+      const status = deriveOrderStatus(afterItemUpdate.items, order.cancelledAt);
       const updated =
         status === afterItemUpdate.status
           ? afterItemUpdate

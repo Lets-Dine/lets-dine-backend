@@ -134,6 +134,40 @@ describe("StartDiningSessionUsecase", () => {
       );
     });
 
+    it("should start a fresh session when the table lost track of any current session", async () => {
+      // table.currentSessionId is already null — e.g. staff cleared the table — so a stale
+      // join code has nothing left to join and should just seat the diner freshly instead.
+      restaurantRepository.findBySlug.mockResolvedValue(restaurant);
+      diningTableRepository.findByQrToken.mockResolvedValue(table);
+      diningSessionRepository.create.mockResolvedValue({ id: "session-new" } as any);
+
+      const result = await usecase.execute({ ...dto, joinSessionId: "12345678" });
+
+      expect(result.session).toEqual({ id: "session-new" });
+      expect(diningSessionRepository.findById).not.toHaveBeenCalled();
+      expect(diningSessionRepository.create).toHaveBeenCalled();
+    });
+
+    it("should start a fresh session when the join code points at a session that has already ended", async () => {
+      const activeSessionId = "session-1";
+      const occupiedTable = { ...table, currentSessionId: activeSessionId };
+      const ended = {
+        id: activeSessionId,
+        anonymousSessionToken: "12345678",
+        expiresAt: new Date(Date.now() + 60_000),
+        endedAt: new Date(Date.now() - 60_000),
+      } as any;
+      restaurantRepository.findBySlug.mockResolvedValue(restaurant);
+      diningTableRepository.findByQrToken.mockResolvedValue(occupiedTable);
+      diningSessionRepository.findById.mockResolvedValue(ended);
+      diningSessionRepository.create.mockResolvedValue({ id: "session-new" } as any);
+
+      const result = await usecase.execute({ ...dto, joinSessionId: "12345678" });
+
+      expect(result.session).toEqual({ id: "session-new" });
+      expect(diningSessionRepository.create).toHaveBeenCalled();
+    });
+
     it("should end an expired open session before creating a replacement", async () => {
       const expired = {
         id: "session-old",

@@ -1,0 +1,18 @@
+/// A selected add-on on an order line. Name and price are snapshots — same
+/// reasoning as OrderItem's dishNameSnapshot/unitPrice: editing or archiving the
+/// add-on later must never rewrite what somebody already ordered and paid.
+model OrderItemAddOn {
+  id            String   @id @default(uuid()) @map("id") @db.Uuid
+  orderItemId   String   @map("order_item_id") @db.Uuid
+  addOnId       String   @map("add_on_id") @db.Uuid
+  nameSnapshot  String   @map("name_snapshot")
+  priceSnapshot Int      @map("price_snapshot")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  addOn     AddOn     @relation(fields: [addOnId], references: [id], onDelete: Restrict)
+
+  @@index([orderItemId])
+  @@map("order_item_add_ons")
+  @@schema("public")
+}

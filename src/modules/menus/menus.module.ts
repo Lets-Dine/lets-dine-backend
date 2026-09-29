@@ -1,5 +1,7 @@
 import { Module } from "@nestjs/common";
+import { AddOnsModule } from "../add-ons/add-ons.module";
 import { DishesModule } from "../dishes/dishes.module";
+import { DishVariantsModule } from "../dish-variants/dish-variants.module";
 import { MenuCategoriesModule } from "../menu-categories/menu-categories.module";
 import { RestaurantsModule } from "../restaurants/restaurants.module";
 import { FetchMenuHighlightsUsecase } from "./application/use-cases/fetch-menu-highlights.usecase";
@@ -9,7 +11,7 @@ import RestaurantRatingRepositoryImpl from "./infrastructure/repositories/restau
 import { PublicMenuController } from "./interfaces/http/public-menu.controller";
 
 @Module({
-  imports: [RestaurantsModule, MenuCategoriesModule, DishesModule],
+  imports: [RestaurantsModule, MenuCategoriesModule, DishesModule, AddOnsModule, DishVariantsModule],
   controllers: [PublicMenuController],
   providers: [
     FetchMenuUsecase,

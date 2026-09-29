@@ -1,0 +1,40 @@
+/// A priced extra a diner can attach to a dish (e.g. extra cheese). Restaurant-scoped
+/// and reusable across multiple dishes via DishAddOn, mirroring Dish's own shape.
+model AddOn {
+  id           String   @id @default(uuid()) @map("id") @db.Uuid
+  restaurantId String   @map("restaurant_id") @db.Uuid
+  name         String   @map("name")
+  /// Integer minor units (paisa) — never a float.
+  price        Int      @map("price")
+  isAvailable  Boolean  @default(true) @map("is_available")
+  /// An add-on with order history is archived, never hard-deleted — mirrors Dish (§28).
+  isArchived   Boolean  @default(false) @map("is_archived")
+  sortOrder    Int      @default(0) @map("sort_order")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  createdBy    String?  @map("created_by") @db.Uuid
+  updatedBy    String?  @map("updated_by") @db.Uuid
+
+  restaurant      Restaurant       @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  dishLinks       DishAddOn[]
+  orderItemAddOns OrderItemAddOn[]
+
+  @@index([restaurantId])
+  @@map("add_ons")
+  @@schema("public")
+}
+
+/// Which add-ons a dish offers. Many-to-many: one add-on can be linked to several
+/// dishes, one dish can offer several add-ons.
+model DishAddOn {
+  dishId  String @map("dish_id") @db.Uuid
+  addOnId String @map("add_on_id") @db.Uuid
+
+  dish  Dish  @relation(fields: [dishId], references: [id], onDelete: Cascade)
+  addOn AddOn @relation(fields: [addOnId], references: [id], onDelete: Cascade)
+
+  @@id([dishId, addOnId])
+  @@index([addOnId])
+  @@map("dish_add_ons")
+  @@schema("public")
+}

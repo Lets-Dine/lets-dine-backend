@@ -1,5 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { NotFoundException } from "../../../../common/exceptions";
+import { AddOnRepository } from "../../../add-ons/domain/repositories/add-on.repository";
+import { DishVariantRepository } from "../../../dish-variants/domain/repositories/dish-variant.repository";
 import { DISH_ERROR_MESSAGES } from "../../domain/constants";
 import { IDishWithStats } from "../../domain/interfaces/dish-with-stats.interface";
 import { DishRepository } from "../../domain/repositories/dish.repository";
@@ -10,7 +12,11 @@ import { DishRepository } from "../../domain/repositories/dish.repository";
  */
 @Injectable()
 export class FetchDishByIdUsecase {
-  constructor(private readonly dishRepository: DishRepository) {}
+  constructor(
+    private readonly dishRepository: DishRepository,
+    private readonly addOnRepository: AddOnRepository,
+    private readonly dishVariantRepository: DishVariantRepository
+  ) {}
 
   async execute(id: string, options?: { includeArchived?: boolean }): Promise<IDishWithStats> {
     const [dish] = await this.dishRepository.findAllWithStats({ ids: [id] });
@@ -18,6 +24,10 @@ export class FetchDishByIdUsecase {
       throw new NotFoundException(DISH_ERROR_MESSAGES.NOT_FOUND);
     }
 
-    return dish;
+    const addOnIdsByDish = await this.addOnRepository.findLinkedIdsByDishIds([id]);
+    // No isArchived filter — the admin editor needs to see/restore archived variants too.
+    const variants = await this.dishVariantRepository.findByDishId(id);
+
+    return { ...dish, addOnIds: addOnIdsByDish[id] ?? [], variants };
   }
 }

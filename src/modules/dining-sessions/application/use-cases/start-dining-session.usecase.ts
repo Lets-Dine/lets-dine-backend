@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { ConflictException, NotFoundException } from "../../../../common/exceptions";
+import { RESTAURANT_ERROR_MESSAGES } from "../../../restaurants/domain/constants";
 import { RestaurantRepository } from "../../../restaurants/domain/repositories/restaurant.repository";
 import { DiningTableRepository } from "../../../tables/domain/repositories/dining-table.repository";
 import { DINING_SESSION_ERROR_MESSAGES } from "../../domain/constants";
@@ -19,19 +20,37 @@ export class StartDiningSessionUsecase {
   ) {}
 
   async execute(dto: StartDiningSessionInput): Promise<IResolvedSession> {
+    const restaurant = await this.restaurantRepository.findBySlug(dto.restaurantSlug);
+    if (!restaurant || !restaurant.isActive) throw new NotFoundException(RESTAURANT_ERROR_MESSAGES.NOT_FOUND);
+
     const table = await this.diningTableRepository.findByQrToken(dto.tableToken);
-    if (!table || !table.isActive) throw new NotFoundException(DINING_SESSION_ERROR_MESSAGES.TABLE_NOT_FOUND);
+    if (!table || !table.isActive || table.restaurantId !== restaurant.id) {
+      throw new NotFoundException(DINING_SESSION_ERROR_MESSAGES.TABLE_NOT_FOUND);
+    }
 
     return this.diningTableRepository.$transaction(async tx => {
-      const activeSessionId = table.currentSessionId;
-      if (activeSessionId) {
-        if (!dto.joinSessionId) throw new ConflictException(DINING_SESSION_ERROR_MESSAGES.TABLE_OCCUPIED);
-        const session = await this.diningSessionRepository.findById(activeSessionId, { tx });
-        if (!session || dto.joinSessionId !== session.anonymousSessionToken) {
-          throw new ConflictException(DINING_SESSION_ERROR_MESSAGES.JOIN_MISMATCH);
-        }
+      if (dto.joinSessionId) {
+        const activeSessionId = table.currentSessionId;
+        const session = activeSessionId ? await this.diningSessionRepository.findById(activeSessionId, { tx }) : null;
+        // A code only means something while the visit it was cut for is still open — once that
+        // session has ended (or the table lost track of it entirely), there is nothing left to
+        // join, so this falls through to seat the diner in a fresh session instead of erroring.
+        if (session && !session.endedAt) {
+          if (dto.joinSessionId !== session.anonymousSessionToken) {
+            throw new ConflictException(DINING_SESSION_ERROR_MESSAGES.JOIN_MISMATCH);
+          }
 
-        return { session, table };
+          return { session, restaurant, table };
+        }
+      }
+
+      // Stale sessions past their TTL don't block a fresh scan — end them and reseat the table.
+      const openSession = await this.diningSessionRepository.findOpenByTableId(table.id, { tx });
+      if (openSession) {
+        if (openSession.expiresAt > new Date()) {
+          throw new ConflictException(DINING_SESSION_ERROR_MESSAGES.TABLE_OCCUPIED);
+        }
+        await this.diningSessionRepository.update(openSession.id, { endedAt: new Date() }, tx);
       }
 
       const startedAt = new Date();
@@ -47,7 +66,7 @@ export class StartDiningSessionUsecase {
       await this.diningTableRepository.update(table.id, { currentSessionId: session.id }, { tx });
       const currentTable = { ...table, currentSessionId: session.id };
 
-      return { session, table: currentTable };
+      return { session, restaurant, table: currentTable };
     });
   }
 

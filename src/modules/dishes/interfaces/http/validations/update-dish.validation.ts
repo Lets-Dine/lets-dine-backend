@@ -1,3 +1,4 @@
+import { DishDietaryType } from "@prisma/client";
 import { z } from "zod";
 
 export const updateDishSchema = z
@@ -11,7 +12,7 @@ export const updateDishSchema = z
     isFeatured: z.boolean().optional(),
     sortOrder: z.number().int().min(0).optional(),
     spiceLevel: z.number().int().min(0).max(3).optional(),
-    isVeg: z.boolean().optional(),
+    dietaryType: z.nativeEnum(DishDietaryType).optional(),
   })
   .refine(value => Object.keys(value).length > 0, { message: "Provide at least one change" });
 
