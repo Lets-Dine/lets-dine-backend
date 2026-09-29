@@ -1,6 +1,3 @@
--- CreateEnum
-CREATE TYPE "DishDietaryType" AS ENUM ('VEG', 'NON_VEG', 'VEGAN', 'HALAL');
-
 -- AlterTable
 ALTER TABLE "dishes" ADD COLUMN     "dietary_type" "DishDietaryType" NOT NULL DEFAULT 'NON_VEG';
 
