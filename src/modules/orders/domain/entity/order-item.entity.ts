@@ -1,4 +1,4 @@
-import { OrderItemStatus } from "@prisma/client";
+import { OrderItemStatus, OrderType } from "@prisma/client";
 import { IOrderItem } from "../interfaces/order.interface";
 
 /**
@@ -14,18 +14,29 @@ const ALLOWED_ITEM_TRANSITIONS: Record<OrderItemStatus, OrderItemStatus[]> = {
 };
 
 export class OrderItemEntity {
-  constructor(private readonly item: IOrderItem) {}
+  constructor(
+    private readonly item: IOrderItem,
+    private readonly orderType: OrderType = OrderType.DINE_IN
+  ) {}
 
   get status(): OrderItemStatus {
     return this.item.status;
   }
 
   canTransitionTo(next: OrderItemStatus): boolean {
-    return ALLOWED_ITEM_TRANSITIONS[this.item.status].includes(next);
+    return this.nextStatuses().includes(next);
   }
 
+  /**
+   * A delivery order has no server to hand a plated dish to — the driver
+   * takes the whole order at once, so no single line goes SERVED on its own.
+   * `SettleDeliveryOrderUsecase` moves every READY line to SERVED together
+   * the moment the order itself is marked delivered.
+   */
   nextStatuses(): OrderItemStatus[] {
-    return ALLOWED_ITEM_TRANSITIONS[this.item.status];
+    const allowed = ALLOWED_ITEM_TRANSITIONS[this.item.status];
+    if (this.orderType === OrderType.DELIVERY) return allowed.filter(status => status !== OrderItemStatus.SERVED);
+    return allowed;
   }
 
   /** A diner can pull their own line before the kitchen has touched it — after that it is food. */

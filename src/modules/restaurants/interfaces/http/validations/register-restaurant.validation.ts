@@ -12,7 +12,7 @@ export const registerRestaurantSchema = z.object({
   slug: slugSchema,
   tagline: z.string().max(160).optional(),
   description: z.string().max(2000).optional(),
-  coverImageUrl: z.string().url().max(500).nullish(),
+  coverImageUrl: z.string().url().max(500).nullish().default("https://static.vecteezy.com/system/resources/thumbnails/054/611/336/small_2x/wide-angle-foodgraphy-for-restaurant-with-copy-space-photo.jpg"),
   currency: z.string().length(3).toUpperCase().optional(),
   timezone: z.string().min(1).max(60).optional(),
   serviceChargeRate: z.number().min(0).max(1).optional(),

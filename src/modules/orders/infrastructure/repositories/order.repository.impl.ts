@@ -96,6 +96,7 @@ class OrderRepositoryImpl implements OrderRepository {
       ...(query.restaurantId && { restaurantId: query.restaurantId }),
       ...(query.sessionId && { sessionId: query.sessionId }),
       ...(query.tableId && { tableId: query.tableId }),
+      ...(query.orderType && { orderType: query.orderType }),
       ...(query.statuses?.length && { status: { in: query.statuses } }),
       ...((query.from || query.to) && {
         createdAt: { ...(query.from && { gte: query.from }), ...(query.to && { lte: query.to }) },
@@ -132,13 +133,20 @@ class OrderRepositoryImpl implements OrderRepository {
         o.restaurant_id   AS "restaurantId",
         o.table_id        AS "tableId",
         o.session_id      AS "sessionId",
+        o.order_type      AS "orderType",
+        o.customer_id     AS "customerId",
         o.status,
         o.subtotal,
         o.service_charge  AS "serviceCharge",
         o.tax,
         o.discount,
+        o.delivery_fee    AS "deliveryFee",
         o.total,
         o.currency,
+        o.delivery_address       AS "deliveryAddress",
+        o.delivery_phone         AS "deliveryPhone",
+        o.delivery_customer_name AS "deliveryCustomerName",
+        o.delivery_note          AS "deliveryNote",
         o.idempotency_key AS "idempotencyKey",
         o.cancel_reason   AS "cancelReason",
         o.accepted_at     AS "acceptedAt",
@@ -150,7 +158,9 @@ class OrderRepositoryImpl implements OrderRepository {
         COALESCE(items.rows, '[]'::json)             AS items,
         COALESCE(reviews.dish_ids, ARRAY[]::uuid[])  AS "reviewedDishIds"
       FROM orders o
-      JOIN dining_tables t ON t.id = o.table_id
+      -- LEFT, not JOIN — a delivery order's table_id is null and would
+      -- otherwise be dropped from the result entirely.
+      LEFT JOIN dining_tables t ON t.id = o.table_id
       LEFT JOIN LATERAL (
         SELECT json_agg(
                  json_build_object(
@@ -269,6 +279,14 @@ class OrderRepositoryImpl implements OrderRepository {
     return this.toOrder(order);
   }
 
+  async markReadyItemsServed(orderId: string, options?: { tx?: PrismaTransaction }): Promise<void> {
+    const prisma = options?.tx ?? this.prisma;
+    await prisma.orderItem.updateMany({
+      where: { orderId, status: "READY" },
+      data: { status: "SERVED", statusUpdatedAt: new Date() },
+    });
+  }
+
   async settleOpenByTableId(tableId: string, restaurantId: string, options?: { tx?: PrismaTransaction }): Promise<IOrderWithItems[]> {
     const prisma = options?.tx ?? this.prisma;
     const open = await prisma.order.findMany({
@@ -290,7 +308,7 @@ class OrderRepositoryImpl implements OrderRepository {
     return {
       ...rest,
       items,
-      tableName: table.name,
+      tableName: table?.name ?? null,
       reviewedDishIds: [...new Set(reviews.map(review => review.dishId))],
     };
   }

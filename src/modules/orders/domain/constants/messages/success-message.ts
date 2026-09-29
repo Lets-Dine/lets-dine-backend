@@ -9,4 +9,5 @@ export const ORDER_SUCCESS_MESSAGES = {
   ORDER_ITEM_STATUS_UPDATED: { key: "ORDER_ITEM_STATUS_UPDATED", message: "Item status updated successfully" },
   ORDER_ITEM_CANCELLED: { key: "ORDER_ITEM_CANCELLED", message: "Item cancelled" },
   TABLE_SETTLED: { key: "TABLE_SETTLED", message: "Table settled up" },
+  DELIVERY_ORDER_SETTLED: { key: "DELIVERY_ORDER_SETTLED", message: "Delivery order settled" },
 };

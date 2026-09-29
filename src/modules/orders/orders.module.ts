@@ -1,6 +1,7 @@
 import { forwardRef, Module } from "@nestjs/common";
 import { AddOnsModule } from "../add-ons/add-ons.module";
 import { AuditLogsModule } from "../audit-logs/audit-logs.module";
+import { CustomersModule } from "../customers/customers.module";
 import { DiningSessionsModule } from "../dining-sessions/dining-sessions.module";
 import { DishesModule } from "../dishes/dishes.module";
 import { DishVariantsModule } from "../dish-variants/dish-variants.module";
@@ -17,6 +18,7 @@ import { FetchOrdersBySessionUsecase } from "./application/use-cases/fetch-order
 import { FetchSessionOrderUsecase } from "./application/use-cases/fetch-session-order.usecase";
 import { FetchSessionOrdersUsecase } from "./application/use-cases/fetch-session-orders.usecase";
 import { RemoveOrderItemUsecase } from "./application/use-cases/remove-order-item.usecase";
+import { SettleDeliveryOrderUsecase } from "./application/use-cases/settle-delivery-order.usecase";
 import { SettleTableUsecase } from "./application/use-cases/settle-table.usecase";
 import { UpdateOrderStatusUsecase } from "./application/use-cases/update-order-status.usecase";
 import { OrderRepository } from "./domain/repositories/order.repository";
@@ -36,6 +38,7 @@ import { OrdersGateway } from "./interfaces/ws/orders.gateway";
     AuditLogsModule,
     AddOnsModule,
     DishVariantsModule,
+    CustomersModule,
   ],
   controllers: [OrderController, RestaurantOrderController],
   providers: [
@@ -52,6 +55,7 @@ import { OrdersGateway } from "./interfaces/ws/orders.gateway";
     AdvanceOrderItemStatusUsecase,
     CancelOrderItemUsecase,
     SettleTableUsecase,
+    SettleDeliveryOrderUsecase,
     OrderRepositoryImpl,
     { provide: OrderRepository, useExisting: OrderRepositoryImpl },
     OrdersGateway,

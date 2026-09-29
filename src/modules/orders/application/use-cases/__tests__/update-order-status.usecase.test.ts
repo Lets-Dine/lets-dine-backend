@@ -1,6 +1,6 @@
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Test, TestingModule } from "@nestjs/testing";
-import { AuditAction, OrderStatus } from "@prisma/client";
+import { AuditAction, OrderStatus, OrderType } from "@prisma/client";
 import { BadRequestException, NotFoundException } from "../../../../../common/exceptions";
 import { buildAuthEntity } from "../../../../../common/testing";
 import { AuditLogService } from "../../../../audit-logs/application/audit-log.service";
@@ -10,12 +10,13 @@ import { UpdateOrderStatusUsecase } from "../update-order-status.usecase";
 
 const authUser = buildAuthEntity();
 
-function buildOrder(status: OrderStatus) {
+function buildOrder(status: OrderStatus, orderType: OrderType = OrderType.DINE_IN) {
   return {
     id: "order-1",
     reference: "#1001",
     restaurantId: authUser.restaurantId,
     status,
+    orderType,
     completedAt: null,
   } as any;
 }
@@ -103,6 +104,55 @@ describe("UpdateOrderStatusUsecase", () => {
       await expect(usecase.execute("order-1", { status: OrderStatus.ACCEPTED }, authUser)).rejects.toThrow(
         new NotFoundException(ORDER_ERROR_MESSAGES.NOT_FOUND)
       );
+    });
+
+    it("should let a delivery order manually advance READY → OUT_FOR_DELIVERY", async () => {
+      // Arrange
+      orderRepository.findById.mockResolvedValue(buildOrder(OrderStatus.READY, OrderType.DELIVERY));
+      orderRepository.update.mockResolvedValue(buildOrder(OrderStatus.OUT_FOR_DELIVERY, OrderType.DELIVERY));
+
+      // Act
+      const result = await usecase.execute("order-1", { status: OrderStatus.OUT_FOR_DELIVERY }, authUser);
+
+      // Assert
+      expect(result.status).toBe(OrderStatus.OUT_FOR_DELIVERY);
+      const [, patch] = orderRepository.update.mock.calls[0];
+      expect(patch).toEqual({ status: OrderStatus.OUT_FOR_DELIVERY });
+    });
+
+    it("should let a delivery order manually advance OUT_FOR_DELIVERY → COMPLETED and stamp completedAt", async () => {
+      // Arrange
+      orderRepository.findById.mockResolvedValue(buildOrder(OrderStatus.OUT_FOR_DELIVERY, OrderType.DELIVERY));
+      orderRepository.update.mockResolvedValue(buildOrder(OrderStatus.COMPLETED, OrderType.DELIVERY));
+
+      // Act
+      await usecase.execute("order-1", { status: OrderStatus.COMPLETED }, authUser);
+
+      // Assert
+      const [, patch] = orderRepository.update.mock.calls[0];
+      expect(patch.completedAt).toBeInstanceOf(Date);
+    });
+
+    it("should refuse OUT_FOR_DELIVERY on a dine-in order even at READY", async () => {
+      // Arrange
+      orderRepository.findById.mockResolvedValue(buildOrder(OrderStatus.READY, OrderType.DINE_IN));
+
+      // Act & Assert
+      await expect(usecase.execute("order-1", { status: OrderStatus.OUT_FOR_DELIVERY }, authUser)).rejects.toThrow(
+        new BadRequestException(ORDER_ERROR_MESSAGES.STATUS_FOLLOWS_ITEMS)
+      );
+      expect(orderRepository.update).not.toHaveBeenCalled();
+    });
+
+    it("should refuse a delivery order skipping straight from READY to COMPLETED", async () => {
+      // Arrange
+      orderRepository.findById.mockResolvedValue(buildOrder(OrderStatus.READY, OrderType.DELIVERY));
+
+      // Act & Assert
+      await expect(usecase.execute("order-1", { status: OrderStatus.COMPLETED }, authUser)).rejects.toThrow(
+        new BadRequestException(ORDER_ERROR_MESSAGES.STATUS_FOLLOWS_ITEMS)
+      );
+      expect(orderRepository.update).not.toHaveBeenCalled();
     });
   });
 });

@@ -9,6 +9,7 @@ const TRACKED_FIELDS: (keyof IRestaurant)[] = [
   "timezone",
   "serviceChargeRate",
   "taxRate",
+  "deliveryFeeAmount",
   "isActive",
 ];
 

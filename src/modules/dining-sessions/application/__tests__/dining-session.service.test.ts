@@ -140,6 +140,25 @@ describe("DiningSessionService", () => {
 
       await expect(service.resolveActive("token")).rejects.toThrow(new UnauthorizedException(DINING_SESSION_ERROR_MESSAGES.EXPIRED));
     });
+
+    it("should return a live delivery session without reconciling against any table", async () => {
+      // Arrange — a delivery session's tableId is null, so there is nothing to look up.
+      const deliverySession = {
+        id: "session-1",
+        tableId: null,
+        customerId: "customer-1",
+        expiresAt: new Date(Date.now() + 60_000),
+        endedAt: null,
+      } as any;
+      diningSessionRepository.findByToken.mockResolvedValue(deliverySession);
+
+      // Act
+      const result = await service.resolveActive("token");
+
+      // Assert
+      expect(result).toBe(deliverySession);
+      expect(diningTableRepository.findById).not.toHaveBeenCalled();
+    });
   });
 
   describe("resolveAny", () => {
@@ -182,7 +201,10 @@ describe("DiningSessionService", () => {
 
     it("should drop a line the kitchen never started and serve one already cooking, then complete the order", async () => {
       // Arrange
-      const items = [item({ id: "item-1", status: OrderItemStatus.PENDING, unitPrice: 100 }), item({ id: "item-2", status: OrderItemStatus.PREPARING, unitPrice: 200 })];
+      const items = [
+        item({ id: "item-1", status: OrderItemStatus.PENDING, unitPrice: 100 }),
+        item({ id: "item-2", status: OrderItemStatus.PREPARING, unitPrice: 200 }),
+      ];
       orderRepository.findOpenBySessionId.mockResolvedValue([order({ items })]);
       orderRepository.updateItemStatus.mockImplementation(trackingUpdateItemStatus(items));
 
@@ -277,6 +299,24 @@ describe("DiningSessionService", () => {
       expect(orderRepository.updateItemStatus).not.toHaveBeenCalled();
       expect(auditLogService.record).toHaveBeenCalledWith(
         expect.objectContaining({ detail: "Table cleared for the next visit" }),
+        authUser,
+        tx
+      );
+    });
+
+    it("should end a delivery session without touching any table", async () => {
+      // Arrange — a delivery session's tableId is null, so there is no table to free up.
+      const deliverySession = { id: "session-1", tableId: null };
+      orderRepository.findOpenBySessionId.mockResolvedValue([]);
+
+      // Act
+      const result = await service.endSession(deliverySession as any, authUser, tx);
+
+      // Assert
+      expect(result).toBeNull();
+      expect(diningTableRepository.update).not.toHaveBeenCalled();
+      expect(auditLogService.record).toHaveBeenCalledWith(
+        expect.objectContaining({ subject: "Delivery session", detail: "Session ended for the next visit" }),
         authUser,
         tx
       );

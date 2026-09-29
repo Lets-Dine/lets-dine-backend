@@ -1,8 +1,10 @@
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Test, TestingModule } from "@nestjs/testing";
+import { OrderType } from "@prisma/client";
 import { BadRequestException, NotFoundException } from "../../../../../common/exceptions";
 import { PrismaTransaction } from "../../../../../common/prisma";
 import { AddOnRepository } from "../../../../add-ons/domain/repositories/add-on.repository";
+import { CustomerRepository } from "../../../../customers/domain/repositories/customer.repository";
 import { DishVariantRepository } from "../../../../dish-variants/domain/repositories/dish-variant.repository";
 import { DishRepository } from "../../../../dishes/domain/repositories/dish.repository";
 import { IDiningSession } from "../../../../dining-sessions/domain/interfaces/dining-session.interface";
@@ -12,14 +14,24 @@ import { ORDER_ERROR_MESSAGES } from "../../../domain/constants";
 import { OrderRepository } from "../../../domain/repositories/order.repository";
 import { CreateOrderUsecase } from "../create-order.usecase";
 
-const session = { id: "session-1", restaurantId: "restaurant-1", tableId: "table-1" } as IDiningSession;
+const session = { id: "session-1", restaurantId: "restaurant-1", tableId: "table-1", customerId: null } as IDiningSession;
+const deliverySession = { id: "session-2", restaurantId: "restaurant-1", tableId: null, customerId: "customer-1" } as IDiningSession;
 const restaurant = {
   id: "restaurant-1",
   isActive: true,
   currency: "NPR",
   serviceChargeRate: 0.1,
   taxRate: 0.13,
+  deliveryFeeAmount: 5000,
 } as any;
+const customer = {
+  id: "customer-1",
+  restaurantId: "restaurant-1",
+  phone: "9800000000",
+  name: "Hari Gurung",
+  defaultAddress: "Baneshwor, Kathmandu",
+  defaultNote: "Ring the bell twice",
+};
 const dish = {
   id: "dish-1",
   restaurantId: "restaurant-1",
@@ -39,6 +51,7 @@ describe("CreateOrderUsecase", () => {
   let dishRepository: jest.Mocked<DishRepository>;
   let addOnRepository: jest.Mocked<AddOnRepository>;
   let dishVariantRepository: jest.Mocked<DishVariantRepository>;
+  let customerRepository: jest.Mocked<CustomerRepository>;
   let eventEmitter: jest.Mocked<EventEmitter2>;
 
   beforeEach(async () => {
@@ -57,6 +70,7 @@ describe("CreateOrderUsecase", () => {
         { provide: DishRepository, useValue: { findManyByIds: jest.fn() } },
         { provide: AddOnRepository, useValue: { findLinkedToDish: jest.fn() } },
         { provide: DishVariantRepository, useValue: { findManyByDishIds: jest.fn() } },
+        { provide: CustomerRepository, useValue: { findById: jest.fn() } },
         { provide: EventEmitter2, useValue: { emit: jest.fn() } },
       ],
     }).compile();
@@ -67,6 +81,7 @@ describe("CreateOrderUsecase", () => {
     dishRepository = module.get(DishRepository);
     addOnRepository = module.get(AddOnRepository);
     dishVariantRepository = module.get(DishVariantRepository);
+    customerRepository = module.get(CustomerRepository);
     eventEmitter = module.get(EventEmitter2);
     dishVariantRepository.findManyByDishIds.mockResolvedValue({});
   });
@@ -236,6 +251,82 @@ describe("CreateOrderUsecase", () => {
       await expect(usecase.execute({ lines: [{ dishId: "dish-1", quantity: 1, addOnIds: [] }] }, session)).rejects.toThrow(
         new NotFoundException(RESTAURANT_ERROR_MESSAGES.NOT_FOUND)
       );
+    });
+
+    it("should place a DELIVERY order with a null tableId, the restaurant's delivery fee, and the customer's own details", async () => {
+      // Arrange
+      restaurantRepository.findById.mockResolvedValue(restaurant);
+      dishRepository.findManyByIds.mockResolvedValue([dish]);
+      customerRepository.findById.mockResolvedValue(customer as any);
+      orderRepository.create.mockResolvedValue({ id: "order-1" } as any);
+
+      // Act
+      await usecase.execute({ lines: [{ dishId: "dish-1", quantity: 1, addOnIds: [] }] }, deliverySession);
+
+      // Assert
+      const [created] = orderRepository.create.mock.calls[0];
+      expect(created).toMatchObject({
+        tableId: null,
+        orderType: OrderType.DELIVERY,
+        customerId: customer.id,
+        deliveryFee: 5000,
+        deliveryPhone: customer.phone,
+        deliveryCustomerName: customer.name,
+        deliveryAddress: customer.defaultAddress,
+        deliveryNote: customer.defaultNote,
+        total: 45000 + 4500 + 6435 + 5000,
+      });
+    });
+
+    it("should let a delivery order override the customer's default address/note per order", async () => {
+      // Arrange
+      restaurantRepository.findById.mockResolvedValue(restaurant);
+      dishRepository.findManyByIds.mockResolvedValue([dish]);
+      customerRepository.findById.mockResolvedValue(customer as any);
+      orderRepository.create.mockResolvedValue({ id: "order-1" } as any);
+
+      // Act
+      await usecase.execute(
+        {
+          lines: [{ dishId: "dish-1", quantity: 1, addOnIds: [] }],
+          deliveryAddress: "Office, Durbarmarg",
+          deliveryNote: "Leave at reception",
+        },
+        deliverySession
+      );
+
+      // Assert
+      const [created] = orderRepository.create.mock.calls[0];
+      expect(created).toMatchObject({ deliveryAddress: "Office, Durbarmarg", deliveryNote: "Leave at reception" });
+    });
+
+    it("should not charge a delivery fee for a dine-in order even when the restaurant has one configured", async () => {
+      // Arrange
+      restaurantRepository.findById.mockResolvedValue(restaurant);
+      dishRepository.findManyByIds.mockResolvedValue([dish]);
+      orderRepository.create.mockResolvedValue({ id: "order-1" } as any);
+
+      // Act
+      await usecase.execute({ lines: [{ dishId: "dish-1", quantity: 1, addOnIds: [] }] }, session);
+
+      // Assert
+      const [created] = orderRepository.create.mock.calls[0];
+      expect(created).toMatchObject({ orderType: OrderType.DINE_IN, deliveryFee: 0 });
+      expect(created.deliveryAddress).toBeUndefined();
+      expect(customerRepository.findById).not.toHaveBeenCalled();
+    });
+
+    it("should throw NotFoundException when a delivery session's customer record is missing", async () => {
+      // Arrange
+      restaurantRepository.findById.mockResolvedValue(restaurant);
+      dishRepository.findManyByIds.mockResolvedValue([dish]);
+      customerRepository.findById.mockResolvedValue(null);
+
+      // Act & Assert
+      await expect(usecase.execute({ lines: [{ dishId: "dish-1", quantity: 1, addOnIds: [] }] }, deliverySession)).rejects.toThrow(
+        new NotFoundException(ORDER_ERROR_MESSAGES.CUSTOMER_NOT_FOUND)
+      );
+      expect(orderRepository.create).not.toHaveBeenCalled();
     });
   });
 });

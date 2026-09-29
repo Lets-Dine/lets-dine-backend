@@ -1,4 +1,4 @@
-import { OrderItemStatus, OrderStatus } from "@prisma/client";
+import { OrderItemStatus, OrderStatus, OrderType } from "@prisma/client";
 import { IPaginationOptions, PaginatedResponse } from "../../../../common/interfaces";
 import { PrismaTransaction } from "../../../../common/prisma";
 import { IOrderItemAddOn, IOrderWithItems } from "../interfaces/order.interface";
@@ -18,14 +18,21 @@ export interface IOrderItemCreate {
 
 export interface IOrderCreate {
   restaurantId: string;
-  tableId: string;
+  tableId: string | null;
   sessionId: string;
+  orderType?: OrderType;
+  customerId?: string | null;
   currency: string;
   subtotal: number;
   serviceCharge: number;
   tax: number;
   discount: number;
+  deliveryFee?: number;
   total: number;
+  deliveryAddress?: string | null;
+  deliveryPhone?: string | null;
+  deliveryCustomerName?: string | null;
+  deliveryNote?: string | null;
   idempotencyKey?: string | null;
   items: IOrderItemCreate[];
 }
@@ -35,6 +42,7 @@ export interface IOrderTotalsUpdate {
   serviceCharge: number;
   tax: number;
   discount: number;
+  deliveryFee: number;
   total: number;
 }
 
@@ -66,6 +74,7 @@ export interface IOrdersFetchQuery {
   restaurantId?: string;
   sessionId?: string;
   tableId?: string;
+  orderType?: OrderType;
   statuses?: OrderStatus[];
   from?: Date;
   to?: Date;
@@ -107,4 +116,9 @@ export abstract class OrderRepository {
   abstract updateItemStatus(itemId: string, status: OrderItemStatus, options?: { tx?: PrismaTransaction }): Promise<IOrderWithItems>;
   /** Marks every currently-open order on this table COMPLETED in one motion — the till. */
   abstract settleOpenByTableId(tableId: string, restaurantId: string, options?: { tx?: PrismaTransaction }): Promise<IOrderWithItems[]>;
+  /**
+   * Delivery hand-over: the driver takes every plated line at once, so every
+   * item still READY moves to SERVED together — used by `SettleDeliveryOrderUsecase`.
+   */
+  abstract markReadyItemsServed(orderId: string, options?: { tx?: PrismaTransaction }): Promise<void>;
 }

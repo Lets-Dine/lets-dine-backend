@@ -11,7 +11,7 @@ export class FetchSessionOrdersUsecase {
   constructor(private readonly orderRepository: OrderRepository) {}
 
   async execute(query: FetchOrdersQuery, session: IDiningSession): Promise<PaginatedResponse<IOrderWithItems>> {
-    const { status, tableId: _tableId, from, to, ...pagination } = query;
+    const { status, tableId: _tableId, orderType: _orderType, from, to, ...pagination } = query;
 
     return this.orderRepository.fetchAll({ sessionId: session.id, statuses: status, from, to }, pagination);
   }

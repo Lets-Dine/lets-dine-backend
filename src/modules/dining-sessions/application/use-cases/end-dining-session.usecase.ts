@@ -31,7 +31,9 @@ export class EndDiningSessionUsecase {
       const session = await this.diningSessionRepository.findOpenByTableId(table.id, { tx });
       if (!session) throw new NotFoundException(DINING_SESSION_ERROR_MESSAGES.NO_ACTIVE_SESSION);
 
-      return this.diningSessionService.endSession(session, authEntity, tx);
+      // This whole flow is table-scoped — the session found above always has a tableId — so
+      // `endSession` (which also handles the table-less delivery case) never returns null here.
+      return (await this.diningSessionService.endSession(session, authEntity, tx)) as IDiningTable;
     });
   }
 }

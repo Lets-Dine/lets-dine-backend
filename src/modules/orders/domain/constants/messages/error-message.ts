@@ -27,4 +27,9 @@ export const ORDER_ERROR_MESSAGES = {
   },
   ITEM_INVALID_TRANSITION: { key: "ORDER_ITEM_INVALID_TRANSITION", message: "That item cannot move to that status" },
   ITEM_NOT_CANCELLABLE: { key: "ORDER_ITEM_NOT_CANCELLABLE", message: "The kitchen has already started this item" },
+  CUSTOMER_NOT_FOUND: {
+    key: "ORDER_CUSTOMER_NOT_FOUND",
+    message: "We couldn't find your delivery details — start your order again",
+  },
+  NOT_DELIVERY_ORDER: { key: "ORDER_NOT_DELIVERY_ORDER", message: "This isn't a delivery order" },
 };

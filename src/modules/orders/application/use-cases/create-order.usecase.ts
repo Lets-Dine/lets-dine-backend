@@ -1,8 +1,10 @@
 import { Injectable } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
+import { OrderType } from "@prisma/client";
 import { BadRequestException, NotFoundException } from "../../../../common/exceptions";
 import { PrismaTransaction } from "../../../../common/prisma";
 import { AddOnRepository } from "../../../add-ons/domain/repositories/add-on.repository";
+import { CustomerRepository } from "../../../customers/domain/repositories/customer.repository";
 import { IDishVariant } from "../../../dish-variants/domain/interfaces/dish-variant.interface";
 import { DishVariantRepository } from "../../../dish-variants/domain/repositories/dish-variant.repository";
 import { IDish } from "../../../dishes/domain/interfaces/dish.interface";
@@ -33,6 +35,7 @@ export class CreateOrderUsecase {
     private readonly dishRepository: DishRepository,
     private readonly addOnRepository: AddOnRepository,
     private readonly dishVariantRepository: DishVariantRepository,
+    private readonly customerRepository: CustomerRepository,
     private readonly eventEmitter: EventEmitter2
   ) {}
 
@@ -52,17 +55,27 @@ export class CreateOrderUsecase {
       const variantsByDish = await this.dishVariantRepository.findManyByDishIds(dishIds, { isArchived: false, tx });
 
       const items = await Promise.all(dto.lines.map(line => this.toOrderItem(line, dishes, variantsByDish, restaurant.id, tx)));
-      const totals = calculateOrderTotals(items, restaurant);
+
+      // §22 — a session with no table is a delivery session; `orderType` is the one
+      // field everything else (totals, transitions, staff filtering) branches on.
+      const isDelivery = !session.tableId;
+      const deliveryFee = isDelivery ? (restaurant.deliveryFeeAmount ?? 0) : 0;
+      const totals = calculateOrderTotals(items, restaurant, 0, deliveryFee);
+
+      const delivery = isDelivery ? await this.resolveDeliveryDetails(dto, session, tx) : null;
 
       return this.orderRepository.create(
         {
           restaurantId: restaurant.id,
           tableId: session.tableId,
           sessionId: session.id,
+          orderType: isDelivery ? OrderType.DELIVERY : OrderType.DINE_IN,
+          customerId: session.customerId ?? null,
           currency: restaurant.currency,
           idempotencyKey: options?.idempotencyKey ?? null,
           items,
           ...totals,
+          ...(delivery ?? {}),
         },
         { tx }
       );
@@ -73,6 +86,23 @@ export class CreateOrderUsecase {
     this.eventEmitter.emit("order.created", order);
 
     return order;
+  }
+
+  /**
+   * §36 — the diner's phone/name always come from the `Customer` row tied to
+   * their session, never the client; only the address/note can be overridden
+   * per order (e.g. deliver to the office instead of home this time).
+   */
+  private async resolveDeliveryDetails(dto: CreateOrderInput, session: IDiningSession, tx: PrismaTransaction) {
+    const customer = session.customerId ? await this.customerRepository.findById(session.customerId, { tx }) : null;
+    if (!customer) throw new NotFoundException(ORDER_ERROR_MESSAGES.CUSTOMER_NOT_FOUND);
+
+    return {
+      deliveryPhone: customer.phone,
+      deliveryCustomerName: customer.name,
+      deliveryAddress: dto.deliveryAddress ?? customer.defaultAddress,
+      deliveryNote: dto.deliveryNote ?? customer.defaultNote,
+    };
   }
 
   private async toOrderItem(

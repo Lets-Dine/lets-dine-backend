@@ -10,6 +10,8 @@ export const updateRestaurantSchema = z.object({
   /** §41 — fees are configuration, and changing them is an audited settings change. */
   serviceChargeRate: z.number().min(0).max(1).optional(),
   taxRate: z.number().min(0).max(1).optional(),
+  /** Flat minor-unit delivery charge; null clears it back to "no fee". */
+  deliveryFeeAmount: z.number().int().min(0).nullish(),
   isActive: z.boolean().optional(),
 });
 

@@ -1,4 +1,4 @@
-import { OrderItemStatus, OrderStatus } from "@prisma/client";
+import { OrderItemStatus, OrderStatus, OrderType } from "@prisma/client";
 
 export interface IOrderItemAddOn {
   addOnId: string;
@@ -31,15 +31,26 @@ export interface IOrder {
   id: string;
   reference: string;
   restaurantId: string;
-  tableId: string;
+  /** Null for a delivery order — see `orderType`. */
+  tableId: string | null;
   sessionId: string;
+  orderType: OrderType;
+  /** Set only for a delivery order, placed by a recognised `Customer`. */
+  customerId: string | null;
   status: OrderStatus;
   subtotal: number;
   serviceCharge: number;
   tax: number;
   discount: number;
+  /** A flat delivery charge, snapshotted from `Restaurant.deliveryFeeAmount` at order time. */
+  deliveryFee: number | null;
   total: number;
   currency: string;
+  /** Snapshots taken at order time — editing the `Customer` row later must not rewrite a placed order. */
+  deliveryAddress: string | null;
+  deliveryPhone: string | null;
+  deliveryCustomerName: string | null;
+  deliveryNote: string | null;
   idempotencyKey: string | null;
   cancelReason: string | null;
   acceptedAt: Date | null;
@@ -51,11 +62,12 @@ export interface IOrder {
 
 /**
  * What both sides of the product actually render: the order, its lines, the
- * table it belongs to, and which of its dishes have already been rated — the
- * last one so the review flow knows what is still owed (§10).
+ * table it belongs to (null for delivery), and which of its dishes have
+ * already been rated — the last one so the review flow knows what is still
+ * owed (§10).
  */
 export interface IOrderWithItems extends IOrder {
   items: IOrderItem[];
-  tableName: string;
+  tableName: string | null;
   reviewedDishIds: string[];
 }

@@ -43,10 +43,10 @@ export class CancelOrderItemUsecase {
       const billableLines = afterItemUpdate.items
         .filter(line => line.status !== OrderItemStatus.CANCELLED)
         .map(line => ({ unitPrice: line.unitPrice, quantity: line.quantity }));
-      const totals = calculateOrderTotals(billableLines, restaurant, order.discount);
-      const status = deriveOrderStatus(afterItemUpdate.items, order.cancelledAt);
-
-      const updated = await this.orderRepository.update(orderId, { status, ...totals }, { tx });
+      const totals = calculateOrderTotals(billableLines, restaurant, order.discount, order.deliveryFee ?? 0);
+      const status = deriveOrderStatus(afterItemUpdate.items, order.cancelledAt, order.orderType);
+      const orderNewStatus = status ?? order.status;
+      const updated = await this.orderRepository.update(orderId, { status: orderNewStatus, ...totals }, { tx });
 
       this.eventEmitter.emit("order.updated", updated);
 

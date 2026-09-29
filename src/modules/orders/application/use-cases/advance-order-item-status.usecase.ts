@@ -34,7 +34,7 @@ export class AdvanceOrderItemStatusUsecase {
       const item = order.items.find(candidate => candidate.id === itemId);
       if (!item) throw new NotFoundException(ORDER_ERROR_MESSAGES.ITEM_NOT_FOUND);
 
-      const entity = new OrderItemEntity(item);
+      const entity = new OrderItemEntity(item, order.orderType);
       if (!entity.canTransitionTo(dto.status)) {
         throw new BadRequestException({
           ...ORDER_ERROR_MESSAGES.ITEM_INVALID_TRANSITION,
@@ -43,11 +43,11 @@ export class AdvanceOrderItemStatusUsecase {
       }
 
       const afterItemUpdate = await this.orderRepository.updateItemStatus(itemId, dto.status, { tx });
-      const status = deriveOrderStatus(afterItemUpdate.items, order.cancelledAt);
+      const status = deriveOrderStatus(afterItemUpdate.items, order.cancelledAt, order.orderType);
       const updated =
         status === afterItemUpdate.status
           ? afterItemUpdate
-          : await this.orderRepository.update(orderId, { status }, { tx, actorId: authEntity.sub });
+          : await this.orderRepository.update(orderId, { status: status ?? order.status }, { tx, actorId: authEntity.sub });
 
       await this.auditLogService.record(
         {

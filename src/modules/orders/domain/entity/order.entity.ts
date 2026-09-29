@@ -9,13 +9,17 @@ import { IOrder, IOrderItem } from "../interfaces/order.interface";
  * hand for `PENDING → ACCEPTED` (the one whole-order action staff take) and
  * `→ CANCELLED` (whole-order cancel, gated further by `isCancellable` below).
  * `PREPARING`/`READY`/`COMPLETED` are reached by `deriveOrderStatus`, not by a
- * direct transition through this table.
+ * direct transition through this table — except for a delivery order, where
+ * `OUT_FOR_DELIVERY` and the `COMPLETED` that follows it are two more manual
+ * moves (gated to `orderType === DELIVERY` in `UpdateOrderStatusUsecase`),
+ * since dispatch/hand-over isn't something any item's own status can tell you.
  */
 const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   [OrderStatus.PENDING]: [OrderStatus.ACCEPTED, OrderStatus.CANCELLED],
   [OrderStatus.ACCEPTED]: [OrderStatus.PREPARING, OrderStatus.CANCELLED],
   [OrderStatus.PREPARING]: [OrderStatus.READY, OrderStatus.CANCELLED],
-  [OrderStatus.READY]: [OrderStatus.COMPLETED],
+  [OrderStatus.READY]: [OrderStatus.OUT_FOR_DELIVERY, OrderStatus.COMPLETED],
+  [OrderStatus.OUT_FOR_DELIVERY]: [OrderStatus.COMPLETED],
   [OrderStatus.COMPLETED]: [],
   [OrderStatus.CANCELLED]: [],
 };

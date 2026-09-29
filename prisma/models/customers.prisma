@@ -1,0 +1,21 @@
+/// A delivery customer, remembered per restaurant so a repeat order can
+/// prefill name/address — the one deliberate step past the app's otherwise
+/// fully-anonymous model, scoped per-restaurant like `RestaurantMember`.
+model Customer {
+  id             String   @id @default(uuid()) @map("id") @db.Uuid
+  restaurantId   String   @map("restaurant_id") @db.Uuid
+  phone          String   @map("phone")
+  name           String   @map("name")
+  defaultAddress String?  @map("default_address")
+  defaultNote    String?  @map("default_note")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  restaurant Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  sessions   DiningSession[]
+  orders     Order[]
+
+  @@unique([restaurantId, phone])
+  @@map("customers")
+  @@schema("public")
+}

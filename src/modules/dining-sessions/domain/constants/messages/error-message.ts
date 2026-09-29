@@ -12,4 +12,8 @@ export const DINING_SESSION_ERROR_MESSAGES = {
     message: "That session code does not match this table's active visit.",
   },
   NO_ACTIVE_SESSION: { key: "DINING_SESSION_NO_ACTIVE_SESSION", message: "This table has no active visit to end" },
+  CUSTOMER_NAME_REQUIRED: {
+    key: "DINING_SESSION_CUSTOMER_NAME_REQUIRED",
+    message: "Enter your name to start your first order",
+  },
 };

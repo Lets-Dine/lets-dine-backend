@@ -41,9 +41,12 @@ export class DiningSessionService {
       throw new UnauthorizedException(DINING_SESSION_ERROR_MESSAGES.EXPIRED);
     }
 
-    const table = await this.diningTableRepository.findById(session.tableId, options);
-    if (!table || table.currentSessionId !== session.id) {
-      throw new UnauthorizedException(DINING_SESSION_ERROR_MESSAGES.EXPIRED);
+    // A delivery session has no table to reconcile against — its expiry above is the only gate.
+    if (session.tableId) {
+      const table = await this.diningTableRepository.findById(session.tableId, options);
+      if (!table || table.currentSessionId !== session.id) {
+        throw new UnauthorizedException(DINING_SESSION_ERROR_MESSAGES.EXPIRED);
+      }
     }
 
     return session;
@@ -63,16 +66,20 @@ export class DiningSessionService {
     return session;
   }
 
-  async endSession(session: IDiningSession, authEntity: AuthEntity, tx: PrismaTransaction): Promise<IDiningTable> {
+  async endSession(session: IDiningSession, authEntity: AuthEntity, tx: PrismaTransaction): Promise<IDiningTable | null> {
     const closed = await this.closeOpenOrders(session.id, authEntity, tx);
     const ended = await this.diningSessionRepository.update(session.id, { endedAt: new Date() }, tx);
-    const table = await this.diningTableRepository.update(session.tableId, { currentSessionId: null }, { tx });
+    // A delivery session has no table to free up.
+    const table = session.tableId ? await this.diningTableRepository.update(session.tableId, { currentSessionId: null }, { tx }) : null;
 
     await this.auditLogService.record(
       {
         action: AuditAction.table_session_ended,
-        subject: table.name,
-        detail: closed.length > 0 ? `Table cleared — ${closingSummary(closed)}` : "Table cleared for the next visit",
+        subject: table?.name ?? "Delivery session",
+        detail:
+          closed.length > 0
+            ? `${table ? "Table cleared" : "Session ended"} — ${closingSummary(closed)}`
+            : `${table ? "Table cleared" : "Session ended"} for the next visit`,
       },
       authEntity,
       tx
@@ -126,14 +133,14 @@ export class DiningSessionService {
       // it would read as still PENDING forever, so this is the one place
       // that sets it by hand (mirroring what accepting it never got to).
       const cancelledAt = order.acceptedAt ? order.cancelledAt : new Date();
-      const status = deriveOrderStatus(items, cancelledAt);
+      const status = deriveOrderStatus(items, cancelledAt, order.orderType);
       const billable = items.filter(item => item.status !== OrderItemStatus.CANCELLED);
-      const totals = calculateOrderTotals(billable, restaurant, order.discount);
+      const totals = calculateOrderTotals(billable, restaurant, order.discount, order.deliveryFee ?? 0);
 
       closed.push(
         await this.orderRepository.update(
           order.id,
-          { status, cancelledAt, completedAt: status === OrderStatus.COMPLETED ? new Date() : null, ...totals },
+          { status: status ?? order.status, cancelledAt, completedAt: status === OrderStatus.COMPLETED ? new Date() : null, ...totals },
           { tx, actorId: authEntity.sub }
         )
       );

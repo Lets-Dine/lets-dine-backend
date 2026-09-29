@@ -3,7 +3,8 @@ import { IDiningSession } from "../interfaces/dining-session.interface";
 
 export interface IDiningSessionCreate {
   restaurantId: string;
-  tableId: string;
+  tableId: string | null;
+  customerId?: string | null;
   anonymousSessionToken: string;
   expiresAt: Date;
 }

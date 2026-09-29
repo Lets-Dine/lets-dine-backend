@@ -35,6 +35,7 @@ describe("money", () => {
         serviceCharge: 10000,
         tax: 14300,
         discount: 0,
+        deliveryFee: 0,
         total: 124300,
       });
     });
@@ -63,7 +64,26 @@ describe("money", () => {
         serviceCharge,
         tax,
         discount: 20000,
+        deliveryFee: 0,
         total: discountedSubtotal + serviceCharge + tax,
+      });
+    });
+
+    it("should add a flat delivery fee straight into the total, untaxed", () => {
+      // Arrange
+      const lines = [{ unitPrice: 100000, quantity: 1 }];
+
+      // Act
+      const totals = calculateOrderTotals(lines, { serviceChargeRate: 0.1, taxRate: 0.13 }, 0, 5000);
+
+      // Assert
+      expect(totals).toEqual({
+        subtotal: 100000,
+        serviceCharge: 10000,
+        tax: 14300,
+        discount: 0,
+        deliveryFee: 5000,
+        total: 129300,
       });
     });
   });

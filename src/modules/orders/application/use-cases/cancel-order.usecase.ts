@@ -51,7 +51,7 @@ export class CancelOrderUsecase {
       }
 
       const billable = items.filter(item => item.status !== OrderItemStatus.CANCELLED);
-      const totals = calculateOrderTotals(billable, restaurant, existing.discount);
+      const totals = calculateOrderTotals(billable, restaurant, existing.discount, existing.deliveryFee ?? 0);
 
       const cancelled = await this.orderRepository.update(
         id,

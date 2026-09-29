@@ -45,7 +45,7 @@ export class RemoveOrderItemUsecase {
       const restaurant = await this.restaurantRepository.findById(authEntity.restaurantId, { tx });
       if (!restaurant) throw new NotFoundException(RESTAURANT_ERROR_MESSAGES.NOT_FOUND);
 
-      const totals = calculateOrderTotals(resultingLines, restaurant);
+      const totals = calculateOrderTotals(resultingLines, restaurant, 0, order.deliveryFee ?? 0);
       const updated = await this.orderRepository.syncItems(
         order.id,
         {

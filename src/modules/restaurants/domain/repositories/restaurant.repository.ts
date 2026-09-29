@@ -12,6 +12,7 @@ export interface IRestaurantCreate {
   timezone?: string;
   serviceChargeRate?: number;
   taxRate?: number;
+  deliveryFeeAmount?: number | null;
 }
 
 export type IRestaurantUpdate = Partial<Omit<IRestaurantCreate, "slug">> & { isActive?: boolean };

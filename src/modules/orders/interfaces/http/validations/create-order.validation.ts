@@ -17,6 +17,14 @@ export const createOrderSchema = z.object({
     )
     .min(1)
     .max(60),
+  /**
+   * Delivery only — ignored for a dine-in session. Overrides the `Customer`
+   * row's own default for this one order (e.g. deliver to the office instead
+   * of home); phone/name always come from the session's own customer, never
+   * the client.
+   */
+  deliveryAddress: z.string().min(1).max(500).optional(),
+  deliveryNote: z.string().max(280).optional(),
 });
 
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;

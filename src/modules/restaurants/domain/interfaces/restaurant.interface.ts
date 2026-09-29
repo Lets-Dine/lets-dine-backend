@@ -10,6 +10,8 @@ export interface IRestaurant {
   /** Ratios (0..1) the order total is built from — §41, never hardcoded. */
   serviceChargeRate: number;
   taxRate: number;
+  /** Flat minor-unit delivery charge; null/0 = no fee. */
+  deliveryFeeAmount: number | null;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;

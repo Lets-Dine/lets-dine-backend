@@ -24,6 +24,13 @@ describe("Order", () => {
       expect(buildOrder(OrderStatus.READY).canTransitionTo(OrderStatus.PREPARING)).toBe(false);
     });
 
+    it("should allow a delivery order's extra steps between READY and COMPLETED", () => {
+      // Arrange & Act & Assert
+      expect(buildOrder(OrderStatus.READY).canTransitionTo(OrderStatus.OUT_FOR_DELIVERY)).toBe(true);
+      expect(buildOrder(OrderStatus.OUT_FOR_DELIVERY).canTransitionTo(OrderStatus.COMPLETED)).toBe(true);
+      expect(buildOrder(OrderStatus.OUT_FOR_DELIVERY).nextStatuses()).toEqual([OrderStatus.COMPLETED]);
+    });
+
     it("should treat completed and cancelled as final", () => {
       // Arrange & Act & Assert
       expect(buildOrder(OrderStatus.COMPLETED).nextStatuses()).toEqual([]);
@@ -61,7 +68,10 @@ describe("Order", () => {
   describe("isDishReviewable", () => {
     it("should allow rating a dish the moment it's served, even mid-order", () => {
       // Arrange
-      const items = [{ dishId: "dish-1", ...item(OrderItemStatus.SERVED) }, { dishId: "dish-2", ...item(OrderItemStatus.PREPARING) }];
+      const items = [
+        { dishId: "dish-1", ...item(OrderItemStatus.SERVED) },
+        { dishId: "dish-2", ...item(OrderItemStatus.PREPARING) },
+      ];
 
       // Act & Assert
       expect(buildOrder(OrderStatus.PREPARING).isDishReviewable(items, "dish-1")).toBe(true);

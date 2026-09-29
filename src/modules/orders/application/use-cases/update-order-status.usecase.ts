@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { AuditAction, OrderStatus } from "@prisma/client";
+import { AuditAction, OrderStatus, OrderType } from "@prisma/client";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { BadRequestException, NotFoundException } from "../../../../common/exceptions";
 import { AuthEntity } from "../../../../common/interfaces";
@@ -7,15 +7,23 @@ import { AuditLogService } from "../../../audit-logs/application/audit-log.servi
 import { ORDER_ERROR_MESSAGES } from "../../domain/constants";
 import { Order } from "../../domain/entity/order.entity";
 import { IOrderWithItems } from "../../domain/interfaces/order.interface";
-import { OrderRepository } from "../../domain/repositories/order.repository";
+import { IOrderUpdate, OrderRepository } from "../../domain/repositories/order.repository";
 import { UpdateOrderStatusInput } from "../../interfaces/http/validations/update-order-status.validation";
 
 /**
- * §20/§27 — with items now carrying their own kitchen status, this endpoint
- * is left with exactly one manual move: accepting a new ticket. Everything
- * past that (`PREPARING`/`READY`/`COMPLETED`) is read off the items via
- * `deriveOrderStatus`, not set directly here.
+ * §20/§27 — with items now carrying their own kitchen status, whole-order
+ * status mostly moves by itself. Two manual moves still go through here,
+ * both explicit (from, to) overrides rather than item-derived: accepting a
+ * new dine-in ticket (`PENDING → ACCEPTED`), and — for a delivery order only
+ * — the two steps `deriveOrderStatus` deliberately never reaches on its own
+ * (`READY → OUT_FOR_DELIVERY → COMPLETED`), since dispatch/hand-over isn't
+ * something any one item's status can tell you.
  */
+const DELIVERY_MANUAL_TRANSITIONS: Partial<Record<OrderStatus, OrderStatus>> = {
+  [OrderStatus.READY]: OrderStatus.OUT_FOR_DELIVERY,
+  [OrderStatus.OUT_FOR_DELIVERY]: OrderStatus.COMPLETED,
+};
+
 @Injectable()
 export class UpdateOrderStatusUsecase {
   constructor(
@@ -30,7 +38,9 @@ export class UpdateOrderStatusUsecase {
       throw new NotFoundException(ORDER_ERROR_MESSAGES.NOT_FOUND);
     }
 
-    if (dto.status !== OrderStatus.ACCEPTED) {
+    const isDeliveryAdvance = existing.orderType === OrderType.DELIVERY && DELIVERY_MANUAL_TRANSITIONS[existing.status] === dto.status;
+
+    if (dto.status !== OrderStatus.ACCEPTED && !isDeliveryAdvance) {
       throw new BadRequestException(ORDER_ERROR_MESSAGES.STATUS_FOLLOWS_ITEMS);
     }
 
@@ -41,7 +51,11 @@ export class UpdateOrderStatusUsecase {
       });
     }
 
-    const updated = await this.orderRepository.update(id, { status: dto.status, acceptedAt: new Date() }, { actorId: authEntity.sub });
+    const patch: IOrderUpdate = { status: dto.status };
+    if (dto.status === OrderStatus.ACCEPTED) patch.acceptedAt = new Date();
+    if (dto.status === OrderStatus.COMPLETED) patch.completedAt = new Date();
+
+    const updated = await this.orderRepository.update(id, patch, { actorId: authEntity.sub });
 
     await this.auditLogService.record(
       {

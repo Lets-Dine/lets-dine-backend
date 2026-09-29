@@ -13,7 +13,7 @@ export interface IPaymentItemCreate {
 export interface IPaymentCreate {
   restaurantId: string;
   sessionId: string;
-  tableId: string;
+  tableId: string | null;
   subtotal: number;
   serviceCharge: number;
   tax: number;

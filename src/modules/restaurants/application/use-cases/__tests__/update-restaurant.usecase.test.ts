@@ -22,6 +22,7 @@ function buildRestaurant(overrides: Partial<IRestaurant> = {}): IRestaurant {
     timezone: "Asia/Kathmandu",
     serviceChargeRate: 0.1,
     taxRate: 0.13,
+    deliveryFeeAmount: null,
     isActive: true,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -61,6 +62,22 @@ describe("UpdateRestaurantUsecase", () => {
       expect(result.serviceChargeRate).toBe(0.05);
       expect(auditLogService.record).toHaveBeenCalledWith(
         { action: AuditAction.settings_updated, subject: "Newa Kitchen", detail: "serviceChargeRate: 0.1 → 0.05" },
+        authUser
+      );
+    });
+
+    it("should update the delivery fee and record the change", async () => {
+      // Arrange
+      restaurantRepository.findById.mockResolvedValue(buildRestaurant());
+      restaurantRepository.update.mockResolvedValue(buildRestaurant({ deliveryFeeAmount: 5000 }));
+
+      // Act
+      const result = await usecase.execute({ deliveryFeeAmount: 5000 }, authUser);
+
+      // Assert
+      expect(result.deliveryFeeAmount).toBe(5000);
+      expect(auditLogService.record).toHaveBeenCalledWith(
+        { action: AuditAction.settings_updated, subject: "Newa Kitchen", detail: "deliveryFeeAmount: — → 5000" },
         authUser
       );
     });

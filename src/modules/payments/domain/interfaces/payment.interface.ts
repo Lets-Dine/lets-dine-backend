@@ -14,7 +14,8 @@ export interface IPayment {
   id: string;
   restaurantId: string;
   sessionId: string;
-  tableId: string;
+  /** Null for a delivery order settled individually — nothing to batch by table. */
+  tableId: string | null;
   subtotal: number;
   serviceCharge: number;
   tax: number;
