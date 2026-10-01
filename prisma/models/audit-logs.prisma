@@ -50,6 +50,10 @@ enum AuditAction {
   table_session_started
   table_session_ended
   qr_regenerated
+  floor_created
+  floor_renamed
+  floor_disabled
+  floor_enabled
   order_status_changed
   order_cancelled
   order_item_added

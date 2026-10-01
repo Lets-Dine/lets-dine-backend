@@ -13,6 +13,7 @@ import { AuthModule } from "./modules/auth/auth.module";
 import { DiningSessionsModule } from "./modules/dining-sessions/dining-sessions.module";
 import { DishesModule } from "./modules/dishes/dishes.module";
 import { DishVariantsModule } from "./modules/dish-variants/dish-variants.module";
+import { FloorsModule } from "./modules/floors/floors.module";
 import { MenuCategoriesModule } from "./modules/menu-categories/menu-categories.module";
 import { MenusModule } from "./modules/menus/menus.module";
 import { OrdersModule } from "./modules/orders/orders.module";
@@ -20,6 +21,7 @@ import { PaymentsModule } from "./modules/payments/payments.module";
 import { RestaurantsModule } from "./modules/restaurants/restaurants.module";
 import { ReviewsModule } from "./modules/reviews/reviews.module";
 import { TablesModule } from "./modules/tables/tables.module";
+import { UploadsModule } from "./modules/uploads/uploads.module";
 import { UsersModule } from "./modules/users/users.module";
 import { AppController } from "./app.controller";
 
@@ -37,6 +39,7 @@ import { AppController } from "./app.controller";
     AuthModule,
     RestaurantsModule,
     TablesModule,
+    FloorsModule,
     MenuCategoriesModule,
     DishesModule,
     DishVariantsModule,
@@ -47,6 +50,7 @@ import { AppController } from "./app.controller";
     PaymentsModule,
     ReviewsModule,
     AnalyticsModule,
+    UploadsModule,
   ],
   controllers: [AppController],
   providers: [

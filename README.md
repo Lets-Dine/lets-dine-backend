@@ -1,7 +1,7 @@
 # lets-dine-backend
 
 The API behind the Restaurant Dining Experience Platform described in
-`../myfood/my_food_blueprint.md` — the diner side (QR → menu → cart → order →
+`../letsDine/my_food_blueprint.md` — the diner side (QR → menu → cart → order →
 review) and the restaurant dashboard (the pass, the menu, tables, reviews,
 analytics), in one NestJS service.
 

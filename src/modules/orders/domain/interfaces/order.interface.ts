@@ -51,6 +51,8 @@ export interface IOrder {
   deliveryPhone: string | null;
   deliveryCustomerName: string | null;
   deliveryNote: string | null;
+  /** Floor orders only — snapshotted from `DiningSession.floorVisitorName` at order time. */
+  floorVisitorName: string | null;
   idempotencyKey: string | null;
   cancelReason: string | null;
   acceptedAt: Date | null;

@@ -6,6 +6,7 @@ import { buildAuthEntity } from "../../../../common/testing";
 import { OrderRepository } from "../../../orders/domain/repositories/order.repository";
 import { RestaurantRepository } from "../../../restaurants/domain/repositories/restaurant.repository";
 import { DiningTableRepository } from "../../../tables/domain/repositories/dining-table.repository";
+import { FloorRepository } from "../../../floors/domain/repositories/floor.repository";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
 import { DINING_SESSION_ERROR_MESSAGES } from "../../domain/constants";
 import { DiningSessionRepository } from "../../domain/repositories/dining-session.repository";
@@ -45,6 +46,7 @@ describe("DiningSessionService", () => {
   let service: DiningSessionService;
   let diningSessionRepository: jest.Mocked<DiningSessionRepository>;
   let diningTableRepository: jest.Mocked<DiningTableRepository>;
+  let floorRepository: jest.Mocked<FloorRepository>;
   let orderRepository: jest.Mocked<OrderRepository>;
   let restaurantRepository: jest.Mocked<RestaurantRepository>;
   let auditLogService: jest.Mocked<AuditLogService>;
@@ -56,6 +58,7 @@ describe("DiningSessionService", () => {
         DiningSessionService,
         { provide: DiningSessionRepository, useValue: { findByToken: jest.fn(), update: jest.fn() } },
         { provide: DiningTableRepository, useValue: { findById: jest.fn(), update: jest.fn() } },
+        { provide: FloorRepository, useValue: { findById: jest.fn() } },
         {
           provide: OrderRepository,
           useValue: { findOpenBySessionId: jest.fn(), updateItemStatus: jest.fn(), update: jest.fn() },
@@ -69,6 +72,7 @@ describe("DiningSessionService", () => {
     service = module.get(DiningSessionService);
     diningSessionRepository = module.get(DiningSessionRepository);
     diningTableRepository = module.get(DiningTableRepository);
+    floorRepository = module.get(FloorRepository);
     orderRepository = module.get(OrderRepository);
     restaurantRepository = module.get(RestaurantRepository);
     auditLogService = module.get(AuditLogService);
@@ -306,7 +310,7 @@ describe("DiningSessionService", () => {
 
     it("should end a delivery session without touching any table", async () => {
       // Arrange — a delivery session's tableId is null, so there is no table to free up.
-      const deliverySession = { id: "session-1", tableId: null };
+      const deliverySession = { id: "session-1", tableId: null, floorId: null };
       orderRepository.findOpenBySessionId.mockResolvedValue([]);
 
       // Act
@@ -317,6 +321,26 @@ describe("DiningSessionService", () => {
       expect(diningTableRepository.update).not.toHaveBeenCalled();
       expect(auditLogService.record).toHaveBeenCalledWith(
         expect.objectContaining({ subject: "Delivery session", detail: "Session ended for the next visit" }),
+        authUser,
+        tx
+      );
+    });
+
+    it("should end a floor session logging the floor's own name, not 'Delivery session'", async () => {
+      // Arrange — regression test: a floor session also has a null tableId, same as a delivery
+      // session, so this proves the audit subject no longer defaults to "Delivery session" for it.
+      const floorSession = { id: "session-1", tableId: null, floorId: "floor-1" };
+      orderRepository.findOpenBySessionId.mockResolvedValue([]);
+      floorRepository.findById.mockResolvedValue({ id: "floor-1", name: "3rd Floor" } as any);
+
+      // Act
+      const result = await service.endSession(floorSession as any, authUser, tx);
+
+      // Assert
+      expect(result).toBeNull();
+      expect(diningTableRepository.update).not.toHaveBeenCalled();
+      expect(auditLogService.record).toHaveBeenCalledWith(
+        expect.objectContaining({ subject: "3rd Floor", detail: "Session ended for the next visit" }),
         authUser,
         tx
       );

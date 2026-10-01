@@ -3,6 +3,7 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import { NotFoundException, UnauthorizedException } from "../../../common/exceptions";
 import { PrismaTransaction } from "../../../common/prisma";
 import { DiningTableRepository } from "../../tables/domain/repositories/dining-table.repository";
+import { FloorRepository } from "../../floors/domain/repositories/floor.repository";
 import { DINING_SESSION_ERROR_MESSAGES } from "../domain/constants";
 import { IDiningSession } from "../domain/interfaces/dining-session.interface";
 import { DiningSessionRepository } from "../domain/repositories/dining-session.repository";
@@ -27,6 +28,7 @@ export class DiningSessionService {
   constructor(
     private readonly diningSessionRepository: DiningSessionRepository,
     private readonly diningTableRepository: DiningTableRepository,
+    private readonly floorRepository: FloorRepository,
     private readonly orderRepository: OrderRepository,
     private readonly restaurantRepository: RestaurantRepository,
     private readonly auditLogService: AuditLogService,
@@ -69,13 +71,16 @@ export class DiningSessionService {
   async endSession(session: IDiningSession, authEntity: AuthEntity, tx: PrismaTransaction): Promise<IDiningTable | null> {
     const closed = await this.closeOpenOrders(session.id, authEntity, tx);
     const ended = await this.diningSessionRepository.update(session.id, { endedAt: new Date() }, tx);
-    // A delivery session has no table to free up.
+    // A delivery or floor session has no table to free up.
     const table = session.tableId ? await this.diningTableRepository.update(session.tableId, { currentSessionId: null }, { tx }) : null;
+    // A floor has no singleton to clear — the session ending is the whole story for it.
+    const floor = session.floorId ? await this.floorRepository.findById(session.floorId, { tx }) : null;
+    const subject = table?.name ?? floor?.name ?? "Delivery session";
 
     await this.auditLogService.record(
       {
         action: AuditAction.table_session_ended,
-        subject: table?.name ?? "Delivery session",
+        subject,
         detail:
           closed.length > 0
             ? `${table ? "Table cleared" : "Session ended"} — ${closingSummary(closed)}`

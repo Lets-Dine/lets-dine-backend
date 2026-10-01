@@ -23,6 +23,7 @@ model Restaurant {
 
   members    RestaurantMember[]
   tables     DiningTable[]
+  floors     Floor[]
   sessions   DiningSession[]
   categories MenuCategory[]
   dishes     Dish[]

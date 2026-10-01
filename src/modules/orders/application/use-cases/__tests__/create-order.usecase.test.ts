@@ -14,8 +14,22 @@ import { ORDER_ERROR_MESSAGES } from "../../../domain/constants";
 import { OrderRepository } from "../../../domain/repositories/order.repository";
 import { CreateOrderUsecase } from "../create-order.usecase";
 
-const session = { id: "session-1", restaurantId: "restaurant-1", tableId: "table-1", customerId: null } as IDiningSession;
-const deliverySession = { id: "session-2", restaurantId: "restaurant-1", tableId: null, customerId: "customer-1" } as IDiningSession;
+const session = { id: "session-1", restaurantId: "restaurant-1", tableId: "table-1", customerId: null, floorId: null } as IDiningSession;
+const deliverySession = {
+  id: "session-2",
+  restaurantId: "restaurant-1",
+  tableId: null,
+  customerId: "customer-1",
+  floorId: null,
+} as IDiningSession;
+const floorSession = {
+  id: "session-3",
+  restaurantId: "restaurant-1",
+  tableId: null,
+  customerId: null,
+  floorId: "floor-1",
+  floorVisitorName: "Cabin A",
+} as IDiningSession;
 const restaurant = {
   id: "restaurant-1",
   isActive: true,
@@ -327,6 +341,36 @@ describe("CreateOrderUsecase", () => {
         new NotFoundException(ORDER_ERROR_MESSAGES.CUSTOMER_NOT_FOUND)
       );
       expect(orderRepository.create).not.toHaveBeenCalled();
+    });
+
+    it("should place a floor-session order as DINE_IN, snapshotting the visitor's own name onto it", async () => {
+      // Arrange — regression test: a floor session also has a null `tableId`, same as a delivery
+      // session, so this proves the `orderType` check no longer keys off `tableId`.
+      restaurantRepository.findById.mockResolvedValue(restaurant);
+      dishRepository.findManyByIds.mockResolvedValue([dish]);
+      orderRepository.create.mockResolvedValue({ id: "order-1" } as any);
+
+      // Act
+      await usecase.execute({ lines: [{ dishId: "dish-1", quantity: 1, addOnIds: [] }] }, floorSession);
+
+      // Assert
+      const [created] = orderRepository.create.mock.calls[0];
+      expect(created).toMatchObject({ orderType: OrderType.DINE_IN, tableId: null, deliveryFee: 0, floorVisitorName: "Cabin A" });
+      expect(customerRepository.findById).not.toHaveBeenCalled();
+    });
+
+    it("should leave floorVisitorName null for a table or delivery order", async () => {
+      // Arrange
+      restaurantRepository.findById.mockResolvedValue(restaurant);
+      dishRepository.findManyByIds.mockResolvedValue([dish]);
+      orderRepository.create.mockResolvedValue({ id: "order-1" } as any);
+
+      // Act
+      await usecase.execute({ lines: [{ dishId: "dish-1", quantity: 1, addOnIds: [] }] }, session);
+
+      // Assert
+      const [created] = orderRepository.create.mock.calls[0];
+      expect(created.floorVisitorName).toBeNull();
     });
   });
 });

@@ -33,6 +33,7 @@ export interface IOrderCreate {
   deliveryPhone?: string | null;
   deliveryCustomerName?: string | null;
   deliveryNote?: string | null;
+  floorVisitorName?: string | null;
   idempotencyKey?: string | null;
   items: IOrderItemCreate[];
 }

@@ -5,6 +5,8 @@ export interface IDiningSessionCreate {
   restaurantId: string;
   tableId: string | null;
   customerId?: string | null;
+  floorId?: string | null;
+  floorVisitorName?: string | null;
   anonymousSessionToken: string;
   expiresAt: Date;
 }

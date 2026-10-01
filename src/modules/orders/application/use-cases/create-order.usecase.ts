@@ -56,9 +56,10 @@ export class CreateOrderUsecase {
 
       const items = await Promise.all(dto.lines.map(line => this.toOrderItem(line, dishes, variantsByDish, restaurant.id, tx)));
 
-      // §22 — a session with no table is a delivery session; `orderType` is the one
-      // field everything else (totals, transitions, staff filtering) branches on.
-      const isDelivery = !session.tableId;
+      // §22 — `customerId` is the one field exclusive to a delivery session (a floor
+      // session also has no `tableId`, so that alone can't be the delivery check).
+      // `orderType` is what everything else (totals, transitions, staff filtering) branches on.
+      const isDelivery = !!session.customerId;
       const deliveryFee = isDelivery ? (restaurant.deliveryFeeAmount ?? 0) : 0;
       const totals = calculateOrderTotals(items, restaurant, 0, deliveryFee);
 
@@ -71,6 +72,9 @@ export class CreateOrderUsecase {
           sessionId: session.id,
           orderType: isDelivery ? OrderType.DELIVERY : OrderType.DINE_IN,
           customerId: session.customerId ?? null,
+          // §16b — snapshotted at order time, same reasoning as the delivery details below:
+          // editing the session later must not rewrite an order already placed under it.
+          floorVisitorName: session.floorId ? session.floorVisitorName : null,
           currency: restaurant.currency,
           idempotencyKey: options?.idempotencyKey ?? null,
           items,

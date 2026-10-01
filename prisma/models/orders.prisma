@@ -29,6 +29,10 @@ model Order {
   deliveryPhone        String?     @map("delivery_phone")
   deliveryCustomerName String?     @map("delivery_customer_name")
   deliveryNote         String?     @map("delivery_note")
+  /// Floor orders only — snapshotted from `DiningSession.floorVisitorName` at order time,
+  /// same reasoning as the delivery snapshots above: editing the session later must not
+  /// rewrite a placed order.
+  floorVisitorName     String?     @map("floor_visitor_name")
   /// §36 — retrying a placement with the same key returns the first order
   /// instead of creating a second one.
   idempotencyKey       String?     @unique @map("idempotency_key")
