@@ -32,7 +32,7 @@ model Restaurant {
   reviews    DishReview[]
   auditLogs  AuditLog[]
   payments   Payment[]
-  customers  Customer[]
+  customers  CustomerRestaurant[]
 
   @@map("restaurants")
   @@schema("public")

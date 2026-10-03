@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
-import { AuditAction } from "@prisma/client";
+import { AuditAction, OrderStatus } from "@prisma/client";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { can } from "../../../../common/auth";
 import { ConflictException, ForbiddenException, NotFoundException } from "../../../../common/exceptions";
 import { AuthEntity } from "../../../../common/interfaces";
@@ -7,7 +8,9 @@ import { AuditLogService } from "../../../audit-logs/application/audit-log.servi
 import { DiningSessionService } from "../../../dining-sessions/application/dining-session.service";
 import { DiningSessionRepository } from "../../../dining-sessions/domain/repositories/dining-session.repository";
 import { DishRepository } from "../../../dishes/domain/repositories/dish.repository";
+import { OrderRepository } from "../../../orders/domain/repositories/order.repository";
 import { calculateOrderTotals } from "../../../orders/domain/utils/money.util";
+import { deriveOrderStatus } from "../../../orders/domain/utils/order-status.util";
 import { RESTAURANT_ERROR_MESSAGES } from "../../../restaurants/domain/constants";
 import { RestaurantRepository } from "../../../restaurants/domain/repositories/restaurant.repository";
 import { PAYMENT_ERROR_MESSAGES } from "../../domain/constants";
@@ -22,8 +25,10 @@ export class CompletePaymentUsecase {
     private readonly diningSessionRepository: DiningSessionRepository,
     private readonly diningSessionService: DiningSessionService,
     private readonly dishRepository: DishRepository,
+    private readonly orderRepository: OrderRepository,
     private readonly restaurantRepository: RestaurantRepository,
-    private readonly auditLogService: AuditLogService
+    private readonly auditLogService: AuditLogService,
+    private readonly eventEmitter: EventEmitter2
   ) {}
 
   async execute(dto: CompletePaymentInput, authEntity: AuthEntity): Promise<IPaymentWithItems> {
@@ -32,7 +37,7 @@ export class CompletePaymentUsecase {
       this.restaurantRepository.findById(authEntity.restaurantId),
     ]);
     if (!session || session.restaurantId !== authEntity.restaurantId) throw new NotFoundException(PAYMENT_ERROR_MESSAGES.SESSION_NOT_FOUND);
-    if (session.endedAt) throw new ConflictException(PAYMENT_ERROR_MESSAGES.SESSION_ALREADY_ENDED);
+    if (!dto.orderId && session.endedAt) throw new ConflictException(PAYMENT_ERROR_MESSAGES.SESSION_ALREADY_ENDED);
     if (!restaurant) throw new NotFoundException(RESTAURANT_ERROR_MESSAGES.NOT_FOUND);
 
     const discount = dto.discount ?? 0;
@@ -41,6 +46,15 @@ export class CompletePaymentUsecase {
     }
 
     return this.paymentRepository.$transaction(async tx => {
+      // §16b — scopes this charge to one floor order's own bill rather than the whole session's
+      // tab. Never a table order: a table settles as a merged tab, independent of any one order.
+      const order = dto.orderId ? await this.orderRepository.findById(dto.orderId, { tx }) : null;
+      if (dto.orderId) {
+        if (!order || order.sessionId !== session.id) throw new NotFoundException(PAYMENT_ERROR_MESSAGES.ORDER_NOT_FOUND);
+        if (!order.floorId) throw new ConflictException(PAYMENT_ERROR_MESSAGES.ORDER_NOT_FLOOR);
+        if (order.paidAt) throw new ConflictException(PAYMENT_ERROR_MESSAGES.ORDER_ALREADY_PAID);
+      }
+
       const dishes = await this.dishRepository.findManyByIds(
         dto.items.map(line => line.dishId),
         { tx }
@@ -62,6 +76,7 @@ export class CompletePaymentUsecase {
           restaurantId: authEntity.restaurantId,
           sessionId: session.id,
           tableId: session.tableId,
+          floorId: session.floorId,
           subtotal: totals.subtotal,
           serviceCharge: totals.serviceCharge,
           tax: totals.tax,
@@ -79,14 +94,25 @@ export class CompletePaymentUsecase {
       await this.auditLogService.record(
         {
           action: AuditAction.payment_completed,
-          subject: `Session ${session.id}`,
+          subject: order ? `Order ${order.reference}` : `Session ${session.id}`,
           detail: `Charged ${payment.total} ${payment.currency} via ${payment.method}${discount > 0 ? ` (${discount} discount)` : ""}`,
         },
         authEntity,
         tx
       );
 
-      if (dto.endSession) {
+      if (order) {
+        // Marks exactly this order paid and re-derives its own status — never the session-wide
+        // `endSession` below, which a floor order's "no shared bill" rule (§16b) must not trigger.
+        const paidAt = new Date();
+        const status = deriveOrderStatus(order.items, order.cancelledAt, order.orderType, { isFloorOrder: true, paidAt });
+        const updatedOrder = await this.orderRepository.update(
+          order.id,
+          { paidAt, status: status ?? order.status, completedAt: status === OrderStatus.COMPLETED ? paidAt : order.completedAt },
+          { tx, actorId: authEntity.sub }
+        );
+        this.eventEmitter.emit("order.updated", updatedOrder);
+      } else if (dto.endSession) {
         await this.diningSessionService.endSession(session, authEntity, tx);
       }
 

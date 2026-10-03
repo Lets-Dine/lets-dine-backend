@@ -32,7 +32,7 @@ export class FetchCurrentSessionUsecase {
 
     // §22 — a session with no table and no floor is a delivery session.
     if (!session.tableId) {
-      const customer = session.customerId ? await this.customerRepository.findById(session.customerId) : null;
+      const customer = session.customerId ? await this.customerRepository.findById(session.customerId, session.restaurantId) : null;
       return { session, restaurant, table: null, customer };
     }
 

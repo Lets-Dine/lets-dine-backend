@@ -16,6 +16,8 @@ model Payment {
   sessionId     String        @map("session_id") @db.Uuid
   /// Null for a delivery order settled individually — nothing to batch by table.
   tableId       String?       @map("table_id") @db.Uuid
+  /// §16b — set only for a floor order's own bill, same reasoning as `Order.floorId`.
+  floorId       String?       @map("floor_id") @db.Uuid
   subtotal      Int           @map("subtotal")
   serviceCharge Int           @map("service_charge")
   tax           Int           @map("tax")
@@ -33,10 +35,12 @@ model Payment {
   restaurant Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   session    DiningSession @relation(fields: [sessionId], references: [id], onDelete: Restrict)
   table      DiningTable?  @relation(fields: [tableId], references: [id], onDelete: Restrict)
+  floor      Floor?        @relation(fields: [floorId], references: [id], onDelete: Restrict)
   items      PaymentItem[]
 
   @@index([restaurantId, createdAt])
   @@index([sessionId])
+  @@index([floorId])
   @@map("payments")
   @@schema("public")
 }

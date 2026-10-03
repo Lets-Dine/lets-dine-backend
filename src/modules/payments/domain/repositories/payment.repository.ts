@@ -14,6 +14,7 @@ export interface IPaymentCreate {
   restaurantId: string;
   sessionId: string;
   tableId: string | null;
+  floorId?: string | null;
   subtotal: number;
   serviceCharge: number;
   tax: number;

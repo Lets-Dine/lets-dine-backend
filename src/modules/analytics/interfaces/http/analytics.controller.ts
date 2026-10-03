@@ -5,18 +5,21 @@ import { buildHttpResponse } from "../../../../common/utils";
 import { FetchAnalyticsDto } from "../../application/dto/fetch-analytics.dto";
 import { FetchOrderComparisonDto } from "../../application/dto/fetch-order-comparison.dto";
 import { FetchRevenueComparisonDto } from "../../application/dto/fetch-revenue-comparison.dto";
+import { FetchTopSellingDishesDto } from "../../application/dto/fetch-top-selling-dishes.dto";
 import { FetchAnalyticsOverviewUsecase } from "../../application/use-cases/fetch-analytics-overview.usecase";
 import { FetchOrderComparisonUsecase } from "../../application/use-cases/fetch-order-comparison.usecase";
 import { FetchRevenueComparisonUsecase } from "../../application/use-cases/fetch-revenue-comparison.usecase";
+import { FetchTopSellingDishesUsecase } from "../../application/use-cases/fetch-top-selling-dishes.usecase";
 import { ANALYTICS_SUCCESS_MESSAGES } from "../../domain/constants";
-import { IAnalyticsOverview, IOrderComparison, IRevenueComparison } from "../../domain/interfaces/analytics.interface";
+import { IAnalyticsOverview, IOrderComparison, IRevenueComparison, ITopSellingDish } from "../../domain/interfaces/analytics.interface";
 
 @Controller("restaurant/analytics")
 export class AnalyticsController {
   constructor(
     private readonly fetchAnalyticsOverviewUsecase: FetchAnalyticsOverviewUsecase,
     private readonly fetchRevenueComparisonUsecase: FetchRevenueComparisonUsecase,
-    private readonly fetchOrderComparisonUsecase: FetchOrderComparisonUsecase
+    private readonly fetchOrderComparisonUsecase: FetchOrderComparisonUsecase,
+    private readonly fetchTopSellingDishesUsecase: FetchTopSellingDishesUsecase
   ) {}
 
   @Get()
@@ -47,5 +50,16 @@ export class AnalyticsController {
   ): Promise<IHttpResponse<IOrderComparison>> {
     const comparison = await this.fetchOrderComparisonUsecase.execute(query.period, authEntity);
     return buildHttpResponse(comparison, ANALYTICS_SUCCESS_MESSAGES.ORDER_COMPARISON_FETCHED);
+  }
+
+  @Get("top-dishes")
+  @UseGuards(AuthGuard, AbilityGuard)
+  @CheckPolicies(checkPermissionRules([["analytics:view"]]))
+  async fetchTopSellingDishes(
+    @Query() query: FetchTopSellingDishesDto,
+    @AuthUser() authEntity: AuthEntity
+  ): Promise<IHttpResponse<ITopSellingDish[]>> {
+    const dishes = await this.fetchTopSellingDishesUsecase.execute(query, authEntity);
+    return buildHttpResponse(dishes, ANALYTICS_SUCCESS_MESSAGES.TOP_SELLING_DISHES_FETCHED);
   }
 }

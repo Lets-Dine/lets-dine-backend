@@ -84,7 +84,7 @@ describe("CreateOrderUsecase", () => {
         { provide: DishRepository, useValue: { findManyByIds: jest.fn() } },
         { provide: AddOnRepository, useValue: { findLinkedToDish: jest.fn() } },
         { provide: DishVariantRepository, useValue: { findManyByDishIds: jest.fn() } },
-        { provide: CustomerRepository, useValue: { findById: jest.fn() } },
+        { provide: CustomerRepository, useValue: { findById: jest.fn(), upsert: jest.fn() } },
         { provide: EventEmitter2, useValue: { emit: jest.fn() } },
       ],
     }).compile();
@@ -343,7 +343,7 @@ describe("CreateOrderUsecase", () => {
       expect(orderRepository.create).not.toHaveBeenCalled();
     });
 
-    it("should place a floor-session order as DINE_IN, snapshotting the visitor's own name onto it", async () => {
+    it("should place a floor-session order as DINE_IN, falling back to the session's legacy floor name when none is sent", async () => {
       // Arrange — regression test: a floor session also has a null `tableId`, same as a delivery
       // session, so this proves the `orderType` check no longer keys off `tableId`.
       restaurantRepository.findById.mockResolvedValue(restaurant);
@@ -357,6 +357,92 @@ describe("CreateOrderUsecase", () => {
       const [created] = orderRepository.create.mock.calls[0];
       expect(created).toMatchObject({ orderType: OrderType.DINE_IN, tableId: null, deliveryFee: 0, floorVisitorName: "Cabin A" });
       expect(customerRepository.findById).not.toHaveBeenCalled();
+    });
+
+    it("should snapshot the request's own floorVisitorName (where to bring the order) onto a floor order, overriding the session's legacy one", async () => {
+      // Arrange — §16b: the cabin/room/spot is now captured at order time, not session start.
+      restaurantRepository.findById.mockResolvedValue(restaurant);
+      dishRepository.findManyByIds.mockResolvedValue([dish]);
+      orderRepository.create.mockResolvedValue({ id: "order-1" } as any);
+
+      // Act
+      await usecase.execute({ lines: [{ dishId: "dish-1", quantity: 1, addOnIds: [] }], floorVisitorName: "Room 12" }, floorSession);
+
+      // Assert
+      const [created] = orderRepository.create.mock.calls[0];
+      expect(created).toMatchObject({ orderType: OrderType.DINE_IN, floorVisitorName: "Room 12" });
+    });
+
+    it("should upsert a Customer by phone and attach it to a floor order given identity in the request, independently of floorVisitorName", async () => {
+      // Arrange — §16b: identity (who it's for) and floorVisitorName (where it goes) are
+      // independent — the customer's own name must never leak onto floorVisitorName.
+      restaurantRepository.findById.mockResolvedValue(restaurant);
+      dishRepository.findManyByIds.mockResolvedValue([dish]);
+      customerRepository.upsert.mockResolvedValue(customer as any);
+      orderRepository.create.mockResolvedValue({ id: "order-1" } as any);
+
+      // Act
+      await usecase.execute(
+        {
+          lines: [{ dishId: "dish-1", quantity: 1, addOnIds: [] }],
+          customer: { phone: "9800000000", name: "Hari Gurung" },
+          floorVisitorName: "Cabin B",
+        },
+        floorSession
+      );
+
+      // Assert
+      expect(customerRepository.upsert).toHaveBeenCalledWith(
+        { restaurantId: "restaurant-1", phone: "9800000000", name: "Hari Gurung" },
+        { tx: expect.anything() }
+      );
+      const [created] = orderRepository.create.mock.calls[0];
+      expect(created).toMatchObject({ orderType: OrderType.DINE_IN, customerId: customer.id, floorVisitorName: "Cabin B" });
+    });
+
+    it("should upsert a Customer by phone and attach it to a table order given identity in the request", async () => {
+      // Arrange — §16b extended to tables: a table order has no floorVisitorName to keep
+      // independent of identity, but the customer capture itself works the same way.
+      restaurantRepository.findById.mockResolvedValue(restaurant);
+      dishRepository.findManyByIds.mockResolvedValue([dish]);
+      customerRepository.upsert.mockResolvedValue(customer as any);
+      orderRepository.create.mockResolvedValue({ id: "order-1" } as any);
+
+      // Act
+      await usecase.execute(
+        {
+          lines: [{ dishId: "dish-1", quantity: 1, addOnIds: [] }],
+          customer: { phone: "9800000000", name: "Hari Gurung" },
+        },
+        session
+      );
+
+      // Assert
+      expect(customerRepository.upsert).toHaveBeenCalledWith(
+        { restaurantId: "restaurant-1", phone: "9800000000", name: "Hari Gurung" },
+        { tx: expect.anything() }
+      );
+      const [created] = orderRepository.create.mock.calls[0];
+      expect(created).toMatchObject({ orderType: OrderType.DINE_IN, customerId: customer.id, floorVisitorName: null });
+    });
+
+    it("should ignore a customer payload sent for a delivery order — identity always comes from the session", async () => {
+      // Arrange
+      restaurantRepository.findById.mockResolvedValue(restaurant);
+      dishRepository.findManyByIds.mockResolvedValue([dish]);
+      customerRepository.findById.mockResolvedValue(customer as any);
+      orderRepository.create.mockResolvedValue({ id: "order-1" } as any);
+
+      // Act
+      await usecase.execute(
+        { lines: [{ dishId: "dish-1", quantity: 1, addOnIds: [] }], customer: { phone: "9811111111", name: "Someone Else" } },
+        deliverySession
+      );
+
+      // Assert
+      expect(customerRepository.upsert).not.toHaveBeenCalled();
+      const [created] = orderRepository.create.mock.calls[0];
+      expect(created.customerId).toBe(customer.id);
     });
 
     it("should leave floorVisitorName null for a table or delivery order", async () => {

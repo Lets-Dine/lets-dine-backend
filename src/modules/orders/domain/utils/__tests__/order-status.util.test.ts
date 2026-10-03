@@ -21,4 +21,21 @@ describe("deriveOrderStatus", () => {
     // Arrange & Act & Assert
     expect(deriveOrderStatus([item(OrderItemStatus.CANCELLED)], null, OrderType.DELIVERY)).toBe("CANCELLED");
   });
+
+  it("should derive UNPAID for a floor order once every item is served but nothing is paid yet", () => {
+    // Arrange & Act & Assert
+    expect(deriveOrderStatus([item(OrderItemStatus.SERVED)], null, OrderType.DINE_IN, { isFloorOrder: true })).toBe("UNPAID");
+  });
+
+  it("should derive COMPLETED for a floor order once every item is served and it's been paid", () => {
+    // Arrange & Act & Assert
+    expect(deriveOrderStatus([item(OrderItemStatus.SERVED)], null, OrderType.DINE_IN, { isFloorOrder: true, paidAt: new Date() })).toBe(
+      "COMPLETED"
+    );
+  });
+
+  it("should never gate a table order on payment — UNPAID is floor-only", () => {
+    // Arrange & Act & Assert
+    expect(deriveOrderStatus([item(OrderItemStatus.SERVED)], null, OrderType.DINE_IN, { isFloorOrder: false })).toBe("COMPLETED");
+  });
 });

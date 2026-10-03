@@ -15,9 +15,9 @@ const DEFAULT_TTL_MINUTES = 180;
  * §16b — the floor counterpart of `StartDiningSessionUsecase`, deliberately
  * simpler: `Floor` has no `currentSessionId` singleton to join or lock
  * against, so every scan just creates its own fresh session. Any number of
- * staff can be mid-visit on the same floor QR at once — `visitorName` (a
- * room/cabin/self name the diner types in) is what tells their orders apart,
- * since there is no table to identify them by instead.
+ * staff can be mid-visit on the same floor QR at once. Identity (name/phone,
+ * upserted as a `Customer`) is captured at order time now rather than here —
+ * `visitorName` survives only as an optional legacy fallback.
  */
 @Injectable()
 export class StartFloorSessionUsecase {
@@ -41,7 +41,7 @@ export class StartFloorSessionUsecase {
       restaurantId: floor.restaurantId,
       tableId: null,
       floorId: floor.id,
-      floorVisitorName: dto.visitorName.trim(),
+      floorVisitorName: dto.visitorName?.trim() || null,
       anonymousSessionToken: generateSessionToken(),
       expiresAt: sessionExpiryFrom(startedAt, this.ttlMinutes()),
     });

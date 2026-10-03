@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { AuditLogsModule } from "../audit-logs/audit-logs.module";
 import { DiningSessionsModule } from "../dining-sessions/dining-sessions.module";
 import { DishesModule } from "../dishes/dishes.module";
+import { OrdersModule } from "../orders/orders.module";
 import { RestaurantsModule } from "../restaurants/restaurants.module";
 import { CompletePaymentUsecase } from "./application/use-cases/complete-payment.usecase";
 import { FetchSessionPaymentUsecase } from "./application/use-cases/fetch-session-payment.usecase";
@@ -13,7 +14,7 @@ import { PaymentController } from "./interfaces/http/payment.controller";
 import { PublicPaymentController } from "./interfaces/http/public-payment.controller";
 
 @Module({
-  imports: [DiningSessionsModule, DishesModule, RestaurantsModule, AuditLogsModule],
+  imports: [DiningSessionsModule, DishesModule, OrdersModule, RestaurantsModule, AuditLogsModule],
   controllers: [PaymentController, PublicPaymentController],
   providers: [
     CompletePaymentUsecase,

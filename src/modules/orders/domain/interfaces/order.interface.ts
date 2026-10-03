@@ -34,8 +34,11 @@ export interface IOrder {
   /** Null for a delivery order — see `orderType`. */
   tableId: string | null;
   sessionId: string;
+  /** §16b — set only for a floor order, directly rather than joined in through the session. The
+   *  authoritative "is this a floor order" signal — prefer it over `floorName` for that check. */
+  floorId: string | null;
   orderType: OrderType;
-  /** Set only for a delivery order, placed by a recognised `Customer`. */
+  /** Set for a delivery order's own `Customer`, or a floor order's recognised one (§16b) — null for a table order. */
   customerId: string | null;
   status: OrderStatus;
   subtotal: number;
@@ -51,12 +54,15 @@ export interface IOrder {
   deliveryPhone: string | null;
   deliveryCustomerName: string | null;
   deliveryNote: string | null;
-  /** Floor orders only — snapshotted from `DiningSession.floorVisitorName` at order time. */
+  /** Floor orders only — which cabin/room/spot on the floor to bring this order to, typed in at checkout (§16b) and snapshotted here. */
   floorVisitorName: string | null;
   idempotencyKey: string | null;
   cancelReason: string | null;
   acceptedAt: Date | null;
   cancelledAt: Date | null;
+  /** Floor orders only (§16b) — set once that order's own bill is paid. Null for a table or
+   *  delivery order, neither of which pass through `UNPAID` on the way to `COMPLETED`. */
+  paidAt: Date | null;
   completedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -71,5 +77,7 @@ export interface IOrder {
 export interface IOrderWithItems extends IOrder {
   items: IOrderItem[];
   tableName: string | null;
+  /** Floor orders only — the floor's own name (e.g. "3rd Floor"), joined in through `floorId` at read time; not a stored column itself. */
+  floorName: string | null;
   reviewedDishIds: string[];
 }

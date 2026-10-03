@@ -9,6 +9,7 @@ import {
   IOrderComparisonTotals,
   IOrderSummary,
   IRevenueTotals,
+  ITopSellingDish,
 } from "../../domain/interfaces/analytics.interface";
 import { AnalyticsFetchOptions, AnalyticsRepository } from "../../domain/repositories/analytics.repository";
 
@@ -200,6 +201,31 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
     `;
 
     return { current: Number(row?.current ?? 0n), previous: Number(row?.previous ?? 0n) };
+  }
+
+  /**
+   * §31 — sourced from `payment_items`, not `order_items`: an order only
+   * counts as "sold" once it's actually been paid for, the same reasoning
+   * `fetchRevenueComparison` already applies to the `payments` table. Revenue
+   * is summed in memory for the same reason as `fetchDishPerformance` above.
+   */
+  async fetchTopSellingDishes(restaurantId: string, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<ITopSellingDish[]> {
+    const prisma = options?.tx ?? this.prisma;
+
+    const items = await prisma.paymentItem.findMany({
+      where: { payment: { restaurantId, createdAt: { gte: range.from, lt: range.to } } },
+      select: { dishId: true, dishNameSnapshot: true, unitPrice: true, quantity: true },
+    });
+
+    const dishes = new Map<string, ITopSellingDish>();
+    for (const item of items) {
+      const row = dishes.get(item.dishId) ?? { dishId: item.dishId, dishName: item.dishNameSnapshot, orderCount: 0, totalAmount: 0 };
+      row.orderCount += item.quantity;
+      row.totalAmount += item.unitPrice * item.quantity;
+      dishes.set(item.dishId, row);
+    }
+
+    return [...dishes.values()].sort((a, b) => b.orderCount - a.orderCount);
   }
 
   private ordersWhere(restaurantId: string, range: IAnalyticsRange): Prisma.OrderWhereInput {

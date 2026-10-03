@@ -10,8 +10,12 @@ model Order {
   /// Null for a delivery order — see `orderType`.
   tableId              String?     @map("table_id") @db.Uuid
   sessionId            String      @map("session_id") @db.Uuid
+  /// §16b — set only for a floor order, directly rather than joined in through the session,
+  /// so a floor ticket is identifiable (and queryable) without reading `session.floorId` first.
+  floorId              String?     @map("floor_id") @db.Uuid
   orderType            OrderType   @default(DINE_IN) @map("order_type")
-  /// Set only for a delivery order, placed by a recognised `Customer`.
+  /// Set for a delivery order's own `Customer`, or a floor order's recognised
+  /// one (§16b, upserted by phone at order time) — null for a table order.
   customerId           String?     @map("customer_id") @db.Uuid
   status               OrderStatus @default(PENDING) @map("status")
   subtotal             Int         @default(0) @map("subtotal")
@@ -29,9 +33,8 @@ model Order {
   deliveryPhone        String?     @map("delivery_phone")
   deliveryCustomerName String?     @map("delivery_customer_name")
   deliveryNote         String?     @map("delivery_note")
-  /// Floor orders only — snapshotted from `DiningSession.floorVisitorName` at order time,
-  /// same reasoning as the delivery snapshots above: editing the session later must not
-  /// rewrite a placed order.
+  /// Floor orders only — the diner's own name, captured at order time (§16b)
+  /// and snapshotted here, same reasoning as the delivery snapshots above.
   floorVisitorName     String?     @map("floor_visitor_name")
   /// §36 — retrying a placement with the same key returns the first order
   /// instead of creating a second one.
@@ -41,6 +44,10 @@ model Order {
   /// other move forward is driven by the items (`OrderItem.status`).
   acceptedAt           DateTime?   @map("accepted_at")
   cancelledAt          DateTime?   @map("cancelled_at")
+  /// Floor orders only (§16b) — set once that order's own bill is paid, the one thing that turns
+  /// an `UNPAID` ticket into `COMPLETED`. Always null for a table or delivery order, which reach
+  /// `COMPLETED` without this gap (see `deriveOrderStatus`).
+  paidAt               DateTime?   @map("paid_at")
   completedAt          DateTime?   @map("completed_at")
   createdAt            DateTime    @default(now()) @map("created_at")
   updatedAt            DateTime    @updatedAt @map("updated_at")
@@ -51,6 +58,7 @@ model Order {
   table      DiningTable?  @relation(fields: [tableId], references: [id], onDelete: Restrict)
   session    DiningSession @relation(fields: [sessionId], references: [id], onDelete: Restrict)
   customer   Customer?     @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  floor      Floor?        @relation(fields: [floorId], references: [id], onDelete: Restrict)
   items      OrderItem[]
   reviews    DishReview[]
 
@@ -59,6 +67,7 @@ model Order {
   @@index([restaurantId, orderType])
   @@index([sessionId])
   @@index([tableId, status])
+  @@index([floorId])
   @@map("orders")
   @@schema("public")
 }
@@ -76,6 +85,8 @@ enum OrderStatus {
   PREPARING
   READY
   OUT_FOR_DELIVERY
+  /// Floor orders only (§16b) — every item is SERVED but `paidAt` isn't set yet.
+  UNPAID
   COMPLETED
   CANCELLED
 

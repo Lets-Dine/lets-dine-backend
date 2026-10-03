@@ -99,7 +99,7 @@ function zonedOffsetMs(instant: Date, timeZone: string): number {
 }
 
 /** Midnight of `instant`'s own calendar day in `timeZone`, as a real UTC instant. */
-function startOfZonedDay(instant: Date, timeZone: string): Date {
+export function startOfZonedDay(instant: Date, timeZone: string): Date {
   const { year, month, day } = zonedDateParts(instant, timeZone);
   const offset = zonedOffsetMs(instant, timeZone);
   return new Date(Date.UTC(year, month - 1, day) - offset);

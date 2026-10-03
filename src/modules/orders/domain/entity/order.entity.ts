@@ -20,6 +20,9 @@ const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   [OrderStatus.PREPARING]: [OrderStatus.READY, OrderStatus.CANCELLED],
   [OrderStatus.READY]: [OrderStatus.OUT_FOR_DELIVERY, OrderStatus.COMPLETED],
   [OrderStatus.OUT_FOR_DELIVERY]: [OrderStatus.COMPLETED],
+  // Floor orders only (§16b) — reached by `deriveOrderStatus`, not through this table; the one
+  // way out is `CompletePaymentUsecase` setting `paidAt` for that order, same as COMPLETED above.
+  [OrderStatus.UNPAID]: [OrderStatus.COMPLETED],
   [OrderStatus.COMPLETED]: [],
   [OrderStatus.CANCELLED]: [],
 };

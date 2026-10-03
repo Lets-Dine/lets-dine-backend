@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { AuditAction } from "@prisma/client";
+import { AuditAction, OrderStatus } from "@prisma/client";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { BadRequestException, NotFoundException } from "../../../../common/exceptions";
 import { AuthEntity } from "../../../../common/interfaces";
@@ -43,11 +43,18 @@ export class AdvanceOrderItemStatusUsecase {
       }
 
       const afterItemUpdate = await this.orderRepository.updateItemStatus(itemId, dto.status, { tx });
-      const status = deriveOrderStatus(afterItemUpdate.items, order.cancelledAt, order.orderType);
+      const status = deriveOrderStatus(afterItemUpdate.items, order.cancelledAt, order.orderType, {
+        isFloorOrder: Boolean(order.floorId),
+        paidAt: order.paidAt,
+      });
       const updated =
         status === afterItemUpdate.status
           ? afterItemUpdate
-          : await this.orderRepository.update(orderId, { status: status ?? order.status }, { tx, actorId: authEntity.sub });
+          : await this.orderRepository.update(
+              orderId,
+              { status: status ?? order.status, completedAt: status === OrderStatus.COMPLETED ? new Date() : order.completedAt },
+              { tx, actorId: authEntity.sub }
+            );
 
       await this.auditLogService.record(
         {

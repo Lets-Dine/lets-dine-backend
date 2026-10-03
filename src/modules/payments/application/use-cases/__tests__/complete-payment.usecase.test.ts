@@ -1,11 +1,13 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { AuditAction, StaffRole } from "@prisma/client";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { ConflictException, ForbiddenException, NotFoundException } from "../../../../../common/exceptions";
 import { buildAuthEntity } from "../../../../../common/testing";
 import { AuditLogService } from "../../../../audit-logs/application/audit-log.service";
 import { DiningSessionService } from "../../../../dining-sessions/application/dining-session.service";
 import { DiningSessionRepository } from "../../../../dining-sessions/domain/repositories/dining-session.repository";
 import { DishRepository } from "../../../../dishes/domain/repositories/dish.repository";
+import { OrderRepository } from "../../../../orders/domain/repositories/order.repository";
 import { RestaurantRepository } from "../../../../restaurants/domain/repositories/restaurant.repository";
 import { PAYMENT_ERROR_MESSAGES } from "../../../domain/constants";
 import { PaymentRepository } from "../../../domain/repositories/payment.repository";
@@ -18,6 +20,19 @@ const restaurant = { id: authUser.restaurantId, serviceChargeRate: 0.1, taxRate:
 const dish = { id: "dish-1", restaurantId: authUser.restaurantId, name: "Momo", price: 200 };
 const requestItems = [{ dishId: "dish-1", quantity: 2 }];
 const method = "CASH" as const;
+const floorOrder = {
+  id: "order-1",
+  reference: "#1001",
+  sessionId: "session-1",
+  orderType: "DINE_IN",
+  floorId: "floor-1",
+  floorName: "3rd Floor",
+  cancelledAt: null,
+  paidAt: null,
+  completedAt: null,
+  status: "UNPAID",
+  items: [{ status: "SERVED" }],
+};
 
 describe("CompletePaymentUsecase", () => {
   let usecase: CompletePaymentUsecase;
@@ -25,8 +40,10 @@ describe("CompletePaymentUsecase", () => {
   let diningSessionRepository: jest.Mocked<DiningSessionRepository>;
   let diningSessionService: jest.Mocked<DiningSessionService>;
   let dishRepository: jest.Mocked<DishRepository>;
+  let orderRepository: jest.Mocked<OrderRepository>;
   let restaurantRepository: jest.Mocked<RestaurantRepository>;
   let auditLogService: jest.Mocked<AuditLogService>;
+  let eventEmitter: jest.Mocked<EventEmitter2>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -36,8 +53,10 @@ describe("CompletePaymentUsecase", () => {
         { provide: DiningSessionRepository, useValue: { findById: jest.fn() } },
         { provide: DiningSessionService, useValue: { endSession: jest.fn() } },
         { provide: DishRepository, useValue: { findManyByIds: jest.fn() } },
+        { provide: OrderRepository, useValue: { findById: jest.fn(), update: jest.fn() } },
         { provide: RestaurantRepository, useValue: { findById: jest.fn() } },
         { provide: AuditLogService, useValue: { record: jest.fn() } },
+        { provide: EventEmitter2, useValue: { emit: jest.fn() } },
       ],
     }).compile();
 
@@ -46,8 +65,10 @@ describe("CompletePaymentUsecase", () => {
     diningSessionRepository = module.get(DiningSessionRepository);
     diningSessionService = module.get(DiningSessionService);
     dishRepository = module.get(DishRepository);
+    orderRepository = module.get(OrderRepository);
     restaurantRepository = module.get(RestaurantRepository);
     auditLogService = module.get(AuditLogService);
+    eventEmitter = module.get(EventEmitter2);
 
     diningSessionRepository.findById.mockResolvedValue(session as any);
     restaurantRepository.findById.mockResolvedValue(restaurant as any);
@@ -143,9 +164,86 @@ describe("CompletePaymentUsecase", () => {
 
     it("should throw ConflictException when the discount exceeds the bill", async () => {
       // Act & Assert
-      await expect(
-        usecase.execute({ sessionId: "session-1", items: requestItems, method, discount: 100000 }, authUser)
-      ).rejects.toThrow(new ConflictException(PAYMENT_ERROR_MESSAGES.DISCOUNT_EXCEEDS_TOTAL));
+      await expect(usecase.execute({ sessionId: "session-1", items: requestItems, method, discount: 100000 }, authUser)).rejects.toThrow(
+        new ConflictException(PAYMENT_ERROR_MESSAGES.DISCOUNT_EXCEEDS_TOTAL)
+      );
+    });
+
+    describe("a floor order's own bill (orderId)", () => {
+      beforeEach(() => {
+        orderRepository.findById.mockResolvedValue(floorOrder as any);
+        paymentRepository.create.mockResolvedValue({ id: "payment-1", total: 452, currency: "NPR" } as any);
+      });
+
+      it("should mark exactly that order paid and completed, never the whole session", async () => {
+        // Arrange
+        orderRepository.update.mockResolvedValue({ ...floorOrder, status: "COMPLETED", paidAt: new Date() } as any);
+
+        // Act
+        await usecase.execute({ sessionId: "session-1", orderId: "order-1", items: requestItems, method }, authUser);
+
+        // Assert
+        const [orderId, patch] = orderRepository.update.mock.calls[0];
+        expect(orderId).toBe("order-1");
+        expect(patch).toEqual(expect.objectContaining({ status: "COMPLETED", paidAt: expect.any(Date), completedAt: expect.any(Date) }));
+        expect(eventEmitter.emit).toHaveBeenCalledWith("order.updated", expect.objectContaining({ status: "COMPLETED" }));
+        expect(diningSessionService.endSession).not.toHaveBeenCalled();
+      });
+
+      it("should ignore endSession when scoped to one order — a floor order never fast-forwards its siblings", async () => {
+        // Arrange
+        orderRepository.update.mockResolvedValue({ ...floorOrder, status: "COMPLETED", paidAt: new Date() } as any);
+
+        // Act
+        await usecase.execute({ sessionId: "session-1", orderId: "order-1", items: requestItems, method, endSession: true }, authUser);
+
+        // Assert
+        expect(diningSessionService.endSession).not.toHaveBeenCalled();
+      });
+
+      it("should not complete the order yet when paying ahead of the kitchen", async () => {
+        // Arrange — only one of two items has been served so far.
+        const halfServed = { ...floorOrder, items: [{ status: "SERVED" }, { status: "PREPARING" }] };
+        orderRepository.findById.mockResolvedValue(halfServed as any);
+        orderRepository.update.mockResolvedValue({ ...halfServed, paidAt: new Date() } as any);
+
+        // Act
+        await usecase.execute({ sessionId: "session-1", orderId: "order-1", items: requestItems, method }, authUser);
+
+        // Assert — paidAt is set, but status/completedAt stay put until the kitchen actually finishes.
+        const [, patch] = orderRepository.update.mock.calls[0];
+        expect(patch).toEqual(expect.objectContaining({ status: "PREPARING", paidAt: expect.any(Date), completedAt: null }));
+      });
+
+      it("should throw NotFoundException when the order isn't on this session", async () => {
+        // Arrange
+        orderRepository.findById.mockResolvedValue({ ...floorOrder, sessionId: "some-other-session" } as any);
+
+        // Act & Assert
+        await expect(
+          usecase.execute({ sessionId: "session-1", orderId: "order-1", items: requestItems, method }, authUser)
+        ).rejects.toThrow(new NotFoundException(PAYMENT_ERROR_MESSAGES.ORDER_NOT_FOUND));
+      });
+
+      it("should throw ConflictException when the order isn't a floor order", async () => {
+        // Arrange
+        orderRepository.findById.mockResolvedValue({ ...floorOrder, floorId: null, floorName: null } as any);
+
+        // Act & Assert
+        await expect(
+          usecase.execute({ sessionId: "session-1", orderId: "order-1", items: requestItems, method }, authUser)
+        ).rejects.toThrow(new ConflictException(PAYMENT_ERROR_MESSAGES.ORDER_NOT_FLOOR));
+      });
+
+      it("should throw ConflictException when the order is already paid", async () => {
+        // Arrange
+        orderRepository.findById.mockResolvedValue({ ...floorOrder, paidAt: new Date() } as any);
+
+        // Act & Assert
+        await expect(
+          usecase.execute({ sessionId: "session-1", orderId: "order-1", items: requestItems, method }, authUser)
+        ).rejects.toThrow(new ConflictException(PAYMENT_ERROR_MESSAGES.ORDER_ALREADY_PAID));
+      });
     });
   });
 });

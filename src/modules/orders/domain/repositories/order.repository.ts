@@ -20,6 +20,7 @@ export interface IOrderCreate {
   restaurantId: string;
   tableId: string | null;
   sessionId: string;
+  floorId?: string | null;
   orderType?: OrderType;
   customerId?: string | null;
   currency: string;
@@ -52,6 +53,7 @@ export interface IOrderUpdate extends Partial<IOrderTotalsUpdate> {
   cancelReason?: string | null;
   acceptedAt?: Date | null;
   cancelledAt?: Date | null;
+  paidAt?: Date | null;
   completedAt?: Date | null;
 }
 

@@ -64,17 +64,29 @@ export class CreateOrderUsecase {
       const totals = calculateOrderTotals(items, restaurant, 0, deliveryFee);
 
       const delivery = isDelivery ? await this.resolveDeliveryDetails(dto, session, tx) : null;
+      // A dine-in diner's identity (§16b, now also table — not floor-only) is given at order
+      // time, not session start — upserted the same way a delivery customer is, by
+      // `(restaurantId, phone)`. This is who the order is for, not where it goes — see
+      // `floorVisitorName` below, which stays floor-only.
+      const dineInCustomer = !isDelivery ? await this.resolveDineInCustomer(dto, restaurant.id, tx) : null;
 
       return this.orderRepository.create(
         {
           restaurantId: restaurant.id,
           tableId: session.tableId,
           sessionId: session.id,
+          // §16b — set directly from the session rather than joined in later; the one thing
+          // every floor-order check downstream (status derivation, single-order payment) should
+          // key off instead of the display-only `floorVisitorName`/`floorName`.
+          floorId: session.floorId,
           orderType: isDelivery ? OrderType.DELIVERY : OrderType.DINE_IN,
-          customerId: session.customerId ?? null,
-          // §16b — snapshotted at order time, same reasoning as the delivery details below:
-          // editing the session later must not rewrite an order already placed under it.
-          floorVisitorName: session.floorId ? session.floorVisitorName : null,
+          customerId: isDelivery ? (session.customerId ?? null) : (dineInCustomer?.id ?? null),
+          // §16b — which cabin/room/spot on the floor to bring this order to,
+          // typed in at checkout and snapshotted here (never the session's,
+          // since editing the session later must not rewrite a placed order).
+          // Falls back to the session's own legacy, session-start-collected
+          // name for a session that still carries one.
+          floorVisitorName: session.floorId ? dto.floorVisitorName?.trim() || session.floorVisitorName : null,
           currency: restaurant.currency,
           idempotencyKey: options?.idempotencyKey ?? null,
           items,
@@ -98,7 +110,7 @@ export class CreateOrderUsecase {
    * per order (e.g. deliver to the office instead of home this time).
    */
   private async resolveDeliveryDetails(dto: CreateOrderInput, session: IDiningSession, tx: PrismaTransaction) {
-    const customer = session.customerId ? await this.customerRepository.findById(session.customerId, { tx }) : null;
+    const customer = session.customerId ? await this.customerRepository.findById(session.customerId, session.restaurantId, { tx }) : null;
     if (!customer) throw new NotFoundException(ORDER_ERROR_MESSAGES.CUSTOMER_NOT_FOUND);
 
     return {
@@ -107,6 +119,24 @@ export class CreateOrderUsecase {
       deliveryAddress: dto.deliveryAddress ?? customer.defaultAddress,
       deliveryNote: dto.deliveryNote ?? customer.defaultNote,
     };
+  }
+
+  /**
+   * §16b — unlike delivery, a dine-in diner's (table or floor) phone/name come straight from
+   * the client on this one request, not a session already tied to a `Customer`; trusting them
+   * here is fine because nothing priced or restaurant-scoped turns on it. A no-op whenever the
+   * client doesn't send one — a dine-in order has always been placeable without it.
+   */
+  private resolveDineInCustomer(dto: CreateOrderInput, restaurantId: string, tx: PrismaTransaction) {
+    if (!dto.customer) return null;
+    return this.customerRepository.upsert(
+      {
+        restaurantId,
+        phone: dto.customer.phone.trim(),
+        name: dto.customer.name.trim(),
+      },
+      { tx }
+    );
   }
 
   private async toOrderItem(

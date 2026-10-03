@@ -21,6 +21,6 @@ export class AuthTokenService {
       role: member.role,
     };
 
-    return this.jwtService.signAsync(payload);
+    return this.jwtService.signAsync(payload, {expiresIn: '168h'});
   }
 }

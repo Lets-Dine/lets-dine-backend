@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { OrderItemStatus } from "@prisma/client";
+import { OrderItemStatus, OrderStatus } from "@prisma/client";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { BadRequestException, NotFoundException } from "../../../../common/exceptions";
 import { type IDiningSession } from "../../../dining-sessions/domain/interfaces/dining-session.interface";
@@ -44,9 +44,16 @@ export class CancelOrderItemUsecase {
         .filter(line => line.status !== OrderItemStatus.CANCELLED)
         .map(line => ({ unitPrice: line.unitPrice, quantity: line.quantity }));
       const totals = calculateOrderTotals(billableLines, restaurant, order.discount, order.deliveryFee ?? 0);
-      const status = deriveOrderStatus(afterItemUpdate.items, order.cancelledAt, order.orderType);
+      const status = deriveOrderStatus(afterItemUpdate.items, order.cancelledAt, order.orderType, {
+        isFloorOrder: Boolean(order.floorId),
+        paidAt: order.paidAt,
+      });
       const orderNewStatus = status ?? order.status;
-      const updated = await this.orderRepository.update(orderId, { status: orderNewStatus, ...totals }, { tx });
+      const updated = await this.orderRepository.update(
+        orderId,
+        { status: orderNewStatus, completedAt: orderNewStatus === OrderStatus.COMPLETED ? new Date() : order.completedAt, ...totals },
+        { tx }
+      );
 
       this.eventEmitter.emit("order.updated", updated);
 

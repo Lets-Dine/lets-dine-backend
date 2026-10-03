@@ -25,6 +25,9 @@ const FIRST_REFERENCE = 1000;
 const ORDER_INCLUDE = {
   items: { orderBy: { createdAt: "asc" as const }, include: { addOns: true } },
   table: { select: { name: true } },
+  // Floor orders only — `floorId` is a direct column on `orders` (§16b), so the
+  // floor's own display name is one join away, no longer through the session.
+  floor: { select: { name: true } },
   reviews: { select: { dishId: true } },
 } satisfies Prisma.OrderInclude;
 
@@ -133,6 +136,7 @@ class OrderRepositoryImpl implements OrderRepository {
         o.restaurant_id   AS "restaurantId",
         o.table_id        AS "tableId",
         o.session_id      AS "sessionId",
+        o.floor_id        AS "floorId",
         o.order_type      AS "orderType",
         o.customer_id     AS "customerId",
         o.status,
@@ -147,20 +151,26 @@ class OrderRepositoryImpl implements OrderRepository {
         o.delivery_phone         AS "deliveryPhone",
         o.delivery_customer_name AS "deliveryCustomerName",
         o.delivery_note          AS "deliveryNote",
+        o.floor_visitor_name     AS "floorVisitorName",
         o.idempotency_key AS "idempotencyKey",
         o.cancel_reason   AS "cancelReason",
         o.accepted_at     AS "acceptedAt",
         o.cancelled_at    AS "cancelledAt",
+        o.paid_at         AS "paidAt",
         o.completed_at    AS "completedAt",
         o.created_at      AS "createdAt",
         o.updated_at      AS "updatedAt",
         t.name            AS "tableName",
+        f.name            AS "floorName",
         COALESCE(items.rows, '[]'::json)             AS items,
         COALESCE(reviews.dish_ids, ARRAY[]::uuid[])  AS "reviewedDishIds"
       FROM orders o
       -- LEFT, not JOIN — a delivery order's table_id is null and would
       -- otherwise be dropped from the result entirely.
       LEFT JOIN dining_tables t ON t.id = o.table_id
+      -- §16b — floor_id is a direct column on orders now, so the floor's
+      -- own display name is one join away, no longer through the session.
+      LEFT JOIN floors f ON f.id = o.floor_id
       LEFT JOIN LATERAL (
         SELECT json_agg(
                  json_build_object(
@@ -303,12 +313,13 @@ class OrderRepositoryImpl implements OrderRepository {
   }
 
   private toOrder(order: OrderRow): IOrderWithItems {
-    const { table, reviews, items, ...rest } = order;
+    const { table, floor, reviews, items, ...rest } = order;
 
     return {
       ...rest,
       items,
       tableName: table?.name ?? null,
+      floorName: floor?.name ?? null,
       reviewedDishIds: [...new Set(reviews.map(review => review.dishId))],
     };
   }

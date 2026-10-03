@@ -3,6 +3,12 @@ import { z } from "zod";
 
 export const completePaymentSchema = z.object({
   sessionId: z.string().uuid(),
+  /**
+   * Scopes this charge to one floor order's own bill (§16b) rather than the whole session's tab —
+   * only that order is marked paid; `endSession` is ignored when this is set, since a floor order
+   * never fast-forwards whatever else is open on the same session (see `CompletePaymentUsecase`).
+   */
+  orderId: z.string().uuid().optional(),
   /** What the cashier is actually charging for — read fresh off the dish, never a client-sent price. */
   items: z
     .array(

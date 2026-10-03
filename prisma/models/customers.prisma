@@ -1,21 +1,42 @@
-/// A delivery customer, remembered per restaurant so a repeat order can
-/// prefill name/address — the one deliberate step past the app's otherwise
-/// fully-anonymous model, scoped per-restaurant like `RestaurantMember`.
+/// A repeat diner, identified globally by phone — the one deliberate step
+/// past the app's otherwise fully-anonymous model. The same person can order
+/// from any number of restaurants; which restaurants (and their own
+/// per-restaurant defaults) is what `CustomerRestaurant` tracks, not this
+/// row. Upserted by phone either when a delivery session starts or when a
+/// floor order is placed (§16b).
 model Customer {
+  id        String   @id @default(uuid()) @map("id") @db.Uuid
+  phone     String   @unique @map("phone")
+  name      String   @map("name")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  restaurants CustomerRestaurant[]
+  sessions    DiningSession[]
+  orders      Order[]
+
+  @@map("customers")
+  @@schema("public")
+}
+
+/// The pivot a `Customer` <-> `Restaurant` many-to-many needs — a customer
+/// can be a repeat diner at any number of restaurants, and each one gets its
+/// own remembered defaults (address/note) without those leaking into another
+/// restaurant's view of the same person.
+model CustomerRestaurant {
   id             String   @id @default(uuid()) @map("id") @db.Uuid
+  customerId     String   @map("customer_id") @db.Uuid
   restaurantId   String   @map("restaurant_id") @db.Uuid
-  phone          String   @map("phone")
-  name           String   @map("name")
   defaultAddress String?  @map("default_address")
   defaultNote    String?  @map("default_note")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  restaurant Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  sessions   DiningSession[]
-  orders     Order[]
+  customer   Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
 
-  @@unique([restaurantId, phone])
-  @@map("customers")
+  @@unique([customerId, restaurantId])
+  @@index([restaurantId])
+  @@map("customer_restaurants")
   @@schema("public")
 }

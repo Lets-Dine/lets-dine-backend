@@ -5,4 +5,7 @@ export const PAYMENT_ERROR_MESSAGES = {
   DISCOUNT_NOT_ALLOWED: { key: "PAYMENT_DISCOUNT_NOT_ALLOWED", message: "This role isn't allowed to apply a discount" },
   DISCOUNT_EXCEEDS_TOTAL: { key: "PAYMENT_DISCOUNT_EXCEEDS_TOTAL", message: "The discount can't be more than the bill" },
   NOT_FOUND: { key: "PAYMENT_NOT_FOUND", message: "This payment no longer exists" },
+  ORDER_NOT_FOUND: { key: "PAYMENT_ORDER_NOT_FOUND", message: "That order is no longer on this session" },
+  ORDER_NOT_FLOOR: { key: "PAYMENT_ORDER_NOT_FLOOR", message: "Only a floor order can be paid on its own like this" },
+  ORDER_ALREADY_PAID: { key: "PAYMENT_ORDER_ALREADY_PAID", message: "That order has already been paid" },
 };

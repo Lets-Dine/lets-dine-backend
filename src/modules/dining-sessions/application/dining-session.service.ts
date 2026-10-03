@@ -138,7 +138,12 @@ export class DiningSessionService {
       // it would read as still PENDING forever, so this is the one place
       // that sets it by hand (mirroring what accepting it never got to).
       const cancelledAt = order.acceptedAt ? order.cancelledAt : new Date();
-      const status = deriveOrderStatus(items, cancelledAt, order.orderType);
+      // Ending the visit is not the same as paying it — a floor order whose bill was never taken
+      // lands on UNPAID here, not COMPLETED, same as any other item-driven transition (§16b).
+      const status = deriveOrderStatus(items, cancelledAt, order.orderType, {
+        isFloorOrder: Boolean(order.floorId),
+        paidAt: order.paidAt,
+      });
       const billable = items.filter(item => item.status !== OrderItemStatus.CANCELLED);
       const totals = calculateOrderTotals(billable, restaurant, order.discount, order.deliveryFee ?? 0);
 
@@ -155,11 +160,15 @@ export class DiningSessionService {
   }
 }
 
-/** Ending a visit can close a ticket either way — never just a count of "completed". */
+/** Ending a visit can close a ticket three ways — never just a count of "completed". */
 function closingSummary(closed: IOrderWithItems[]): string {
   const completed = closed.filter(order => order.status === OrderStatus.COMPLETED).length;
-  const cancelled = closed.length - completed;
-  if (cancelled === 0) return `${completed} order${completed === 1 ? "" : "s"} marked completed`;
-  if (completed === 0) return `${cancelled} order${cancelled === 1 ? "" : "s"} cancelled — the kitchen never started them`;
-  return `${completed} order${completed === 1 ? "" : "s"} completed, ${cancelled} cancelled`;
+  const unpaid = closed.filter(order => order.status === OrderStatus.UNPAID).length;
+  const cancelled = closed.length - completed - unpaid;
+  const parts = [
+    completed > 0 && `${completed} order${completed === 1 ? "" : "s"} completed`,
+    unpaid > 0 && `${unpaid} left unpaid`,
+    cancelled > 0 && `${cancelled} cancelled — the kitchen never started ${cancelled === 1 ? "it" : "them"}`,
+  ].filter((part): part is string => Boolean(part));
+  return parts.join(", ");
 }

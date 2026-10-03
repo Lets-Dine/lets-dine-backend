@@ -7,6 +7,7 @@ import {
   IOrderComparisonTotals,
   IOrderSummary,
   IRevenueTotals,
+  ITopSellingDish,
 } from "../interfaces/analytics.interface";
 
 export interface AnalyticsFetchOptions {
@@ -32,4 +33,6 @@ export abstract class AnalyticsRepository {
     previousRange: IAnalyticsRange,
     options?: AnalyticsFetchOptions
   ): Promise<IOrderComparisonTotals>;
+  /** §31 — units actually paid for on the day, ranked highest-first; `range` is one calendar day. */
+  abstract fetchTopSellingDishes(restaurantId: string, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<ITopSellingDish[]>;
 }

@@ -68,6 +68,19 @@ describe("StartFloorSessionUsecase", () => {
       expect(created.floorVisitorName).toBe("Rajesh");
     });
 
+    it("should open a session with no name when none is given — identity is now captured at order time", async () => {
+      // Arrange
+      diningSessionRepository.create.mockResolvedValue({ id: "session-1" } as any);
+
+      // Act
+      const { visitorName: _visitorName, ...dtoWithoutName } = dto;
+      await usecase.execute(dtoWithoutName);
+
+      // Assert
+      const [created] = diningSessionRepository.create.mock.calls[0];
+      expect(created.floorVisitorName).toBeNull();
+    });
+
     it("should start a brand-new session on every scan, never joining a prior one from the same QR", async () => {
       // Arrange — the whole point of a floor QR: no `currentSessionId` singleton to join against.
       diningSessionRepository.create.mockResolvedValueOnce({ id: "session-1" } as any).mockResolvedValueOnce({ id: "session-2" } as any);

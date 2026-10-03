@@ -16,6 +16,8 @@ export interface IPayment {
   sessionId: string;
   /** Null for a delivery order settled individually — nothing to batch by table. */
   tableId: string | null;
+  /** §16b — set only for a floor order's own bill, same reasoning as `Order.floorId`. */
+  floorId: string | null;
   subtotal: number;
   serviceCharge: number;
   tax: number;

@@ -65,3 +65,11 @@ export interface IOrderComparisonTotals {
 export interface IOrderComparison extends IOrderComparisonTotals {
   differencePercentage: number;
 }
+
+/** Paid-for dishes on a given day, ranked by units sold — sourced from `payments`, not `orders`. */
+export interface ITopSellingDish {
+  dishId: string;
+  dishName: string;
+  orderCount: number;
+  totalAmount: number;
+}

@@ -3,6 +3,7 @@ import { RestaurantsModule } from "../restaurants/restaurants.module";
 import { FetchAnalyticsOverviewUsecase } from "./application/use-cases/fetch-analytics-overview.usecase";
 import { FetchOrderComparisonUsecase } from "./application/use-cases/fetch-order-comparison.usecase";
 import { FetchRevenueComparisonUsecase } from "./application/use-cases/fetch-revenue-comparison.usecase";
+import { FetchTopSellingDishesUsecase } from "./application/use-cases/fetch-top-selling-dishes.usecase";
 import { AnalyticsRepository } from "./domain/repositories/analytics.repository";
 import AnalyticsRepositoryImpl from "./infrastructure/repositories/analytics.repository.impl";
 import { AnalyticsController } from "./interfaces/http/analytics.controller";
@@ -14,6 +15,7 @@ import { AnalyticsController } from "./interfaces/http/analytics.controller";
     FetchAnalyticsOverviewUsecase,
     FetchRevenueComparisonUsecase,
     FetchOrderComparisonUsecase,
+    FetchTopSellingDishesUsecase,
     AnalyticsRepositoryImpl,
     { provide: AnalyticsRepository, useExisting: AnalyticsRepositoryImpl },
   ],

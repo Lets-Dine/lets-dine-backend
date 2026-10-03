@@ -6,14 +6,15 @@ model DiningSession {
   restaurantId          String    @map("restaurant_id") @db.Uuid
   /// Null for a delivery or floor session — `customerId`/`floorId` is set instead.
   tableId               String?   @map("table_id") @db.Uuid
-  /// Set only for a delivery session.
+  /// Set only for a delivery session. A floor order's own `Customer` is
+  /// attached to the `Order` instead, captured at order time (§16b).
   customerId            String?   @map("customer_id") @db.Uuid
   /// Set only for a floor session (§16b) — deliberately has no uniqueness
   /// constraint analogous to `dining_sessions_one_open_per_table_idx`, so any
   /// number of these can stay open on the same floor at once.
   floorId               String?   @map("floor_id") @db.Uuid
-  /// Floor sessions only — the free-text room/cabin/name the diner gave when
-  /// opening the floor QR, since there is no table to identify them by instead.
+  /// Legacy — floor sessions used to collect this up front; identity is now
+  /// captured per order instead (see `Order.floorVisitorName`).
   floorVisitorName      String?   @map("floor_visitor_name")
   anonymousSessionToken String    @unique @map("anonymous_session_token")
   startedAt             DateTime  @default(now()) @map("started_at")
