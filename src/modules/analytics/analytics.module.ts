@@ -4,6 +4,7 @@ import { FetchAnalyticsOverviewUsecase } from "./application/use-cases/fetch-ana
 import { FetchBranchPerformanceUsecase } from "./application/use-cases/fetch-branch-performance.usecase";
 import { FetchOrderComparisonUsecase } from "./application/use-cases/fetch-order-comparison.usecase";
 import { FetchRevenueComparisonUsecase } from "./application/use-cases/fetch-revenue-comparison.usecase";
+import { FetchRevenueTrendUsecase } from "./application/use-cases/fetch-revenue-trend.usecase";
 import { FetchTopSellingDishesUsecase } from "./application/use-cases/fetch-top-selling-dishes.usecase";
 import { AnalyticsRepository } from "./domain/repositories/analytics.repository";
 import AnalyticsRepositoryImpl from "./infrastructure/repositories/analytics.repository.impl";
@@ -15,6 +16,7 @@ import { AnalyticsController } from "./interfaces/http/analytics.controller";
   providers: [
     FetchAnalyticsOverviewUsecase,
     FetchRevenueComparisonUsecase,
+    FetchRevenueTrendUsecase,
     FetchOrderComparisonUsecase,
     FetchTopSellingDishesUsecase,
     FetchBranchPerformanceUsecase,

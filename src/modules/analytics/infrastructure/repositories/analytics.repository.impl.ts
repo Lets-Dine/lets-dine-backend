@@ -10,7 +10,9 @@ import {
   IHourlyOrders,
   IOrderComparisonTotals,
   IOrderSummary,
+  IRevenueBucket,
   IRevenueTotals,
+  RevenueTrendGranularity,
   ITopSellingDish,
 } from "../../domain/interfaces/analytics.interface";
 import { AnalyticsFetchOptions, AnalyticsRepository } from "../../domain/repositories/analytics.repository";
@@ -178,6 +180,38 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
   }
 
   /**
+   * One index range scan over `payments(restaurant_id, created_at)`, grouped in the database so only
+   * the non-empty buckets come back. `created_at` is a UTC `timestamp`, so it is read as UTC and then
+   * moved to the restaurant's wall clock before truncating — the range filter itself stays on the raw
+   * column so the index is still used. `unit` and `format` are picked from fixed literals, never from input.
+   */
+  async fetchRevenueByBucket(
+    scope: IAnalyticsScope,
+    range: IAnalyticsRange,
+    granularity: RevenueTrendGranularity,
+    timeZone: string,
+    options?: AnalyticsFetchOptions
+  ): Promise<IRevenueBucket[]> {
+    const prisma = options?.tx ?? this.prisma;
+    const unit = Prisma.raw(granularity === "day" ? "'day'" : "'month'");
+    const format = Prisma.raw(granularity === "day" ? "'YYYY-MM-DD'" : "'YYYY-MM'");
+
+    const rows = await prisma.$queryRaw<{ key: string; revenue: bigint }[]>`
+      SELECT
+        to_char(date_trunc(${unit}, created_at AT TIME ZONE 'UTC' AT TIME ZONE ${timeZone}::text), ${format}) AS key,
+        SUM(total)::bigint AS revenue
+      FROM payments
+      WHERE restaurant_id = ${scope.restaurantId}::uuid
+        AND (${scope.branchIds ?? null}::uuid[] IS NULL OR branch_id = ANY(${scope.branchIds ?? null}::uuid[]))
+        AND created_at >= ${range.from}
+        AND created_at < ${range.to}
+      GROUP BY 1
+    `;
+
+    return rows.map(row => ({ key: row.key, revenue: Number(row.revenue) }));
+  }
+
+  /**
    * §31 — same single-scan shape as `fetchRevenueComparison`. Unlike
    * `payments`, `orders` has no `(restaurant_id, created_at)` index yet
    * (only `(restaurant_id, status)`), so this still walks every one of the
@@ -232,7 +266,11 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
     return [...dishes.values()].sort((a, b) => b.orderCount - a.orderCount);
   }
 
-  async fetchBranchPerformance(scope: IAnalyticsScope, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<IBranchPerformance[]> {
+  async fetchBranchPerformance(
+    scope: IAnalyticsScope,
+    range: IAnalyticsRange,
+    options?: AnalyticsFetchOptions
+  ): Promise<IBranchPerformance[]> {
     const prisma = options?.tx ?? this.prisma;
     const where = this.ordersWhere(scope, range);
 

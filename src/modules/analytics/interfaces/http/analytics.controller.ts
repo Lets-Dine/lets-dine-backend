@@ -6,20 +6,30 @@ import { FetchAnalyticsDto } from "../../application/dto/fetch-analytics.dto";
 import { FetchBranchPerformanceDto } from "../../application/dto/fetch-branch-performance.dto";
 import { FetchOrderComparisonDto } from "../../application/dto/fetch-order-comparison.dto";
 import { FetchRevenueComparisonDto } from "../../application/dto/fetch-revenue-comparison.dto";
+import { FetchRevenueTrendDto } from "../../application/dto/fetch-revenue-trend.dto";
 import { FetchTopSellingDishesDto } from "../../application/dto/fetch-top-selling-dishes.dto";
 import { FetchAnalyticsOverviewUsecase } from "../../application/use-cases/fetch-analytics-overview.usecase";
 import { FetchBranchPerformanceUsecase } from "../../application/use-cases/fetch-branch-performance.usecase";
 import { FetchOrderComparisonUsecase } from "../../application/use-cases/fetch-order-comparison.usecase";
 import { FetchRevenueComparisonUsecase } from "../../application/use-cases/fetch-revenue-comparison.usecase";
+import { FetchRevenueTrendUsecase } from "../../application/use-cases/fetch-revenue-trend.usecase";
 import { FetchTopSellingDishesUsecase } from "../../application/use-cases/fetch-top-selling-dishes.usecase";
 import { ANALYTICS_SUCCESS_MESSAGES } from "../../domain/constants";
-import { IAnalyticsOverview, IBranchPerformance, IOrderComparison, IRevenueComparison, ITopSellingDish } from "../../domain/interfaces/analytics.interface";
+import {
+  IAnalyticsOverview,
+  IBranchPerformance,
+  IOrderComparison,
+  IRevenueComparison,
+  IRevenueTrend,
+  ITopSellingDish,
+} from "../../domain/interfaces/analytics.interface";
 
 @Controller("restaurant/analytics")
 export class AnalyticsController {
   constructor(
     private readonly fetchAnalyticsOverviewUsecase: FetchAnalyticsOverviewUsecase,
     private readonly fetchRevenueComparisonUsecase: FetchRevenueComparisonUsecase,
+    private readonly fetchRevenueTrendUsecase: FetchRevenueTrendUsecase,
     private readonly fetchOrderComparisonUsecase: FetchOrderComparisonUsecase,
     private readonly fetchTopSellingDishesUsecase: FetchTopSellingDishesUsecase,
     private readonly fetchBranchPerformanceUsecase: FetchBranchPerformanceUsecase
@@ -42,6 +52,14 @@ export class AnalyticsController {
   ): Promise<IHttpResponse<IRevenueComparison>> {
     const comparison = await this.fetchRevenueComparisonUsecase.execute(query.period, authEntity, query.branchId);
     return buildHttpResponse(comparison, ANALYTICS_SUCCESS_MESSAGES.REVENUE_COMPARISON_FETCHED);
+  }
+
+  @Get("revenue/trend")
+  @UseGuards(AuthGuard, AbilityGuard)
+  @CheckPolicies(checkPermissionRules([["analytics:view"]]))
+  async fetchRevenueTrend(@Query() query: FetchRevenueTrendDto, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IRevenueTrend>> {
+    const trend = await this.fetchRevenueTrendUsecase.execute(query.period, authEntity, query.branchId);
+    return buildHttpResponse(trend, ANALYTICS_SUCCESS_MESSAGES.REVENUE_TREND_FETCHED);
   }
 
   @Get("orders")

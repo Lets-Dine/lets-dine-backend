@@ -93,3 +93,42 @@ export interface ITopSellingDish {
   orderCount: number;
   totalAmount: number;
 }
+
+export type RevenueTrendPeriod = "week" | "month" | "year";
+
+/** `week` and `month` read one bucket per day; `year` one per month. */
+export type RevenueTrendGranularity = "day" | "month";
+
+/**
+ * One slot of the chart, with this period's figure beside the same slot of the one before it
+ * (this Tuesday against last Tuesday, March 5th against February 5th, this April against last April).
+ * `date` is the restaurant-local calendar date ("2026-01-14") or, for a yearly trend, month ("2026-01").
+ */
+export interface IRevenueTrendPoint {
+  index: number;
+  date: string;
+  /** Null for a slot that has not happened yet. */
+  current: number | null;
+  /** Null when the previous period has no such slot (the 31st against a 30-day month). */
+  previousDate: string | null;
+  previous: number | null;
+}
+
+export interface IRevenueTrend {
+  period: RevenueTrendPeriod;
+  granularity: RevenueTrendGranularity;
+  /** Revenue so far this period. */
+  currentTotal: number;
+  /** The whole of the previous period. */
+  previousTotal: number;
+  /** The previous period up to the same slot — the like-for-like figure `differencePercentage` is measured against. */
+  previousToDate: number;
+  differencePercentage: number;
+  points: IRevenueTrendPoint[];
+}
+
+/** Revenue for one restaurant-local bucket, keyed like `IRevenueTrendPoint.date`. Empty buckets are absent. */
+export interface IRevenueBucket {
+  key: string;
+  revenue: number;
+}

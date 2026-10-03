@@ -3,7 +3,7 @@ import { ComparisonPeriod, IAnalyticsRange } from "../interfaces/analytics.inter
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WEEK_MS = 7 * DAY_MS;
 
-interface ZonedDate {
+export interface ZonedDate {
   year: number;
   month: number;
   day: number;
@@ -70,7 +70,7 @@ function priorPeriodStart(period: ComparisonPeriod, currentStart: Date, timeZone
    an instant's wall-clock parts in that zone and invert the offset to
    build a new instant back out of calendar numbers. */
 
-function zonedDateParts(instant: Date, timeZone: string): ZonedDate {
+export function zonedDateParts(instant: Date, timeZone: string): ZonedDate {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone,
     year: "numeric",
@@ -82,7 +82,7 @@ function zonedDateParts(instant: Date, timeZone: string): ZonedDate {
 }
 
 /** How far `timeZone`'s wall clock sits ahead of UTC at `instant`, in ms. */
-function zonedOffsetMs(instant: Date, timeZone: string): number {
+export function zonedOffsetMs(instant: Date, timeZone: string): number {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone,
     year: "numeric",

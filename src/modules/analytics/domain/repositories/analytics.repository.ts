@@ -8,7 +8,9 @@ import {
   IHourlyOrders,
   IOrderComparisonTotals,
   IOrderSummary,
+  IRevenueBucket,
   IRevenueTotals,
+  RevenueTrendGranularity,
   ITopSellingDish,
 } from "../interfaces/analytics.interface";
 
@@ -20,7 +22,11 @@ export interface AnalyticsFetchOptions {
 
 export abstract class AnalyticsRepository {
   abstract fetchOrderSummary(scope: IAnalyticsScope, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<IOrderSummary>;
-  abstract fetchDishPerformance(scope: IAnalyticsScope, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<IDishPerformance[]>;
+  abstract fetchDishPerformance(
+    scope: IAnalyticsScope,
+    range: IAnalyticsRange,
+    options?: AnalyticsFetchOptions
+  ): Promise<IDishPerformance[]>;
   abstract fetchFeedbackSummary(scope: IAnalyticsScope, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<IFeedbackSummary>;
   abstract fetchBusiestHours(scope: IAnalyticsScope, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<IHourlyOrders[]>;
   abstract fetchRevenueComparison(
@@ -36,7 +42,26 @@ export abstract class AnalyticsRepository {
     options?: AnalyticsFetchOptions
   ): Promise<IOrderComparisonTotals>;
   /** §31 — units actually paid for on the day, ranked highest-first; `range` is one calendar day. */
-  abstract fetchTopSellingDishes(scope: IAnalyticsScope, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<ITopSellingDish[]>;
+  abstract fetchTopSellingDishes(
+    scope: IAnalyticsScope,
+    range: IAnalyticsRange,
+    options?: AnalyticsFetchOptions
+  ): Promise<ITopSellingDish[]>;
   /** One row per branch in scope, highest revenue first — branches with no orders in the range still appear. */
-  abstract fetchBranchPerformance(scope: IAnalyticsScope, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<IBranchPerformance[]>;
+  abstract fetchBranchPerformance(
+    scope: IAnalyticsScope,
+    range: IAnalyticsRange,
+    options?: AnalyticsFetchOptions
+  ): Promise<IBranchPerformance[]>;
+  /**
+   * Settled revenue grouped into restaurant-local days or months, in one pass over `payments`.
+   * Buckets with no payments are not returned — the caller owns the empty slots.
+   */
+  abstract fetchRevenueByBucket(
+    scope: IAnalyticsScope,
+    range: IAnalyticsRange,
+    granularity: RevenueTrendGranularity,
+    timeZone: string,
+    options?: AnalyticsFetchOptions
+  ): Promise<IRevenueBucket[]>;
 }
