@@ -13,7 +13,9 @@ import {
   RestaurantMemberRepository,
 } from "../../domain/repositories/restaurant-member.repository";
 
-type MemberWithUser = Prisma.RestaurantMemberGetPayload<{ include: { user: true } }>;
+const memberInclude = { user: true, branches: { select: { branchId: true } } } satisfies Prisma.RestaurantMemberInclude;
+
+type MemberWithUser = Prisma.RestaurantMemberGetPayload<{ include: typeof memberInclude }>;
 
 @Injectable()
 class RestaurantMemberRepositoryImpl implements RestaurantMemberRepository {
@@ -21,7 +23,7 @@ class RestaurantMemberRepositoryImpl implements RestaurantMemberRepository {
 
   async findById(id: string, options?: RestaurantMemberFetchOptions): Promise<IStaffMember | null> {
     const prisma = options?.tx ?? this.prisma;
-    const member = await prisma.restaurantMember.findUnique({ where: { id }, include: { user: true } });
+    const member = await prisma.restaurantMember.findUnique({ where: { id }, include: memberInclude });
     return member ? this.toStaffMember(member) : null;
   }
 
@@ -33,7 +35,7 @@ class RestaurantMemberRepositoryImpl implements RestaurantMemberRepository {
     const prisma = options?.tx ?? this.prisma;
     const member = await prisma.restaurantMember.findUnique({
       where: { restaurantId_userId: { restaurantId, userId } },
-      include: { user: true },
+      include: memberInclude,
     });
     return member ? this.toStaffMember(member) : null;
   }
@@ -42,7 +44,7 @@ class RestaurantMemberRepositoryImpl implements RestaurantMemberRepository {
     const prisma = options?.tx ?? this.prisma;
     const members = await prisma.restaurantMember.findMany({
       where: { userId, isActive: true },
-      include: { user: true },
+      include: memberInclude,
       orderBy: { createdAt: "asc" },
     });
     return members.map(member => this.toStaffMember(member));
@@ -55,13 +57,23 @@ class RestaurantMemberRepositoryImpl implements RestaurantMemberRepository {
 
   async create(data: IRestaurantMemberCreate, options?: { tx?: PrismaTransaction }): Promise<IStaffMember> {
     const prisma = options?.tx ?? this.prisma;
-    const member = await prisma.restaurantMember.create({ data, include: { user: true } });
+    const { branchIds, ...rest } = data;
+    const member = await prisma.restaurantMember.create({
+      data: { ...rest, ...(branchIds && { branches: { create: branchIds.map(branchId => ({ branchId })) } }) },
+      include: memberInclude,
+    });
     return this.toStaffMember(member);
   }
 
   async update(id: string, data: IRestaurantMemberUpdate, transaction?: PrismaTransaction): Promise<IStaffMember> {
     const prisma = transaction ?? this.prisma;
-    const member = await prisma.restaurantMember.update({ where: { id }, data, include: { user: true } });
+    const { branchIds, ...rest } = data;
+    // One nested write, so the replaced assignments land atomically with the rest of the update.
+    const member = await prisma.restaurantMember.update({
+      where: { id },
+      data: { ...rest, ...(branchIds && { branches: { deleteMany: {}, create: branchIds.map(branchId => ({ branchId })) } }) },
+      include: memberInclude,
+    });
     return this.toStaffMember(member);
   }
 
@@ -88,7 +100,7 @@ class RestaurantMemberRepositoryImpl implements RestaurantMemberRepository {
         ? Promise.resolve([])
         : prisma.restaurantMember.findMany({
             where,
-            include: { user: true },
+            include: memberInclude,
             ...paginationQuery,
             orderBy: orderBy ?? { createdAt: "asc" },
           }),
@@ -107,6 +119,7 @@ class RestaurantMemberRepositoryImpl implements RestaurantMemberRepository {
       isActive: member.isActive,
       name: member.user.name,
       email: member.user.email,
+      branchIds: member.branches.map(branch => branch.branchId),
       createdAt: member.createdAt,
       updatedAt: member.updatedAt,
     };

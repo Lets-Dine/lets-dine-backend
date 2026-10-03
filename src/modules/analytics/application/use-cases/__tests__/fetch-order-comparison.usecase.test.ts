@@ -47,7 +47,7 @@ describe("FetchOrderComparisonUsecase", () => {
 
       // Assert
       expect(analyticsRepository.fetchOrderComparison).toHaveBeenCalledWith(
-        authUser.restaurantId,
+        { restaurantId: authUser.restaurantId },
         { from: new Date("2026-01-14T00:00:00.000Z"), to: new Date("2026-01-14T10:30:00.000Z") },
         { from: new Date("2026-01-13T00:00:00.000Z"), to: new Date("2026-01-14T00:00:00.000Z") }
       );
@@ -64,7 +64,7 @@ describe("FetchOrderComparisonUsecase", () => {
 
       // Assert
       expect(analyticsRepository.fetchOrderComparison).toHaveBeenCalledWith(
-        authUser.restaurantId,
+        { restaurantId: authUser.restaurantId },
         { from: new Date("2026-01-14T00:00:00.000Z"), to: new Date("2026-01-14T10:30:00.000Z") },
         { from: new Date("2026-01-13T00:00:00.000Z"), to: new Date("2026-01-14T00:00:00.000Z") }
       );

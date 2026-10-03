@@ -36,9 +36,9 @@ class DishRepositoryImpl implements DishRepository {
     return prisma.dish.findUnique({ where: { id } });
   }
 
-  async findBySlug(restaurantId: string, slug: string, options?: DishFetchOptions): Promise<IDish | null> {
+  async findBySlug(branchId: string, slug: string, options?: DishFetchOptions): Promise<IDish | null> {
     const prisma = options?.tx ?? this.prisma;
-    return prisma.dish.findUnique({ where: { restaurantId_slug: { restaurantId, slug } } });
+    return prisma.dish.findUnique({ where: { branchId_slug: { branchId, slug } } });
   }
 
   async findManyByIds(ids: string[], options?: DishFetchOptions): Promise<IDish[]> {
@@ -63,6 +63,7 @@ class DishRepositoryImpl implements DishRepository {
 
     const where: Prisma.DishWhereInput = {
       ...(query.restaurantId && { restaurantId: query.restaurantId }),
+      ...(query.branchId && { branchId: query.branchId }),
       ...(query.categoryId && { categoryId: query.categoryId }),
       ...(query.ids && { id: { in: query.ids } }),
       ...(query.isAvailable !== undefined && { isAvailable: query.isAvailable }),
@@ -107,6 +108,7 @@ class DishRepositoryImpl implements DishRepository {
 
     const conditions = [Prisma.sql`1 = 1`];
     if (query.restaurantId) conditions.push(Prisma.sql`d.restaurant_id = ${query.restaurantId}::uuid`);
+    if (query.branchId) conditions.push(Prisma.sql`d.branch_id = ${query.branchId}::uuid`);
     if (query.categoryId) conditions.push(Prisma.sql`d.category_id = ${query.categoryId}::uuid`);
     if (query.ids?.length) conditions.push(Prisma.sql`d.id IN (${Prisma.join(query.ids.map(id => Prisma.sql`${id}::uuid`))})`);
     if (query.isAvailable !== undefined) conditions.push(Prisma.sql`d.is_available = ${query.isAvailable}`);
@@ -121,6 +123,7 @@ class DishRepositoryImpl implements DishRepository {
       SELECT
         d.id,
         d.restaurant_id  AS "restaurantId",
+        d.branch_id      AS "branchId",
         d.category_id    AS "categoryId",
         d.name,
         d.slug,

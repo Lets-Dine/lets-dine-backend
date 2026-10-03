@@ -4,9 +4,10 @@
 /// from prices read at checkout — client totals are never trusted (§36/§37).
 model Order {
   id                   String      @id @default(uuid()) @map("id") @db.Uuid
-  /// Human-readable ticket number, unique inside the restaurant (#1001, #1002…).
+  /// Human-readable ticket number, unique inside the branch (#1001, #1002…).
   reference            String      @map("reference")
   restaurantId         String      @map("restaurant_id") @db.Uuid
+  branchId             String      @map("branch_id") @db.Uuid
   /// Null for a delivery order — see `orderType`.
   tableId              String?     @map("table_id") @db.Uuid
   sessionId            String      @map("session_id") @db.Uuid
@@ -15,7 +16,9 @@ model Order {
   floorId              String?     @map("floor_id") @db.Uuid
   orderType            OrderType   @default(DINE_IN) @map("order_type")
   /// Set for a delivery order's own `Customer`, or a floor order's recognised
-  /// one (§16b, upserted by phone at order time) — null for a table order.
+  /// one (§16b, upserted by phone at order time), or a table order's (also upserted at order
+  /// time). Null only when a diner placed it without giving a number, or staff opened the
+  /// visit's first order.
   customerId           String?     @map("customer_id") @db.Uuid
   status               OrderStatus @default(PENDING) @map("status")
   subtotal             Int         @default(0) @map("subtotal")
@@ -55,6 +58,7 @@ model Order {
   updatedBy            String?     @map("updated_by") @db.Uuid
 
   restaurant Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  branch     Branch        @relation(fields: [branchId], references: [id], onDelete: Restrict)
   table      DiningTable?  @relation(fields: [tableId], references: [id], onDelete: Restrict)
   session    DiningSession @relation(fields: [sessionId], references: [id], onDelete: Restrict)
   customer   Customer?     @relation(fields: [customerId], references: [id], onDelete: Restrict)
@@ -62,8 +66,9 @@ model Order {
   items      OrderItem[]
   reviews    DishReview[]
 
-  @@unique([restaurantId, reference])
+  @@unique([branchId, reference])
   @@index([restaurantId, status])
+  @@index([branchId])
   @@index([restaurantId, orderType])
   @@index([sessionId])
   @@index([tableId, status])

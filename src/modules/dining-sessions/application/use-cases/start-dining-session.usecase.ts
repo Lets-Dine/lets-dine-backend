@@ -58,6 +58,7 @@ export class StartDiningSessionUsecase {
         {
           tableId: table.id,
           restaurantId: table.restaurantId,
+          branchId: table.branchId,
           anonymousSessionToken: generateSessionToken(),
           expiresAt: sessionExpiryFrom(startedAt, this.ttlMinutes()),
         },

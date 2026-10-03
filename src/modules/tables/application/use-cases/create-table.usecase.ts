@@ -17,11 +17,11 @@ export class CreateTableUsecase {
   ) {}
 
   async execute(dto: CreateTableInput, authEntity: AuthEntity): Promise<IDiningTable> {
-    const existing = await this.diningTableRepository.findByName(authEntity.restaurantId, dto.name);
+    const existing = await this.diningTableRepository.findByName(authEntity.branchId, dto.name);
     if (existing) throw new ConflictException(DINING_TABLE_ERROR_MESSAGES.NAME_ALREADY_EXISTS);
 
     const table = await this.diningTableRepository.create(
-      { ...dto, restaurantId: authEntity.restaurantId, qrToken: generateQrToken() },
+      { ...dto, restaurantId: authEntity.restaurantId, branchId: authEntity.branchId, qrToken: generateQrToken() },
       { actorId: authEntity.sub }
     );
 

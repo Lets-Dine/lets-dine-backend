@@ -8,6 +8,7 @@ import { verifyPin } from "../../../users/domain/utils/pin.util";
 import { IAuthSession } from "../../domain/interfaces/auth-session.interface";
 import { SignInStaffInput } from "../../interfaces/http/validations/sign-in-staff.validation";
 import { AuthTokenService } from "../auth-token.service";
+import { BranchScopeService, IBranchScope } from "../branch-scope.service";
 
 /**
  * §23 — staff sign in with email + PIN. Every failure answers with the same
@@ -18,7 +19,8 @@ export class SignInStaffUsecase {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly restaurantMemberRepository: RestaurantMemberRepository,
-    private readonly authTokenService: AuthTokenService
+    private readonly authTokenService: AuthTokenService,
+    private readonly branchScopeService: BranchScopeService
   ) {}
 
   async execute(dto: SignInStaffInput): Promise<IAuthSession> {
@@ -33,7 +35,8 @@ export class SignInStaffUsecase {
     const membership = this.pickMembership(memberships, dto.restaurantId);
     if (!membership) throw new UnauthorizedException(AUTH_ERROR_MESSAGES.ACCOUNT_INACTIVE);
 
-    const accessToken = await this.authTokenService.issue(membership);
+    const scope = await this.branchScopeService.resolve(membership, dto.branchId);
+    const accessToken = await this.authTokenService.issue(membership, { branchId: scope.active.id, branchIds: scope.branchIds });
 
     return {
       accessToken,
@@ -44,6 +47,8 @@ export class SignInStaffUsecase {
         memberId: membership.id,
         restaurantId: membership.restaurantId,
         role: membership.role,
+        branchId: scope.active.id,
+        branches: toAuthBranches(scope),
         memberships: memberships.map(member => ({
           memberId: member.id,
           restaurantId: member.restaurantId,
@@ -57,4 +62,8 @@ export class SignInStaffUsecase {
     if (!restaurantId) return memberships[0];
     return memberships.find(member => member.restaurantId === restaurantId);
   }
+}
+
+export function toAuthBranches(scope: IBranchScope) {
+  return scope.branches.map(({ id, name, slug, isDefault }) => ({ id, name, slug, isDefault }));
 }

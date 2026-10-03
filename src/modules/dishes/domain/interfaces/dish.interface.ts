@@ -3,6 +3,8 @@ import { DishDietaryType } from "@prisma/client";
 export interface IDish {
   id: string;
   restaurantId: string;
+  /** The branch whose menu this dish is on. */
+  branchId: string;
   categoryId: string;
   name: string;
   slug: string;

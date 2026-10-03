@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { AuditAction } from "@prisma/client";
 import { NotFoundException } from "../../../../common/exceptions";
-import { AuthEntity } from "../../../../common/interfaces";
+import { AuthEntity, isInActiveBranch } from "../../../../common/interfaces";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
 import { DISH_ERROR_MESSAGES } from "../../domain/constants";
 import { IDish } from "../../domain/interfaces/dish.interface";
@@ -21,7 +21,7 @@ export class ReorderDishesUsecase {
 
       for (const item of dto.items) {
         const existing = await this.dishRepository.findById(item.id, { tx });
-        if (!existing || existing.restaurantId !== authEntity.restaurantId) {
+        if (!existing || !isInActiveBranch(authEntity, existing)) {
           throw new NotFoundException({ ...DISH_ERROR_MESSAGES.NOT_FOUND, detail: { id: item.id } });
         }
 

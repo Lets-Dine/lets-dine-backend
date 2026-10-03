@@ -69,7 +69,7 @@ export class DiningSessionService {
   }
 
   async endSession(session: IDiningSession, authEntity: AuthEntity, tx: PrismaTransaction): Promise<IDiningTable | null> {
-    const closed = await this.closeOpenOrders(session.id, authEntity, tx);
+    const closed = await this.closeOpenOrders(session, authEntity, tx);
     const ended = await this.diningSessionRepository.update(session.id, { endedAt: new Date() }, tx);
     // A delivery or floor session has no table to free up.
     const table = session.tableId ? await this.diningTableRepository.update(session.tableId, { currentSessionId: null }, { tx }) : null;
@@ -115,11 +115,11 @@ export class DiningSessionService {
    * pace (`OrderItemEntity.canTransitionTo`) — it is not simulating the
    * kitchen, it is closing the books on a visit that has already ended.
    */
-  private async closeOpenOrders(sessionId: string, authEntity: AuthEntity, tx: PrismaTransaction): Promise<IOrderWithItems[]> {
-    const open = await this.orderRepository.findOpenBySessionId(sessionId, authEntity.restaurantId, { tx });
+  private async closeOpenOrders(session: IDiningSession, authEntity: AuthEntity, tx: PrismaTransaction): Promise<IOrderWithItems[]> {
+    const open = await this.orderRepository.findOpenBySessionId(session.id, authEntity.restaurantId, { tx });
     if (open.length === 0) return [];
 
-    const restaurant = await this.restaurantRepository.findById(authEntity.restaurantId, { tx });
+    const restaurant = await this.restaurantRepository.findByIdForBranch(authEntity.restaurantId, session.branchId, { tx });
     if (!restaurant) throw new NotFoundException(RESTAURANT_ERROR_MESSAGES.NOT_FOUND);
 
     const closed: IOrderWithItems[] = [];

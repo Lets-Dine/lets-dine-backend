@@ -29,7 +29,7 @@ describe("FetchOrdersBySessionUsecase", () => {
 
       // Assert
       expect(result).toBe(orders);
-      expect(orderRepository.findBySessionId).toHaveBeenCalledWith("session-1", authUser.restaurantId);
+      expect(orderRepository.findBySessionId).toHaveBeenCalledWith("session-1", authUser.restaurantId, authUser.branchId);
     });
 
     it("should return an empty array when the session has no orders", async () => {

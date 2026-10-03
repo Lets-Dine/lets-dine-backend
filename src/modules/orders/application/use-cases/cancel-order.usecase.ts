@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { AuditAction, OrderItemStatus, OrderStatus } from "@prisma/client";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { BadRequestException, ConflictException, NotFoundException } from "../../../../common/exceptions";
-import { AuthEntity } from "../../../../common/interfaces";
+import { AuthEntity, isInActiveBranch } from "../../../../common/interfaces";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
 import { RESTAURANT_ERROR_MESSAGES } from "../../../restaurants/domain/constants";
 import { RestaurantRepository } from "../../../restaurants/domain/repositories/restaurant.repository";
@@ -25,7 +25,7 @@ export class CancelOrderUsecase {
   async execute(id: string, dto: CancelOrderInput, authEntity: AuthEntity): Promise<IOrderWithItems> {
     return this.orderRepository.$transaction(async tx => {
       const existing = await this.orderRepository.findById(id, { tx });
-      if (!existing || existing.restaurantId !== authEntity.restaurantId) {
+      if (!existing || !isInActiveBranch(authEntity, existing)) {
         throw new NotFoundException(ORDER_ERROR_MESSAGES.NOT_FOUND);
       }
 
@@ -39,7 +39,7 @@ export class CancelOrderUsecase {
         });
       }
 
-      const restaurant = await this.restaurantRepository.findById(authEntity.restaurantId, { tx });
+      const restaurant = await this.restaurantRepository.findByIdForBranch(authEntity.restaurantId, existing.branchId, { tx });
       if (!restaurant) throw new NotFoundException(RESTAURANT_ERROR_MESSAGES.NOT_FOUND);
 
       // §20/§27 — a whole-order cancel voids every line the kitchen hasn't already served; a

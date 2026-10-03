@@ -7,7 +7,7 @@ import { DishVariantRepository } from "../../../domain/repositories/dish-variant
 import { FetchDishVariantsUsecase } from "../fetch-dish-variants.usecase";
 
 const authUser = buildAuthEntity();
-const dish = { id: "dish-1", restaurantId: authUser.restaurantId, name: "BBQ Pizza" };
+const dish = { id: "dish-1", restaurantId: authUser.restaurantId, branchId: authUser.branchId, name: "BBQ Pizza" };
 const variants = [
   { id: "variant-1", dishId: dish.id, name: "Small", isArchived: false },
   { id: "variant-2", dishId: dish.id, name: "Large", isArchived: true },

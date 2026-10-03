@@ -39,6 +39,7 @@ describe("CreateDishUsecase", () => {
       menuCategoryRepository.findById.mockResolvedValue({
         id: "category-1",
         restaurantId: authUser.restaurantId,
+        branchId: authUser.branchId,
         name: "Grill",
       } as any);
       dishRepository.findBySlug.mockResolvedValue(null);
@@ -50,7 +51,7 @@ describe("CreateDishUsecase", () => {
       // Assert
       expect(result.id).toBe("dish-1");
       expect(dishRepository.create).toHaveBeenCalledWith(
-        expect.objectContaining({ slug: "chicken-sekuwa", restaurantId: authUser.restaurantId, price: 45000 }),
+        expect.objectContaining({ slug: "chicken-sekuwa", restaurantId: authUser.restaurantId, branchId: authUser.branchId, price: 45000 }),
         { actorId: authUser.sub }
       );
       expect(auditLogService.record).toHaveBeenCalledWith(
@@ -73,6 +74,7 @@ describe("CreateDishUsecase", () => {
       menuCategoryRepository.findById.mockResolvedValue({
         id: "category-1",
         restaurantId: authUser.restaurantId,
+        branchId: authUser.branchId,
       } as any);
       dishRepository.findBySlug.mockResolvedValue({ id: "dish-9" } as any);
 

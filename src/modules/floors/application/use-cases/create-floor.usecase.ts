@@ -17,11 +17,11 @@ export class CreateFloorUsecase {
   ) {}
 
   async execute(dto: CreateFloorInput, authEntity: AuthEntity): Promise<IFloor> {
-    const existing = await this.floorRepository.findByName(authEntity.restaurantId, dto.name);
+    const existing = await this.floorRepository.findByName(authEntity.branchId, dto.name);
     if (existing) throw new ConflictException(FLOOR_ERROR_MESSAGES.NAME_ALREADY_EXISTS);
 
     const floor = await this.floorRepository.create(
-      { ...dto, restaurantId: authEntity.restaurantId, qrToken: generateQrToken() },
+      { ...dto, restaurantId: authEntity.restaurantId, branchId: authEntity.branchId, qrToken: generateQrToken() },
       { actorId: authEntity.sub }
     );
 

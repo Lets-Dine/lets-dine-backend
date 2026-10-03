@@ -11,6 +11,6 @@ export class FetchAllAuditLogsUsecase {
   async execute(query: FetchAuditLogsQuery, authEntity: AuthEntity): Promise<PaginatedResponse<IAuditLog>> {
     const { action, actorId, from, to, ...pagination } = query;
 
-    return this.auditLogRepository.fetchAll({ restaurantId: authEntity.restaurantId, action, actorId, from, to }, pagination);
+    return this.auditLogRepository.fetchAll({ restaurantId: authEntity.restaurantId, branchId: authEntity.branchId, action, actorId, from, to }, pagination);
   }
 }

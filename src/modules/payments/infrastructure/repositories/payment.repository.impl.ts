@@ -34,6 +34,7 @@ class PaymentRepositoryImpl implements PaymentRepository {
 
     const where: Prisma.PaymentWhereInput = {
       restaurantId: query.restaurantId,
+      branchId: query.branchId,
       ...(query.tableId && { tableId: query.tableId }),
       ...((query.from || query.to) && {
         createdAt: { ...(query.from && { gte: query.from }), ...(query.to && { lte: query.to }) },
@@ -50,8 +51,8 @@ class PaymentRepositoryImpl implements PaymentRepository {
     return { rows, count: count ?? 0 };
   }
 
-  async findById(id: string, restaurantId: string): Promise<IPaymentWithItems | null> {
-    return this.prisma.payment.findFirst({ where: { id, restaurantId }, include: { items: true } });
+  async findById(id: string, restaurantId: string, branchId: string): Promise<IPaymentWithItems | null> {
+    return this.prisma.payment.findFirst({ where: { id, restaurantId, branchId }, include: { items: true } });
   }
 
   async findBySessionId(sessionId: string): Promise<IPaymentWithItems | null> {

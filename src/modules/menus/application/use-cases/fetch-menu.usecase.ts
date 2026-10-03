@@ -1,11 +1,13 @@
 import { Injectable } from "@nestjs/common";
 import { NotFoundException } from "../../../../common/exceptions";
 import { AddOnRepository } from "../../../add-ons/domain/repositories/add-on.repository";
+import { PublicBranchService } from "../../../branches/application/public-branch.service";
 import { DishVariantRepository } from "../../../dish-variants/domain/repositories/dish-variant.repository";
 import { DishRepository } from "../../../dishes/domain/repositories/dish.repository";
 import { MenuCategoryRepository } from "../../../menu-categories/domain/repositories/menu-category.repository";
 import { RESTAURANT_ERROR_MESSAGES } from "../../../restaurants/domain/constants";
 import { RestaurantRepository } from "../../../restaurants/domain/repositories/restaurant.repository";
+import { FetchMenuQuery } from "../../interfaces/http/validations/fetch-menu.validation";
 import { IMenu } from "../../domain/interfaces/menu.interface";
 import { RestaurantRatingRepository } from "../../domain/repositories/restaurant-rating.repository";
 
@@ -23,18 +25,22 @@ export class FetchMenuUsecase {
     private readonly menuCategoryRepository: MenuCategoryRepository,
     private readonly dishRepository: DishRepository,
     private readonly addOnRepository: AddOnRepository,
-    private readonly dishVariantRepository: DishVariantRepository
+    private readonly dishVariantRepository: DishVariantRepository,
+    private readonly publicBranchService: PublicBranchService
   ) {}
 
-  async execute(restaurantSlug: string): Promise<IMenu> {
+  async execute(restaurantSlug: string, query: FetchMenuQuery = {}): Promise<IMenu> {
     const restaurant = await this.restaurantRepository.findBySlug(restaurantSlug);
     if (!restaurant || !restaurant.isActive) throw new NotFoundException(RESTAURANT_ERROR_MESSAGES.NOT_FOUND);
 
+    // Every branch has its own menu: the one named, else the restaurant's default branch's.
+    const branch = await this.publicBranchService.resolveOrDefault(restaurant.id, query);
+
     const [rating, categories, dishes, addOns] = await Promise.all([
       this.restaurantRatingRepository.fetchRating(restaurant.id),
-      this.menuCategoryRepository.fetchAll({ restaurantId: restaurant.id }),
-      this.dishRepository.findAllWithStats({ restaurantId: restaurant.id, isArchived: false }),
-      this.addOnRepository.fetchAll({ restaurantId: restaurant.id, isArchived: false }),
+      this.menuCategoryRepository.fetchAll({ restaurantId: restaurant.id, branchId: branch.id }),
+      this.dishRepository.findAllWithStats({ restaurantId: restaurant.id, branchId: branch.id, isArchived: false }),
+      this.addOnRepository.fetchAll({ restaurantId: restaurant.id, branchId: branch.id, isArchived: false }),
     ]);
 
     const dishIds = dishes.map(dish => dish.id);

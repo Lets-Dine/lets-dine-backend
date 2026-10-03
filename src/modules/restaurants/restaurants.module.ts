@@ -1,7 +1,9 @@
 import { Module } from "@nestjs/common";
 import { AuditLogsModule } from "../audit-logs/audit-logs.module";
+import { BranchesModule } from "../branches/branches.module";
 import { UsersModule } from "../users/users.module";
 import { FetchAllRestaurantsUsecase } from "./application/use-cases/fetch-all-restaurants.usecase";
+import { FetchRestaurantBranchesUsecase } from "./application/use-cases/fetch-restaurant-branches.usecase";
 import { FetchRestaurantBySlugUsecase } from "./application/use-cases/fetch-restaurant-by-slug.usecase";
 import { FetchRestaurantProfileUsecase } from "./application/use-cases/fetch-restaurant-profile.usecase";
 import { RegisterRestaurantUsecase } from "./application/use-cases/register-restaurant.usecase";
@@ -13,11 +15,12 @@ import { PublicRestaurantController } from "./interfaces/http/public-restaurant.
 import { RestaurantController } from "./interfaces/http/restaurant.controller";
 
 @Module({
-  imports: [UsersModule, AuditLogsModule],
+  imports: [UsersModule, AuditLogsModule, BranchesModule],
   controllers: [PublicRestaurantController, RestaurantController, PlatformRestaurantController],
   providers: [
     RegisterRestaurantUsecase,
     FetchRestaurantBySlugUsecase,
+    FetchRestaurantBranchesUsecase,
     FetchRestaurantProfileUsecase,
     UpdateRestaurantUsecase,
     FetchAllRestaurantsUsecase,

@@ -12,6 +12,8 @@ enum DishDietaryType {
 model Dish {
   id           String          @id @default(uuid()) @map("id") @db.Uuid
   restaurantId String          @map("restaurant_id") @db.Uuid
+  /// The branch whose menu this dish is on — every branch keeps its own menu.
+  branchId     String          @map("branch_id") @db.Uuid
   categoryId   String          @map("category_id") @db.Uuid
   name         String          @map("name")
   slug         String          @map("slug")
@@ -31,14 +33,16 @@ model Dish {
   updatedBy    String?         @map("updated_by") @db.Uuid
 
   restaurant Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  branch     Branch        @relation(fields: [branchId], references: [id], onDelete: Cascade)
   category   MenuCategory  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   orderItems OrderItem[]
   reviews    DishReview[]
   addOnLinks DishAddOn[]
   variants   DishVariant[]
 
-  @@unique([restaurantId, slug])
+  @@unique([branchId, slug])
   @@index([restaurantId, categoryId])
+  @@index([branchId, categoryId])
   @@map("dishes")
   @@schema("public")
 }

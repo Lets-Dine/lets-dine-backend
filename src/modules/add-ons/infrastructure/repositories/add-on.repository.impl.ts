@@ -48,6 +48,7 @@ class AddOnRepositoryImpl implements AddOnRepository {
 
     const where: Prisma.AddOnWhereInput = {
       ...(query.restaurantId && { restaurantId: query.restaurantId }),
+      ...(query.branchId && { branchId: query.branchId }),
       ...(query.ids && { id: { in: query.ids } }),
       ...(query.isAvailable !== undefined && { isAvailable: query.isAvailable }),
       ...(query.isArchived !== undefined && { isArchived: query.isArchived }),

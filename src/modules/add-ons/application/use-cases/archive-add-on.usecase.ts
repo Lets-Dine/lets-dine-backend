@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { AuditAction } from "@prisma/client";
 import { ConflictException, NotFoundException } from "../../../../common/exceptions";
-import { AuthEntity } from "../../../../common/interfaces";
+import { AuthEntity, isInActiveBranch } from "../../../../common/interfaces";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
 import { ADD_ON_ERROR_MESSAGES } from "../../domain/constants";
 import { IAddOn } from "../../domain/interfaces/add-on.interface";
@@ -17,7 +17,7 @@ export class ArchiveAddOnUsecase {
 
   async execute(id: string, authEntity: AuthEntity): Promise<IAddOn> {
     const existing = await this.addOnRepository.findById(id);
-    if (!existing || existing.restaurantId !== authEntity.restaurantId) {
+    if (!existing || !isInActiveBranch(authEntity, existing)) {
       throw new NotFoundException(ADD_ON_ERROR_MESSAGES.NOT_FOUND);
     }
     if (existing.isArchived) throw new ConflictException(ADD_ON_ERROR_MESSAGES.ALREADY_ARCHIVED);

@@ -9,7 +9,7 @@ import { StartFloorSessionUsecase } from "../start-floor-session.usecase";
 
 const dto = { restaurantSlug: "newa-kitchen", floorToken: "floor-token-12345", visitorName: "Cabin A" };
 const restaurant = { id: "restaurant-1", isActive: true } as any;
-const floor = { id: "floor-1", restaurantId: "restaurant-1", name: "3rd Floor", isActive: true } as any;
+const floor = { id: "floor-1", restaurantId: "restaurant-1", branchId: "branch-1", name: "3rd Floor", isActive: true } as any;
 
 describe("StartFloorSessionUsecase", () => {
   let usecase: StartFloorSessionUsecase;
@@ -48,6 +48,7 @@ describe("StartFloorSessionUsecase", () => {
       expect(result).toEqual({ session: { id: "session-1" }, restaurant, table: null, floor });
       const [created] = diningSessionRepository.create.mock.calls[0];
       expect(created).toMatchObject({
+        branchId: "branch-1",
         restaurantId: floor.restaurantId,
         tableId: null,
         floorId: floor.id,

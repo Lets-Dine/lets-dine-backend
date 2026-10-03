@@ -40,7 +40,7 @@ describe("ReorderMenuCategoriesUsecase", () => {
     it("should apply every new position and record the new order", async () => {
       // Arrange
       menuCategoryRepository.findById.mockImplementation(
-        async id => ({ id, restaurantId: authUser.restaurantId, name: `Category ${id}` }) as any
+        async id => ({ id, restaurantId: authUser.restaurantId, branchId: authUser.branchId, name: `Category ${id}` }) as any
       );
       menuCategoryRepository.update.mockImplementation(async id => ({ id, name: `Category ${id}` }) as any);
 

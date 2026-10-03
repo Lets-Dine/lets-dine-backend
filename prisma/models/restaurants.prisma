@@ -33,6 +33,7 @@ model Restaurant {
   auditLogs  AuditLog[]
   payments   Payment[]
   customers  CustomerRestaurant[]
+  branches   Branch[]
 
   @@map("restaurants")
   @@schema("public")

@@ -16,6 +16,7 @@ function buildDish(overrides: Partial<IDish> = {}): IDish {
   return {
     id: "dish-1",
     restaurantId: authUser.restaurantId,
+    branchId: authUser.branchId,
     categoryId: "category-1",
     name: "Chicken Sekuwa",
     slug: "chicken-sekuwa",

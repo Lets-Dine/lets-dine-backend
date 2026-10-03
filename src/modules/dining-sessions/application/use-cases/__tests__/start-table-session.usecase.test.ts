@@ -11,7 +11,7 @@ import { StartTableSessionUsecase } from "../start-table-session.usecase";
 
 const authUser = buildAuthEntity();
 const tx = {} as any;
-const table = { id: "table-1", restaurantId: authUser.restaurantId, name: "Table 1", isActive: true };
+const table = { id: "table-1", restaurantId: authUser.restaurantId, branchId: authUser.branchId, name: "Table 1", isActive: true };
 
 describe("StartTableSessionUsecase", () => {
   let usecase: StartTableSessionUsecase;

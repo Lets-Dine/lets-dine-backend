@@ -35,7 +35,7 @@ export class CancelOrderItemUsecase {
         throw new BadRequestException({ ...ORDER_ERROR_MESSAGES.ITEM_NOT_CANCELLABLE, detail: { status: item.status } });
       }
 
-      const restaurant = await this.restaurantRepository.findById(order.restaurantId, { tx });
+      const restaurant = await this.restaurantRepository.findByIdForBranch(order.restaurantId, order.branchId, { tx });
       if (!restaurant) throw new NotFoundException(RESTAURANT_ERROR_MESSAGES.NOT_FOUND);
 
       const afterItemUpdate = await this.orderRepository.updateItemStatus(itemId, OrderItemStatus.CANCELLED, { tx });

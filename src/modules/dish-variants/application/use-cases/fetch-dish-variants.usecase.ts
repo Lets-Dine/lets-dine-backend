@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { NotFoundException } from "../../../../common/exceptions";
-import { AuthEntity } from "../../../../common/interfaces";
+import { AuthEntity, isInActiveBranch } from "../../../../common/interfaces";
 import { DISH_ERROR_MESSAGES } from "../../../dishes/domain/constants";
 import { DishRepository } from "../../../dishes/domain/repositories/dish.repository";
 import { IDishVariant } from "../../domain/interfaces/dish-variant.interface";
@@ -20,7 +20,7 @@ export class FetchDishVariantsUsecase {
 
   async execute(dishId: string, authEntity: AuthEntity): Promise<IDishVariant[]> {
     const dish = await this.dishRepository.findById(dishId);
-    if (!dish || dish.restaurantId !== authEntity.restaurantId) {
+    if (!dish || !isInActiveBranch(authEntity, dish)) {
       throw new NotFoundException(DISH_ERROR_MESSAGES.NOT_FOUND);
     }
 

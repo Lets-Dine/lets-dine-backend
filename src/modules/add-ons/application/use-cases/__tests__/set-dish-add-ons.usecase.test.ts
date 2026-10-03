@@ -10,8 +10,8 @@ import { AddOnRepository } from "../../../domain/repositories/add-on.repository"
 import { SetDishAddOnsUsecase } from "../set-dish-add-ons.usecase";
 
 const authUser = buildAuthEntity();
-const dish = { id: "dish-1", restaurantId: authUser.restaurantId, name: "Momo" };
-const addOn = { id: "addon-1", restaurantId: authUser.restaurantId, name: "Extra Cheese" };
+const dish = { id: "dish-1", restaurantId: authUser.restaurantId, branchId: authUser.branchId, name: "Momo" };
+const addOn = { id: "addon-1", restaurantId: authUser.restaurantId, branchId: authUser.branchId, name: "Extra Cheese" };
 
 describe("SetDishAddOnsUsecase", () => {
   let usecase: SetDishAddOnsUsecase;

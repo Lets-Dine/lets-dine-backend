@@ -20,7 +20,7 @@ describe("FetchAllAuditLogsUsecase", () => {
   });
 
   describe("execute", () => {
-    it("should scope the query to the restaurant on the token, not one from the client", async () => {
+    it("should scope the query to the restaurant and the active branch on the token, not anything from the client", async () => {
       // Arrange
       const page = { rows: [], count: 0 };
       auditLogRepository.fetchAll.mockResolvedValue(page);
@@ -36,6 +36,7 @@ describe("FetchAllAuditLogsUsecase", () => {
       expect(auditLogRepository.fetchAll).toHaveBeenCalledWith(
         {
           restaurantId: authUser.restaurantId,
+          branchId: authUser.branchId,
           action: AuditAction.price_changed,
           actorId: undefined,
           from: undefined,

@@ -15,6 +15,7 @@ function buildOrder(status: OrderStatus, orderType: OrderType = OrderType.DELIVE
     id: "order-1",
     reference: "#1001",
     restaurantId: authUser.restaurantId,
+    branchId: authUser.branchId,
     status,
     orderType,
     total: 60935,

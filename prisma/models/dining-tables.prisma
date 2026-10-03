@@ -3,6 +3,7 @@
 model DiningTable {
   id               String   @id @default(uuid()) @map("id") @db.Uuid
   restaurantId     String   @map("restaurant_id") @db.Uuid
+  branchId         String   @map("branch_id") @db.Uuid
   name             String   @map("name")
   qrToken          String   @unique @map("qr_token")
   capacity         Int      @default(2) @map("capacity")
@@ -16,13 +17,16 @@ model DiningTable {
   updatedBy        String?  @map("updated_by") @db.Uuid
 
   restaurant     Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  branch         Branch          @relation(fields: [branchId], references: [id], onDelete: Restrict)
   currentSession DiningSession?  @relation("CurrentSession", fields: [currentSessionId], references: [id], onDelete: SetNull)
   sessions       DiningSession[] @relation("TableSessions")
   orders         Order[]
   payments       Payment[]
 
-  @@unique([restaurantId, name])
+  /// Names are unique per branch — two branches may both have a "Table 1".
+  @@unique([branchId, name])
   @@index([restaurantId])
+  @@index([branchId])
   @@index([currentSessionId])
   @@map("dining_tables")
   @@schema("public")

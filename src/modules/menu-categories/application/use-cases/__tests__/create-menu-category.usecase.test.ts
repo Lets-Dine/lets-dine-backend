@@ -41,7 +41,7 @@ describe("CreateMenuCategoryUsecase", () => {
       // Assert
       expect(result).toBe(category);
       expect(menuCategoryRepository.create).toHaveBeenCalledWith(
-        { name: "Momo", emoji: "🥟", restaurantId: authUser.restaurantId },
+        { name: "Momo", emoji: "🥟", restaurantId: authUser.restaurantId, branchId: authUser.branchId },
         { actorId: authUser.sub }
       );
       expect(auditLogService.record).toHaveBeenCalledWith({ action: AuditAction.category_created, subject: "Momo" }, authUser);

@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { AuditAction, OrderItemStatus } from "@prisma/client";
 import { BadRequestException, NotFoundException } from "../../../../common/exceptions";
-import { AuthEntity } from "../../../../common/interfaces";
+import { AuthEntity, isInActiveBranch } from "../../../../common/interfaces";
 import { AddOnRepository } from "../../../add-ons/domain/repositories/add-on.repository";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
 import { IDishVariant } from "../../../dish-variants/domain/interfaces/dish-variant.interface";
@@ -68,12 +68,13 @@ export class AddOrderItemUsecase {
   async execute(tableId: string, dto: AddOrderItemInput, authEntity: AuthEntity): Promise<IOrderWithItems> {
     return this.orderRepository.$transaction(async tx => {
       const table = await this.diningTableRepository.findById(tableId, { tx });
-      if (!table || table.restaurantId !== authEntity.restaurantId) {
+      if (!table || !isInActiveBranch(authEntity, table)) {
         throw new NotFoundException(ORDER_ERROR_MESSAGES.TABLE_NOT_FOUND);
       }
 
       const dish = await this.dishRepository.findById(dto.dishId, { tx });
-      if (!dish || dish.restaurantId !== authEntity.restaurantId) {
+      // A dish belongs to one branch's menu; the table's branch decides which menu it must come from.
+      if (!dish || dish.branchId !== table.branchId) {
         throw new NotFoundException({ ...ORDER_ERROR_MESSAGES.DISH_NOT_FOUND, detail: { dishId: dto.dishId } });
       }
 
@@ -114,7 +115,7 @@ export class AddOrderItemUsecase {
       const variantNameSnapshot = variant?.name ?? null;
       const variantPriceSnapshot = variant?.price ?? null;
 
-      const restaurant = await this.restaurantRepository.findById(authEntity.restaurantId, { tx });
+      const restaurant = await this.restaurantRepository.findByIdForBranch(authEntity.restaurantId, table.branchId, { tx });
       if (!restaurant) throw new NotFoundException(RESTAURANT_ERROR_MESSAGES.NOT_FOUND);
 
       const session = await this.diningSessionRepository.findOpenByTableId(tableId, { tx });
@@ -128,8 +129,11 @@ export class AddOrderItemUsecase {
         const created = await this.orderRepository.create(
           {
             restaurantId: authEntity.restaurantId,
+            branchId: table.branchId,
             tableId,
             sessionId: session.id,
+            // Staff adding to a table inherits whoever the diner already identified as this visit.
+            customerId: latest?.sessionId === session.id ? latest.customerId : null,
             currency: restaurant.currency,
             items: [
               {

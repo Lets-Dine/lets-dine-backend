@@ -2,6 +2,7 @@ import { Controller, Get, Param, Query } from "@nestjs/common";
 import { IHttpResponse } from "../../../../common/interfaces";
 import { buildHttpResponse } from "../../../../common/utils";
 import { IDishRail } from "../../../dishes/domain/interfaces/dish-rail.interface";
+import { FetchMenuDto } from "../../application/dto/fetch-menu.dto";
 import { FetchMenuHighlightsDto } from "../../application/dto/fetch-menu-highlights.dto";
 import { FetchMenuHighlightsUsecase } from "../../application/use-cases/fetch-menu-highlights.usecase";
 import { FetchMenuUsecase } from "../../application/use-cases/fetch-menu.usecase";
@@ -16,8 +17,8 @@ export class PublicMenuController {
   ) {}
 
   @Get("/:slug/menu")
-  async fetchMenu(@Param("slug") slug: string): Promise<IHttpResponse<IMenu>> {
-    const menu = await this.fetchMenuUsecase.execute(slug);
+  async fetchMenu(@Param("slug") slug: string, @Query() query: FetchMenuDto): Promise<IHttpResponse<IMenu>> {
+    const menu = await this.fetchMenuUsecase.execute(slug, query);
     return buildHttpResponse(menu, MENU_SUCCESS_MESSAGES.MENU_FETCHED);
   }
 

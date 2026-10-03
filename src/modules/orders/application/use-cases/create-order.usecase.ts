@@ -4,6 +4,8 @@ import { OrderType } from "@prisma/client";
 import { BadRequestException, NotFoundException } from "../../../../common/exceptions";
 import { PrismaTransaction } from "../../../../common/prisma";
 import { AddOnRepository } from "../../../add-ons/domain/repositories/add-on.repository";
+import { BranchRepository } from "../../../branches/domain/repositories/branch.repository";
+import { isTakingOrders } from "../../../branches/domain/utils/branch-hours.util";
 import { CustomerRepository } from "../../../customers/domain/repositories/customer.repository";
 import { IDishVariant } from "../../../dish-variants/domain/interfaces/dish-variant.interface";
 import { DishVariantRepository } from "../../../dish-variants/domain/repositories/dish-variant.repository";
@@ -36,6 +38,7 @@ export class CreateOrderUsecase {
     private readonly addOnRepository: AddOnRepository,
     private readonly dishVariantRepository: DishVariantRepository,
     private readonly customerRepository: CustomerRepository,
+    private readonly branchRepository: BranchRepository,
     private readonly eventEmitter: EventEmitter2
   ) {}
 
@@ -47,14 +50,18 @@ export class CreateOrderUsecase {
     }
 
     const order = await this.orderRepository.$transaction(async tx => {
-      const restaurant = await this.restaurantRepository.findById(session.restaurantId, { tx });
+      const restaurant = await this.restaurantRepository.findByIdForBranch(session.restaurantId, session.branchId, { tx });
       if (!restaurant || !restaurant.isActive) throw new NotFoundException(RESTAURANT_ERROR_MESSAGES.NOT_FOUND);
+
+      // Closed means closed for every diner at this branch — a QR scan can still seat someone, but nothing is cooked.
+      const branch = await this.branchRepository.findById(session.branchId, { tx });
+      if (!branch || !isTakingOrders(branch)) throw new BadRequestException(ORDER_ERROR_MESSAGES.BRANCH_CLOSED);
 
       const dishIds = dto.lines.map(line => line.dishId);
       const dishes = await this.dishRepository.findManyByIds(dishIds, { tx });
       const variantsByDish = await this.dishVariantRepository.findManyByDishIds(dishIds, { isArchived: false, tx });
 
-      const items = await Promise.all(dto.lines.map(line => this.toOrderItem(line, dishes, variantsByDish, restaurant.id, tx)));
+      const items = await Promise.all(dto.lines.map(line => this.toOrderItem(line, dishes, variantsByDish, session.branchId, tx)));
 
       // §22 — `customerId` is the one field exclusive to a delivery session (a floor
       // session also has no `tableId`, so that alone can't be the delivery check).
@@ -68,11 +75,12 @@ export class CreateOrderUsecase {
       // time, not session start — upserted the same way a delivery customer is, by
       // `(restaurantId, phone)`. This is who the order is for, not where it goes — see
       // `floorVisitorName` below, which stays floor-only.
-      const dineInCustomer = !isDelivery ? await this.resolveDineInCustomer(dto, restaurant.id, tx) : null;
+      const dineInCustomer = !isDelivery ? await this.resolveDineInCustomer(dto, session, restaurant.id, tx) : null;
 
       return this.orderRepository.create(
         {
           restaurantId: restaurant.id,
+          branchId: session.branchId,
           tableId: session.tableId,
           sessionId: session.id,
           // §16b — set directly from the session rather than joined in later; the one thing
@@ -126,8 +134,17 @@ export class CreateOrderUsecase {
    * the client on this one request, not a session already tied to a `Customer`; trusting them
    * here is fine because nothing priced or restaurant-scoped turns on it. A no-op whenever the
    * client doesn't send one — a dine-in order has always been placeable without it.
+   *
+   * A table session is one party's visit, so whoever the first order was placed for owns
+   * the rest of it: later orders reuse that customer and any `customer` sent is ignored.
+   * (A floor session is many unrelated diners at once, so it identifies per order.)
    */
-  private resolveDineInCustomer(dto: CreateOrderInput, restaurantId: string, tx: PrismaTransaction) {
+  private async resolveDineInCustomer(dto: CreateOrderInput, session: IDiningSession, restaurantId: string, tx: PrismaTransaction) {
+    if (session.tableId && !session.floorId) {
+      const earlier = await this.orderRepository.findBySessionId(session.id, restaurantId, session.branchId);
+      const customerId = earlier.find(order => order.customerId)?.customerId;
+      if (customerId) return this.customerRepository.findById(customerId, restaurantId, { tx });
+    }
     if (!dto.customer) return null;
     return this.customerRepository.upsert(
       {
@@ -143,12 +160,13 @@ export class CreateOrderUsecase {
     line: CreateOrderInput["lines"][number],
     dishes: IDish[],
     variantsByDish: Record<string, IDishVariant[]>,
-    restaurantId: string,
+    branchId: string,
     tx: PrismaTransaction
   ): Promise<IOrderItemCreate> {
     const dish = dishes.find(candidate => candidate.id === line.dishId);
 
-    if (!dish || dish.restaurantId !== restaurantId || dish.isArchived) {
+    // A dish is on one branch's menu; a session can only order from its own branch's.
+    if (!dish || dish.branchId !== branchId || dish.isArchived) {
       throw new NotFoundException({ ...ORDER_ERROR_MESSAGES.DISH_NOT_FOUND, detail: { dishId: line.dishId } });
     }
     if (!dish.isAvailable) {

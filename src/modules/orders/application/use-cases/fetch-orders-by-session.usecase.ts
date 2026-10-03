@@ -9,6 +9,6 @@ export class FetchOrdersBySessionUsecase {
   constructor(private readonly orderRepository: OrderRepository) {}
 
   async execute(sessionId: string, authEntity: AuthEntity): Promise<IOrderWithItems[]> {
-    return this.orderRepository.findBySessionId(sessionId, authEntity.restaurantId);
+    return this.orderRepository.findBySessionId(sessionId, authEntity.restaurantId, authEntity.branchId);
   }
 }

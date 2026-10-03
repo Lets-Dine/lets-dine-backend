@@ -19,9 +19,10 @@ export type Permission =
   | "settings:edit"
   | "audit:view"
   | "payments:view"
+  | "customers:view"
   | "payments:discount";
 
-const STAFF: Permission[] = ["orders:view", "orders:advance", "menu:view", "payments:view"];
+const STAFF: Permission[] = ["orders:view", "orders:advance", "menu:view", "payments:view", "customers:view"];
 
 const MANAGER: Permission[] = [
   ...STAFF,

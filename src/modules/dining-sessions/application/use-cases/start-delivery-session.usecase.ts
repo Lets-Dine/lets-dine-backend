@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { BadRequestException, NotFoundException } from "../../../../common/exceptions";
+import { BranchRepository } from "../../../branches/domain/repositories/branch.repository";
 import { CustomerRepository } from "../../../customers/domain/repositories/customer.repository";
 import { RESTAURANT_ERROR_MESSAGES } from "../../../restaurants/domain/constants";
 import { RestaurantRepository } from "../../../restaurants/domain/repositories/restaurant.repository";
@@ -21,12 +22,19 @@ export class StartDeliverySessionUsecase {
   constructor(
     private readonly diningSessionRepository: DiningSessionRepository,
     private readonly restaurantRepository: RestaurantRepository,
-    private readonly customerRepository: CustomerRepository
+    private readonly customerRepository: CustomerRepository,
+    private readonly branchRepository: BranchRepository
   ) {}
 
   async execute(dto: StartDeliverySessionInput): Promise<IResolvedSession> {
     const restaurant = await this.restaurantRepository.findBySlug(dto.restaurantSlug);
     if (!restaurant || !restaurant.isActive) throw new NotFoundException(RESTAURANT_ERROR_MESSAGES.NOT_FOUND);
+
+    // Delivery has no table/floor to take a branch from: the customer names one, else the default.
+    const branch = dto.branchSlug
+      ? await this.branchRepository.findBySlug(restaurant.id, dto.branchSlug)
+      : await this.branchRepository.findDefault(restaurant.id);
+    if (!branch || !branch.isActive) throw new NotFoundException(DINING_SESSION_ERROR_MESSAGES.BRANCH_NOT_FOUND);
 
     const existing = await this.customerRepository.findByPhone(restaurant.id, dto.phone);
     if (!existing && !dto.name) {
@@ -44,6 +52,7 @@ export class StartDeliverySessionUsecase {
     const startedAt = new Date();
     const session = await this.diningSessionRepository.create({
       restaurantId: restaurant.id,
+      branchId: branch.id,
       tableId: null,
       customerId: customer.id,
       anonymousSessionToken: generateSessionToken(),

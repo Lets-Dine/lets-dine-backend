@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { StaffRole } from "@prisma/client";
 import { ConflictException } from "../../../../common/exceptions";
+import { BranchRepository } from "../../../branches/domain/repositories/branch.repository";
 import { IStaffMember } from "../../../users/domain/interfaces/restaurant-member.interface";
 import { RestaurantMemberRepository } from "../../../users/domain/repositories/restaurant-member.repository";
 import { UserRepository } from "../../../users/domain/repositories/user.repository";
@@ -18,14 +19,16 @@ export interface IRegisteredRestaurant {
 /**
  * Platform onboarding. The restaurant, its first OWNER account and the
  * membership joining them are created together — a restaurant nobody can sign
- * in to is not a useful half-result.
+ * in to is not a useful half-result. Its default branch is created in the same
+ * transaction, since tables, orders and payments all belong to a branch.
  */
 @Injectable()
 export class RegisterRestaurantUsecase {
   constructor(
     private readonly restaurantRepository: RestaurantRepository,
     private readonly userRepository: UserRepository,
-    private readonly restaurantMemberRepository: RestaurantMemberRepository
+    private readonly restaurantMemberRepository: RestaurantMemberRepository,
+    private readonly branchRepository: BranchRepository
   ) {}
 
   async execute(dto: RegisterRestaurantInput): Promise<IRegisteredRestaurant> {
@@ -44,6 +47,11 @@ export class RegisterRestaurantUsecase {
       const member = await this.restaurantMemberRepository.create(
         { userId: user.id, restaurantId: restaurant.id, role: StaffRole.OWNER },
         { tx }
+      );
+
+      await this.branchRepository.create(
+        { restaurantId: restaurant.id, name: "Main", slug: "main", timezone: restaurant.timezone, isDefault: true },
+        { tx, actorId: user.id }
       );
 
       return { restaurant, owner: member };

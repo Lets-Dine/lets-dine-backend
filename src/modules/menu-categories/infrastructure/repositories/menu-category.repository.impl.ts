@@ -26,9 +26,9 @@ class MenuCategoryRepositoryImpl implements MenuCategoryRepository {
     return prisma.menuCategory.findUnique({ where: { id } });
   }
 
-  async findByName(restaurantId: string, name: string, options?: MenuCategoryFetchOptions): Promise<IMenuCategory | null> {
+  async findByName(branchId: string, name: string, options?: MenuCategoryFetchOptions): Promise<IMenuCategory | null> {
     const prisma = options?.tx ?? this.prisma;
-    return prisma.menuCategory.findUnique({ where: { restaurantId_name: { restaurantId, name } } });
+    return prisma.menuCategory.findUnique({ where: { branchId_name: { branchId, name } } });
   }
 
   async create(data: IMenuCategoryCreate, options?: { tx?: PrismaTransaction; actorId?: string }): Promise<IMenuCategory> {
@@ -57,6 +57,7 @@ class MenuCategoryRepositoryImpl implements MenuCategoryRepository {
 
     const where: Prisma.MenuCategoryWhereInput = {
       restaurantId: query.restaurantId,
+      ...(query.branchId && { branchId: query.branchId }),
       ...(query.keyword && { name: { contains: query.keyword, mode: "insensitive" } }),
     };
 

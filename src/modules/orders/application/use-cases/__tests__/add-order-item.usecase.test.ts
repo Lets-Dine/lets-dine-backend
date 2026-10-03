@@ -16,11 +16,12 @@ import { AddOrderItemUsecase } from "../add-order-item.usecase";
 const authUser = buildAuthEntity();
 const tx = {} as any;
 const restaurant = { id: authUser.restaurantId, serviceChargeRate: 0.1, taxRate: 0.13, currency: "NPR" };
-const table = { id: "table-1", restaurantId: authUser.restaurantId, name: "Table 1" };
-const openSession = { id: "session-1", tableId: "table-1", restaurantId: authUser.restaurantId };
+const table = { id: "table-1", restaurantId: authUser.restaurantId, branchId: authUser.branchId, name: "Table 1" };
+const openSession = { id: "session-1", tableId: "table-1", restaurantId: authUser.restaurantId, branchId: authUser.branchId };
 const cheese = {
   id: "addon-1",
   restaurantId: authUser.restaurantId,
+  branchId: authUser.branchId,
   name: "Extra Cheese",
   price: 50,
   isAvailable: true,
@@ -52,7 +53,7 @@ describe("AddOrderItemUsecase", () => {
         { provide: DishRepository, useValue: { findById: jest.fn() } },
         { provide: AddOnRepository, useValue: { findLinkedToDish: jest.fn() } },
         { provide: DishVariantRepository, useValue: { findByDishId: jest.fn() } },
-        { provide: RestaurantRepository, useValue: { findById: jest.fn() } },
+        { provide: RestaurantRepository, useValue: { findByIdForBranch: jest.fn() } },
         { provide: AuditLogService, useValue: { record: jest.fn() } },
       ],
     }).compile();
@@ -68,11 +69,12 @@ describe("AddOrderItemUsecase", () => {
     auditLogService = module.get(AuditLogService);
 
     diningTableRepository.findById.mockResolvedValue(table as any);
-    restaurantRepository.findById.mockResolvedValue(restaurant as any);
+    restaurantRepository.findByIdForBranch.mockResolvedValue(restaurant as any);
     diningSessionRepository.findOpenByTableId.mockResolvedValue(openSession as any);
     dishRepository.findById.mockResolvedValue({
       id: "dish-1",
       restaurantId: authUser.restaurantId,
+      branchId: authUser.branchId,
       name: "Momo",
       imageUrl: null,
       price: 200,
@@ -407,6 +409,7 @@ describe("AddOrderItemUsecase", () => {
       expect(orderRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({
           restaurantId: authUser.restaurantId,
+          branchId: authUser.branchId,
           tableId: "table-1",
           sessionId: openSession.id,
           currency: "NPR",

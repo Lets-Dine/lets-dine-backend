@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { NotFoundException } from "../../../../common/exceptions";
-import { AuthEntity } from "../../../../common/interfaces";
+import { AuthEntity, isInActiveBranch } from "../../../../common/interfaces";
 import { IDiningTable } from "../../../tables/domain/interfaces/dining-table.interface";
 import { DiningTableRepository } from "../../../tables/domain/repositories/dining-table.repository";
 import { DINING_SESSION_ERROR_MESSAGES } from "../../domain/constants";
@@ -22,7 +22,7 @@ export class EndDiningSessionUsecase {
 
   async execute(tableId: string, authEntity: AuthEntity): Promise<IDiningTable> {
     const table = await this.diningTableRepository.findById(tableId);
-    if (!table || table.restaurantId !== authEntity.restaurantId) {
+    if (!table || !isInActiveBranch(authEntity, table)) {
       throw new NotFoundException(DINING_SESSION_ERROR_MESSAGES.TABLE_NOT_FOUND);
     }
 

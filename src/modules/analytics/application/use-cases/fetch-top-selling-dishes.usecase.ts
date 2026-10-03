@@ -4,6 +4,7 @@ import { AuthEntity } from "../../../../common/interfaces";
 import { RestaurantRepository } from "../../../restaurants/domain/repositories/restaurant.repository";
 import { ITopSellingDish } from "../../domain/interfaces/analytics.interface";
 import { AnalyticsRepository } from "../../domain/repositories/analytics.repository";
+import { resolveAnalyticsScope } from "../../domain/utils/resolve-analytics-scope.util";
 import { startOfZonedDay } from "../../domain/utils/resolve-comparison-range.util";
 import { FetchTopSellingDishesQuery } from "../../interfaces/http/validations/fetch-top-selling-dishes.validation";
 
@@ -44,6 +45,6 @@ export class FetchTopSellingDishesUsecase {
 
     if (from.getTime() > to) throw new BadRequestException(TOP_SELLING_DISHES_ERROR_MESSAGES.INVALID_RANGE);
 
-    return this.analyticsRepository.fetchTopSellingDishes(authEntity.restaurantId, { from, to: new Date(to) });
+    return this.analyticsRepository.fetchTopSellingDishes(resolveAnalyticsScope(authEntity, query.branchId), { from, to: new Date(to) });
   }
 }

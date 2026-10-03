@@ -10,6 +10,6 @@ export class FetchAllFloorsUsecase {
 
   async execute(query: FetchFloorsQuery, authEntity: AuthEntity): Promise<PaginatedResponse<IFloor>> {
     const { keyword, isActive, ...pagination } = query;
-    return this.floorRepository.fetchAll({ restaurantId: authEntity.restaurantId, keyword, isActive }, pagination);
+    return this.floorRepository.fetchAll({ restaurantId: authEntity.restaurantId, branchId: authEntity.branchId, keyword, isActive }, pagination);
   }
 }

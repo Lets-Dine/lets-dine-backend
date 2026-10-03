@@ -38,7 +38,7 @@ describe("FetchAnalyticsOverviewUsecase", () => {
       // Assert
       const spanDays = (result.range.to.getTime() - result.range.from.getTime()) / (24 * 60 * 60 * 1000);
       expect(Math.round(spanDays)).toBe(30);
-      expect(analyticsRepository.fetchOrderSummary).toHaveBeenCalledWith(authUser.restaurantId, result.range, expect.anything());
+      expect(analyticsRepository.fetchOrderSummary).toHaveBeenCalledWith({ restaurantId: authUser.restaurantId }, result.range, expect.anything());
       expect(result.orders).toEqual({ total: 12 });
     });
 
@@ -65,5 +65,22 @@ describe("FetchAnalyticsOverviewUsecase", () => {
       );
       expect(analyticsRepository.fetchOrderSummary).not.toHaveBeenCalled();
     });
+  });
+
+  it("scopes a manager to their assigned branches and honours an explicit branch within them", async () => {
+    const manager = buildAuthEntity({ role: "MANAGER" as any, branchIds: ["branch-a", "branch-b"] });
+    await usecase.execute({}, manager);
+    expect(analyticsRepository.fetchOrderSummary).toHaveBeenLastCalledWith(
+      { restaurantId: manager.restaurantId, branchIds: ["branch-a", "branch-b"] },
+      expect.anything(),
+      expect.anything()
+    );
+
+    await usecase.execute({ branchId: "branch-b" }, manager);
+    expect(analyticsRepository.fetchOrderSummary).toHaveBeenLastCalledWith(
+      { restaurantId: manager.restaurantId, branchIds: ["branch-b"] },
+      expect.anything(),
+      expect.anything()
+    );
   });
 });

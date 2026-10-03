@@ -5,6 +5,7 @@ import { buildAuthEntity } from "../../../../../common/testing";
 import { AuditLogService } from "../../../../audit-logs/application/audit-log.service";
 import { STAFF_MEMBER_ERROR_MESSAGES } from "../../../domain/constants";
 import { IStaffMember } from "../../../domain/interfaces/restaurant-member.interface";
+import { BranchRepository } from "../../../../branches/domain/repositories/branch.repository";
 import { RestaurantMemberRepository } from "../../../domain/repositories/restaurant-member.repository";
 import { UpdateStaffMemberUsecase } from "../update-staff-member.usecase";
 
@@ -19,6 +20,7 @@ function buildMember(overrides: Partial<IStaffMember> = {}): IStaffMember {
     isActive: true,
     name: "Bikash Rai",
     email: "bikash@lets-dine.test",
+    branchIds: ["branch-a"],
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -29,6 +31,7 @@ describe("UpdateStaffMemberUsecase", () => {
   let usecase: UpdateStaffMemberUsecase;
   let restaurantMemberRepository: jest.Mocked<RestaurantMemberRepository>;
   let auditLogService: jest.Mocked<AuditLogService>;
+  let branchRepository: jest.Mocked<BranchRepository>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -39,15 +42,64 @@ describe("UpdateStaffMemberUsecase", () => {
           useValue: { findById: jest.fn(), update: jest.fn(), countActiveByRole: jest.fn() },
         },
         { provide: AuditLogService, useValue: { record: jest.fn() } },
+        { provide: BranchRepository, useValue: { findActiveByIds: jest.fn() } },
       ],
     }).compile();
 
     usecase = module.get(UpdateStaffMemberUsecase);
     restaurantMemberRepository = module.get(RestaurantMemberRepository);
     auditLogService = module.get(AuditLogService);
+    branchRepository = module.get(BranchRepository);
   });
 
   describe("execute", () => {
+    it("should replace branch assignments after validating them against the restaurant", async () => {
+      // Arrange
+      const member = buildMember();
+      restaurantMemberRepository.findById.mockResolvedValue(member);
+      restaurantMemberRepository.update.mockResolvedValue(member);
+      branchRepository.findActiveByIds.mockResolvedValue([{ id: "branch-b" }, { id: "branch-c" }] as any);
+
+      // Act
+      await usecase.execute(member.id, { branchIds: ["branch-b", "branch-c"] }, authUser);
+
+      // Assert
+      expect(branchRepository.findActiveByIds).toHaveBeenCalledWith(authUser.restaurantId, ["branch-b", "branch-c"]);
+      expect(restaurantMemberRepository.update).toHaveBeenCalledWith(member.id, { branchIds: ["branch-b", "branch-c"] });
+      expect(auditLogService.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: AuditAction.staff_branches_changed, detail: "1 → 2 branches" }),
+        authUser
+      );
+    });
+
+    it("should reject a branch from another restaurant or an inactive one", async () => {
+      // Arrange
+      const member = buildMember();
+      restaurantMemberRepository.findById.mockResolvedValue(member);
+      branchRepository.findActiveByIds.mockResolvedValue([]);
+
+      // Act & Assert
+      await expect(usecase.execute(member.id, { branchIds: ["foreign"] }, authUser)).rejects.toThrow(
+        new BadRequestException(STAFF_MEMBER_ERROR_MESSAGES.INVALID_BRANCHES)
+      );
+      expect(restaurantMemberRepository.update).not.toHaveBeenCalled();
+    });
+
+    it("should put a demoted owner in the editor's branch so they can still sign in", async () => {
+      // Arrange
+      const owner = buildMember({ role: StaffRole.OWNER, branchIds: [] });
+      restaurantMemberRepository.findById.mockResolvedValue(owner);
+      restaurantMemberRepository.countActiveByRole.mockResolvedValue(2);
+      restaurantMemberRepository.update.mockResolvedValue(owner);
+      branchRepository.findActiveByIds.mockResolvedValue([{ id: authUser.branchId }] as any);
+
+      // Act
+      await usecase.execute(owner.id, { role: StaffRole.MANAGER }, authUser);
+
+      // Assert
+      expect(restaurantMemberRepository.update).toHaveBeenCalledWith(owner.id, { role: StaffRole.MANAGER, branchIds: [authUser.branchId] });
+    });
+
     it("should update the role and record the change", async () => {
       // Arrange
       const member = buildMember();

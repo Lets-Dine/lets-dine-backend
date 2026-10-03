@@ -39,6 +39,7 @@ export class StartFloorSessionUsecase {
     const startedAt = new Date();
     const session = await this.diningSessionRepository.create({
       restaurantId: floor.restaurantId,
+      branchId: floor.branchId,
       tableId: null,
       floorId: floor.id,
       floorVisitorName: dto.visitorName?.trim() || null,

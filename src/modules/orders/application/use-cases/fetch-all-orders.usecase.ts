@@ -13,7 +13,7 @@ export class FetchAllOrdersUsecase {
     const { status, tableId, orderType, from, to, ...pagination } = query;
 
     return this.orderRepository.fetchAll(
-      { restaurantId: authEntity.restaurantId, statuses: status, tableId, orderType, from, to },
+      { restaurantId: authEntity.restaurantId, branchId: authEntity.branchId, statuses: status, tableId, orderType, from, to },
       pagination
     );
   }

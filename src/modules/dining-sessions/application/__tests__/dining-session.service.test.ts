@@ -63,7 +63,7 @@ describe("DiningSessionService", () => {
           provide: OrderRepository,
           useValue: { findOpenBySessionId: jest.fn(), updateItemStatus: jest.fn(), update: jest.fn() },
         },
-        { provide: RestaurantRepository, useValue: { findById: jest.fn() } },
+        { provide: RestaurantRepository, useValue: { findByIdForBranch: jest.fn() } },
         { provide: AuditLogService, useValue: { record: jest.fn() } },
         { provide: EventEmitter2, useValue: { emit: jest.fn() } },
       ],
@@ -197,7 +197,7 @@ describe("DiningSessionService", () => {
     const endedSession = { ...session, endedAt: new Date() };
 
     beforeEach(() => {
-      restaurantRepository.findById.mockResolvedValue(restaurant as any);
+      restaurantRepository.findByIdForBranch.mockResolvedValue(restaurant as any);
       diningSessionRepository.update.mockResolvedValue(endedSession as any);
       diningTableRepository.update.mockResolvedValue({ id: "table-1", name: "T1" } as any);
       orderRepository.update.mockImplementation(async (id, data) => ({ id, ...data }) as any);
@@ -299,7 +299,7 @@ describe("DiningSessionService", () => {
       await service.endSession(session as any, authUser, tx);
 
       // Assert
-      expect(restaurantRepository.findById).not.toHaveBeenCalled();
+      expect(restaurantRepository.findByIdForBranch).not.toHaveBeenCalled();
       expect(orderRepository.updateItemStatus).not.toHaveBeenCalled();
       expect(auditLogService.record).toHaveBeenCalledWith(
         expect.objectContaining({ detail: "Table cleared for the next visit" }),

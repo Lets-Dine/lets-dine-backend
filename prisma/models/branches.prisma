@@ -1,0 +1,82 @@
+/// One physical location of a restaurant brand. Brand identity, the base menu and
+/// owner accounts stay on `Restaurant`; tables, floors, sessions, orders and
+/// payments belong to a branch. Every restaurant has exactly one `isDefault`
+/// branch so single-location restaurants behave as before.
+model Branch {
+  id                String   @id @default(uuid()) @map("id") @db.Uuid
+  restaurantId      String   @map("restaurant_id") @db.Uuid
+  name              String   @map("name")
+  /// Unique inside the restaurant — used in public URLs.
+  slug              String   @map("slug")
+  address           String   @default("") @map("address")
+  phone             String?  @map("phone")
+  latitude          Float?   @map("latitude")
+  longitude         Float?   @map("longitude")
+  timezone          String   @default("Asia/Kathmandu") @map("timezone")
+  /// Null = inherit from `Restaurant`. Ratios, not money.
+  serviceChargeRate Float?   @map("service_charge_rate")
+  taxRate           Float?   @map("tax_rate")
+  /// Flat minor-unit delivery charge; null = inherit from `Restaurant`.
+  deliveryFeeAmount Int?     @map("delivery_fee_amount")
+  isDefault         Boolean  @default(false) @map("is_default")
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  createdBy         String?  @map("created_by") @db.Uuid
+  updatedBy         String?  @map("updated_by") @db.Uuid
+
+  restaurant Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  hours      BranchHours[]
+  categories MenuCategory[]
+  dishes     Dish[]
+  addOns     AddOn[]
+  members    BranchMember[]
+  tables     DiningTable[]
+  floors     Floor[]
+  sessions   DiningSession[]
+  orders     Order[]
+  payments   Payment[]
+  auditLogs  AuditLog[]
+
+  @@unique([restaurantId, slug])
+  @@index([restaurantId])
+  /// Partial unique index `branches_one_default_per_restaurant_idx` (SQL) keeps
+  /// at most one default branch per restaurant.
+  @@map("branches")
+  @@schema("public")
+}
+
+/// Opening hours for one branch. A day may have several ranges (lunch, dinner);
+/// times are `HH:mm` in the branch's own timezone.
+model BranchHours {
+  id        String  @id @default(uuid()) @map("id") @db.Uuid
+  branchId  String  @map("branch_id") @db.Uuid
+  /// 0 = Sunday … 6 = Saturday.
+  dayOfWeek Int     @map("day_of_week")
+  opensAt   String  @map("opens_at")
+  closesAt  String  @map("closes_at")
+  isClosed  Boolean @default(false) @map("is_closed")
+
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@index([branchId, dayOfWeek])
+  @@map("branch_hours")
+  @@schema("public")
+}
+
+/// Pins a manager/staff member to a branch. OWNER members reach every branch
+/// and need no rows here.
+model BranchMember {
+  id        String   @id @default(uuid()) @map("id") @db.Uuid
+  memberId  String   @map("member_id") @db.Uuid
+  branchId  String   @map("branch_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  member RestaurantMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  branch Branch           @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, branchId])
+  @@index([branchId])
+  @@map("branch_members")
+  @@schema("public")
+}

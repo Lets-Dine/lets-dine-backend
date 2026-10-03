@@ -14,6 +14,7 @@ function buildTable(overrides: Partial<IDiningTable> = {}): IDiningTable {
   return {
     id: "table-1",
     restaurantId: authUser.restaurantId,
+    branchId: authUser.branchId,
     name: "T1",
     qrToken: "token",
     capacity: 4,
@@ -78,6 +79,17 @@ describe("UpdateTableUsecase", () => {
     it("should throw NotFoundException for a table of another restaurant", async () => {
       // Arrange
       diningTableRepository.findById.mockResolvedValue(buildTable({ restaurantId: "other" }));
+
+      // Act & Assert
+      await expect(usecase.execute("table-1", { capacity: 6 }, authUser)).rejects.toThrow(
+        new NotFoundException(DINING_TABLE_ERROR_MESSAGES.NOT_FOUND)
+      );
+      expect(diningTableRepository.update).not.toHaveBeenCalled();
+    });
+
+    it("should throw NotFoundException for a table in another branch of the same restaurant", async () => {
+      // Arrange
+      diningTableRepository.findById.mockResolvedValue(buildTable({ branchId: "other-branch" }));
 
       // Act & Assert
       await expect(usecase.execute("table-1", { capacity: 6 }, authUser)).rejects.toThrow(

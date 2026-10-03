@@ -4,6 +4,7 @@
 model DiningSession {
   id                    String    @id @default(uuid()) @map("id") @db.Uuid
   restaurantId          String    @map("restaurant_id") @db.Uuid
+  branchId              String    @map("branch_id") @db.Uuid
   /// Null for a delivery or floor session — `customerId`/`floorId` is set instead.
   tableId               String?   @map("table_id") @db.Uuid
   /// Set only for a delivery session. A floor order's own `Customer` is
@@ -24,6 +25,7 @@ model DiningSession {
   updatedAt             DateTime  @updatedAt @map("updated_at")
 
   restaurant   Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  branch       Branch        @relation(fields: [branchId], references: [id], onDelete: Restrict)
   table        DiningTable?  @relation("TableSessions", fields: [tableId], references: [id], onDelete: Cascade)
   customer     Customer?     @relation(fields: [customerId], references: [id], onDelete: Restrict)
   floor        Floor?        @relation("FloorSessions", fields: [floorId], references: [id], onDelete: Cascade)
@@ -36,6 +38,7 @@ model DiningSession {
   /// Partial uniqueness for open sessions is enforced by
   /// `dining_sessions_one_open_per_table_idx` in SQL. No floor equivalent exists on purpose (§16b).
   @@index([restaurantId, tableId])
+  @@index([branchId])
   @@index([restaurantId, floorId])
   @@map("dining_sessions")
   @@schema("public")

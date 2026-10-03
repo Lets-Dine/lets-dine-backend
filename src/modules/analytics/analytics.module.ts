@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { RestaurantsModule } from "../restaurants/restaurants.module";
 import { FetchAnalyticsOverviewUsecase } from "./application/use-cases/fetch-analytics-overview.usecase";
+import { FetchBranchPerformanceUsecase } from "./application/use-cases/fetch-branch-performance.usecase";
 import { FetchOrderComparisonUsecase } from "./application/use-cases/fetch-order-comparison.usecase";
 import { FetchRevenueComparisonUsecase } from "./application/use-cases/fetch-revenue-comparison.usecase";
 import { FetchTopSellingDishesUsecase } from "./application/use-cases/fetch-top-selling-dishes.usecase";
@@ -16,6 +17,7 @@ import { AnalyticsController } from "./interfaces/http/analytics.controller";
     FetchRevenueComparisonUsecase,
     FetchOrderComparisonUsecase,
     FetchTopSellingDishesUsecase,
+    FetchBranchPerformanceUsecase,
     AnalyticsRepositoryImpl,
     { provide: AnalyticsRepository, useExisting: AnalyticsRepositoryImpl },
   ],

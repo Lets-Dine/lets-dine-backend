@@ -3,6 +3,8 @@ import { paginationSchema } from "../../../../../common/dto";
 
 export const fetchRestaurantReviewsSchema = z.object({
   ...paginationSchema,
+  /** Narrow to one branch. Owners default to every branch; others to the branches they are assigned to. */
+  branchId: z.string().uuid().optional(),
   dishId: z.string().uuid().optional(),
   minRating: z.coerce.number().int().min(1).max(5).optional(),
   maxRating: z.coerce.number().int().min(1).max(5).optional(),

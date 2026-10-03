@@ -27,6 +27,7 @@ class AuditLogRepositoryImpl implements AuditLogRepository {
 
     const where: Prisma.AuditLogWhereInput = {
       restaurantId: query.restaurantId,
+      branchId: query.branchId,
       ...(query.action && { action: query.action }),
       ...(query.actorId && { actorId: query.actorId }),
       ...((query.from || query.to) && {

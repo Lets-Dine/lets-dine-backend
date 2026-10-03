@@ -3,6 +3,8 @@ import { OrderStatus, Prisma } from "@prisma/client";
 import { PrismaService } from "../../../../common/prisma";
 import {
   IAnalyticsRange,
+  IAnalyticsScope,
+  IBranchPerformance,
   IDishPerformance,
   IFeedbackSummary,
   IHourlyOrders,
@@ -26,9 +28,9 @@ const TOP_TAGS_LIMIT = 6;
 class AnalyticsRepositoryImpl implements AnalyticsRepository {
   constructor(private prisma: PrismaService) {}
 
-  async fetchOrderSummary(restaurantId: string, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<IOrderSummary> {
+  async fetchOrderSummary(scope: IAnalyticsScope, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<IOrderSummary> {
     const prisma = options?.tx ?? this.prisma;
-    const where = this.ordersWhere(restaurantId, range);
+    const where = this.ordersWhere(scope, range);
 
     const [counts, revenue] = await Promise.all([
       prisma.order.groupBy({ by: ["status"], where, _count: { _all: true } }),
@@ -57,11 +59,11 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
     };
   }
 
-  async fetchDishPerformance(restaurantId: string, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<IDishPerformance[]> {
+  async fetchDishPerformance(scope: IAnalyticsScope, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<IDishPerformance[]> {
     const prisma = options?.tx ?? this.prisma;
 
     const items = await prisma.orderItem.findMany({
-      where: { order: { ...this.ordersWhere(restaurantId, range), status: OrderStatus.COMPLETED } },
+      where: { order: { ...this.ordersWhere(scope, range), status: OrderStatus.COMPLETED } },
       select: { dishId: true, dishNameSnapshot: true, unitPrice: true, quantity: true },
     });
 
@@ -84,7 +86,7 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
 
     const ratings = await prisma.dishReview.groupBy({
       by: ["dishId"],
-      where: { dishId: { in: ranked.map(row => row.dishId) }, isHidden: false },
+      where: { ...this.reviewsWhere(scope), dishId: { in: ranked.map(row => row.dishId) }, isHidden: false },
       _avg: { overall: true },
       _count: { _all: true },
     });
@@ -99,10 +101,10 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
     });
   }
 
-  async fetchFeedbackSummary(restaurantId: string, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<IFeedbackSummary> {
+  async fetchFeedbackSummary(scope: IAnalyticsScope, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<IFeedbackSummary> {
     const prisma = options?.tx ?? this.prisma;
     const where: Prisma.DishReviewWhereInput = {
-      restaurantId,
+      ...this.reviewsWhere(scope),
       isHidden: false,
       createdAt: { gte: range.from, lte: range.to },
     };
@@ -137,11 +139,11 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
     };
   }
 
-  async fetchBusiestHours(restaurantId: string, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<IHourlyOrders[]> {
+  async fetchBusiestHours(scope: IAnalyticsScope, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<IHourlyOrders[]> {
     const prisma = options?.tx ?? this.prisma;
 
     const orders = await prisma.order.findMany({
-      where: { ...this.ordersWhere(restaurantId, range), status: { not: OrderStatus.CANCELLED } },
+      where: { ...this.ordersWhere(scope, range), status: { not: OrderStatus.CANCELLED } },
       select: { createdAt: true },
     });
 
@@ -154,7 +156,7 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
   }
 
   async fetchRevenueComparison(
-    restaurantId: string,
+    scope: IAnalyticsScope,
     currentRange: IAnalyticsRange,
     previousRange: IAnalyticsRange,
     options?: AnalyticsFetchOptions
@@ -166,7 +168,8 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
         COALESCE(SUM(total) FILTER (WHERE created_at >= ${currentRange.from} AND created_at < ${currentRange.to}), 0)::bigint AS current,
         COALESCE(SUM(total) FILTER (WHERE created_at >= ${previousRange.from} AND created_at < ${previousRange.to}), 0)::bigint AS previous
       FROM payments
-      WHERE restaurant_id = ${restaurantId}::uuid
+      WHERE restaurant_id = ${scope.restaurantId}::uuid
+        AND (${scope.branchIds ?? null}::uuid[] IS NULL OR branch_id = ANY(${scope.branchIds ?? null}::uuid[]))
         AND created_at >= ${previousRange.from}
         AND created_at < ${currentRange.to}
     `;
@@ -182,7 +185,7 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
    * scan; add that index if this ever shows up as slow.
    */
   async fetchOrderComparison(
-    restaurantId: string,
+    scope: IAnalyticsScope,
     currentRange: IAnalyticsRange,
     previousRange: IAnalyticsRange,
     options?: AnalyticsFetchOptions
@@ -194,7 +197,8 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
         COUNT(*) FILTER (WHERE created_at >= ${currentRange.from} AND created_at < ${currentRange.to})::bigint AS current,
         COUNT(*) FILTER (WHERE created_at >= ${previousRange.from} AND created_at < ${previousRange.to})::bigint AS previous
       FROM orders
-      WHERE restaurant_id = ${restaurantId}::uuid
+      WHERE restaurant_id = ${scope.restaurantId}::uuid
+        AND (${scope.branchIds ?? null}::uuid[] IS NULL OR branch_id = ANY(${scope.branchIds ?? null}::uuid[]))
         AND status <> ${OrderStatus.CANCELLED}::"OrderStatus"
         AND created_at >= ${previousRange.from}
         AND created_at < ${currentRange.to}
@@ -209,11 +213,11 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
    * `fetchRevenueComparison` already applies to the `payments` table. Revenue
    * is summed in memory for the same reason as `fetchDishPerformance` above.
    */
-  async fetchTopSellingDishes(restaurantId: string, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<ITopSellingDish[]> {
+  async fetchTopSellingDishes(scope: IAnalyticsScope, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<ITopSellingDish[]> {
     const prisma = options?.tx ?? this.prisma;
 
     const items = await prisma.paymentItem.findMany({
-      where: { payment: { restaurantId, createdAt: { gte: range.from, lt: range.to } } },
+      where: { payment: { ...this.scopeWhere(scope), createdAt: { gte: range.from, lt: range.to } } },
       select: { dishId: true, dishNameSnapshot: true, unitPrice: true, quantity: true },
     });
 
@@ -228,8 +232,53 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
     return [...dishes.values()].sort((a, b) => b.orderCount - a.orderCount);
   }
 
-  private ordersWhere(restaurantId: string, range: IAnalyticsRange): Prisma.OrderWhereInput {
-    return { restaurantId, createdAt: { gte: range.from, lte: range.to } };
+  async fetchBranchPerformance(scope: IAnalyticsScope, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<IBranchPerformance[]> {
+    const prisma = options?.tx ?? this.prisma;
+    const where = this.ordersWhere(scope, range);
+
+    const [branches, counts, revenue] = await Promise.all([
+      prisma.branch.findMany({
+        where: { restaurantId: scope.restaurantId, ...(scope.branchIds && { id: { in: scope.branchIds } }) },
+        select: { id: true, name: true },
+      }),
+      prisma.order.groupBy({ by: ["branchId", "status"], where, _count: { _all: true } }),
+      prisma.order.groupBy({ by: ["branchId"], where: { ...where, status: OrderStatus.COMPLETED }, _sum: { total: true } }),
+    ]);
+
+    return branches
+      .map(branch => {
+        const own = counts.filter(row => row.branchId === branch.id);
+        const completed = own.find(row => row.status === OrderStatus.COMPLETED)?._count._all ?? 0;
+        const cancelled = own.find(row => row.status === OrderStatus.CANCELLED)?._count._all ?? 0;
+        const grossRevenue = revenue.find(row => row.branchId === branch.id)?._sum.total ?? 0;
+        return {
+          branchId: branch.id,
+          branchName: branch.name,
+          orders: own.reduce((sum, row) => sum + row._count._all, 0),
+          completed,
+          cancelled,
+          grossRevenue,
+          averageOrderValue: completed > 0 ? Math.round(grossRevenue / completed) : 0,
+        };
+      })
+      .sort((a, b) => b.grossRevenue - a.grossRevenue || a.branchName.localeCompare(b.branchName));
+  }
+
+  /** `orders`/`payments` both carry `restaurantId` and `branchId` directly. */
+  private scopeWhere(scope: IAnalyticsScope): { restaurantId: string; branchId?: { in: string[] } } {
+    return { restaurantId: scope.restaurantId, ...(scope.branchIds && { branchId: { in: scope.branchIds } }) };
+  }
+
+  private ordersWhere(scope: IAnalyticsScope, range: IAnalyticsRange): Prisma.OrderWhereInput {
+    return { ...this.scopeWhere(scope), createdAt: { gte: range.from, lte: range.to } };
+  }
+
+  /** A review has no branch of its own — it belongs to the branch of the order it rates. */
+  private reviewsWhere(scope: IAnalyticsScope): Prisma.DishReviewWhereInput {
+    return {
+      restaurantId: scope.restaurantId,
+      ...(scope.branchIds && { order: { branchId: { in: scope.branchIds } } }),
+    };
   }
 }
 

@@ -4,6 +4,7 @@ import { IFloor } from "../interfaces/floor.interface";
 
 export interface IFloorCreate {
   restaurantId: string;
+  branchId: string;
   name: string;
   qrToken: string;
   sortOrder?: number;
@@ -17,6 +18,7 @@ export interface FloorFetchOptions {
 
 export interface IFloorsFetchQuery {
   restaurantId: string;
+  branchId: string;
   keyword?: string;
   isActive?: boolean;
 }
@@ -28,7 +30,7 @@ export interface IFloorsFetchOptions extends IPaginationOptions {
 export abstract class FloorRepository {
   abstract findById(id: string, options?: FloorFetchOptions): Promise<IFloor | null>;
   abstract findByQrToken(qrToken: string, options?: FloorFetchOptions): Promise<IFloor | null>;
-  abstract findByName(restaurantId: string, name: string, options?: FloorFetchOptions): Promise<IFloor | null>;
+  abstract findByName(branchId: string, name: string, options?: FloorFetchOptions): Promise<IFloor | null>;
   abstract create(data: IFloorCreate, options?: { tx?: PrismaTransaction; actorId?: string }): Promise<IFloor>;
   abstract update(id: string, data: IFloorUpdate, options?: { tx?: PrismaTransaction; actorId?: string }): Promise<IFloor>;
   abstract fetchAll(query: IFloorsFetchQuery, options?: IFloorsFetchOptions): Promise<PaginatedResponse<IFloor>>;

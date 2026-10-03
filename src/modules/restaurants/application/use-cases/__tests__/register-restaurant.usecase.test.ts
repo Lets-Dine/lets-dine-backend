@@ -2,6 +2,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { StaffRole } from "@prisma/client";
 import { ConflictException } from "../../../../../common/exceptions";
 import { PrismaTransaction } from "../../../../../common/prisma";
+import { BranchRepository } from "../../../../branches/domain/repositories/branch.repository";
 import { RestaurantMemberRepository } from "../../../../users/domain/repositories/restaurant-member.repository";
 import { UserRepository } from "../../../../users/domain/repositories/user.repository";
 import { RESTAURANT_ERROR_MESSAGES } from "../../../domain/constants";
@@ -20,6 +21,7 @@ describe("RegisterRestaurantUsecase", () => {
   let restaurantRepository: jest.Mocked<RestaurantRepository>;
   let userRepository: jest.Mocked<UserRepository>;
   let restaurantMemberRepository: jest.Mocked<RestaurantMemberRepository>;
+  let branchRepository: jest.Mocked<BranchRepository>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -35,6 +37,7 @@ describe("RegisterRestaurantUsecase", () => {
         },
         { provide: UserRepository, useValue: { findByEmail: jest.fn(), create: jest.fn() } },
         { provide: RestaurantMemberRepository, useValue: { create: jest.fn() } },
+        { provide: BranchRepository, useValue: { create: jest.fn() } },
       ],
     }).compile();
 
@@ -42,12 +45,13 @@ describe("RegisterRestaurantUsecase", () => {
     restaurantRepository = module.get(RestaurantRepository);
     userRepository = module.get(UserRepository);
     restaurantMemberRepository = module.get(RestaurantMemberRepository);
+    branchRepository = module.get(BranchRepository);
   });
 
   describe("execute", () => {
     it("should create the restaurant, its owner account and the membership in one transaction", async () => {
       // Arrange
-      const restaurant = { id: "restaurant-1", name: dto.name } as any;
+      const restaurant = { id: "restaurant-1", name: dto.name, timezone: "Asia/Kathmandu" } as any;
       const member = { id: "member-1", role: StaffRole.OWNER } as any;
       restaurantRepository.findBySlug.mockResolvedValue(null);
       userRepository.findByEmail.mockResolvedValue(null);
@@ -61,12 +65,16 @@ describe("RegisterRestaurantUsecase", () => {
       // Assert
       expect(result).toEqual({ restaurant, owner: member });
       expect(restaurantRepository.create).toHaveBeenCalledWith(
-        { name: dto.name, slug: dto.slug },
+        { name: dto.name, slug: dto.slug, coverImageUrl: dto.coverImageUrl },
         expect.objectContaining({ tx: expect.anything() })
       );
       expect(restaurantMemberRepository.create).toHaveBeenCalledWith(
         { userId: "user-1", restaurantId: restaurant.id, role: StaffRole.OWNER },
         expect.anything()
+      );
+      expect(branchRepository.create).toHaveBeenCalledWith(
+        { restaurantId: restaurant.id, name: "Main", slug: "main", timezone: "Asia/Kathmandu", isDefault: true },
+        expect.objectContaining({ tx: expect.anything() })
       );
     });
 

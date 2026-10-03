@@ -2,6 +2,7 @@ export const ORDER_ERROR_MESSAGES = {
   NOT_FOUND: { key: "ORDER_NOT_FOUND", message: "Order not found" },
   EMPTY_CART: { key: "ORDER_EMPTY_CART", message: "Add something to the cart before ordering" },
   DISH_NOT_FOUND: { key: "ORDER_DISH_NOT_FOUND", message: "One of these dishes is no longer on the menu" },
+  BRANCH_CLOSED: { key: "ORDER_BRANCH_CLOSED", message: "This branch is closed right now and is not taking orders" },
   DISH_UNAVAILABLE: { key: "ORDER_DISH_UNAVAILABLE", message: "One of these dishes just became unavailable" },
   ADD_ON_UNAVAILABLE: {
     key: "ORDER_ADD_ON_UNAVAILABLE",

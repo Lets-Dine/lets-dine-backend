@@ -1,6 +1,7 @@
 export interface IDiningTable {
   id: string;
   restaurantId: string;
+  branchId: string;
   name: string;
   /** Opaque and printed on the table — §53, never derived from the table name. */
   qrToken: string;

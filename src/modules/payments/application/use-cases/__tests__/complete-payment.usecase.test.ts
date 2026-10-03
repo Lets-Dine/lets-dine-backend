@@ -15,9 +15,9 @@ import { CompletePaymentUsecase } from "../complete-payment.usecase";
 
 const authUser = buildAuthEntity();
 const tx = {} as any;
-const session = { id: "session-1", restaurantId: authUser.restaurantId, tableId: "table-1", endedAt: null };
+const session = { id: "session-1", restaurantId: authUser.restaurantId, branchId: authUser.branchId, tableId: "table-1", endedAt: null };
 const restaurant = { id: authUser.restaurantId, serviceChargeRate: 0.1, taxRate: 0.13, currency: "NPR" };
-const dish = { id: "dish-1", restaurantId: authUser.restaurantId, name: "Momo", price: 200 };
+const dish = { id: "dish-1", restaurantId: authUser.restaurantId, branchId: authUser.branchId, name: "Momo", price: 200 };
 const requestItems = [{ dishId: "dish-1", quantity: 2 }];
 const method = "CASH" as const;
 const floorOrder = {
@@ -53,8 +53,8 @@ describe("CompletePaymentUsecase", () => {
         { provide: DiningSessionRepository, useValue: { findById: jest.fn() } },
         { provide: DiningSessionService, useValue: { endSession: jest.fn() } },
         { provide: DishRepository, useValue: { findManyByIds: jest.fn() } },
-        { provide: OrderRepository, useValue: { findById: jest.fn(), update: jest.fn() } },
-        { provide: RestaurantRepository, useValue: { findById: jest.fn() } },
+        { provide: OrderRepository, useValue: { findById: jest.fn(), findBySessionId: jest.fn().mockResolvedValue([]), update: jest.fn() } },
+        { provide: RestaurantRepository, useValue: { findByIdForBranch: jest.fn() } },
         { provide: AuditLogService, useValue: { record: jest.fn() } },
         { provide: EventEmitter2, useValue: { emit: jest.fn() } },
       ],
@@ -71,7 +71,7 @@ describe("CompletePaymentUsecase", () => {
     eventEmitter = module.get(EventEmitter2);
 
     diningSessionRepository.findById.mockResolvedValue(session as any);
-    restaurantRepository.findById.mockResolvedValue(restaurant as any);
+    restaurantRepository.findByIdForBranch.mockResolvedValue(restaurant as any);
     dishRepository.findManyByIds.mockResolvedValue([dish] as any);
   });
 
@@ -97,6 +97,26 @@ describe("CompletePaymentUsecase", () => {
         tx
       );
       expect(diningSessionService.endSession).not.toHaveBeenCalled();
+    });
+
+    it("should charge a table payment to the customer its session's orders were placed under", async () => {
+      // Arrange
+      orderRepository.findBySessionId.mockResolvedValue([{ customerId: null }, { customerId: "customer-1" }] as any);
+      paymentRepository.create.mockResolvedValue({ id: "payment-1" } as any);
+
+      // Act
+      await usecase.execute({ sessionId: "session-1", items: requestItems, method }, authUser);
+
+      // Assert
+      expect(paymentRepository.create.mock.calls[0][0].customerId).toBe("customer-1");
+    });
+
+    it("should leave the payment's customer null when nobody on the visit gave a number", async () => {
+      paymentRepository.create.mockResolvedValue({ id: "payment-1" } as any);
+
+      await usecase.execute({ sessionId: "session-1", items: requestItems, method }, authUser);
+
+      expect(paymentRepository.create.mock.calls[0][0].customerId).toBeNull();
     });
 
     it("should hand the session off to the shared end-session service when asked", async () => {
@@ -188,6 +208,15 @@ describe("CompletePaymentUsecase", () => {
         expect(patch).toEqual(expect.objectContaining({ status: "COMPLETED", paidAt: expect.any(Date), completedAt: expect.any(Date) }));
         expect(eventEmitter.emit).toHaveBeenCalledWith("order.updated", expect.objectContaining({ status: "COMPLETED" }));
         expect(diningSessionService.endSession).not.toHaveBeenCalled();
+      });
+
+      it("should charge a floor payment to that order's own customer", async () => {
+        orderRepository.findById.mockResolvedValue({ ...floorOrder, customerId: "customer-2" } as any);
+        orderRepository.update.mockResolvedValue({ ...floorOrder, status: "COMPLETED", paidAt: new Date() } as any);
+
+        await usecase.execute({ sessionId: "session-1", orderId: "order-1", items: requestItems, method }, authUser);
+
+        expect(paymentRepository.create.mock.calls[0][0].customerId).toBe("customer-2");
       });
 
       it("should ignore endSession when scoped to one order — a floor order never fast-forwards its siblings", async () => {

@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { AuditAction } from "@prisma/client";
 import { ConflictException, NotFoundException } from "../../../../common/exceptions";
-import { AuthEntity } from "../../../../common/interfaces";
+import { AuthEntity, isInActiveBranch } from "../../../../common/interfaces";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
 import { DISH_ERROR_MESSAGES } from "../../../dishes/domain/constants";
 import { DishRepository } from "../../../dishes/domain/repositories/dish.repository";
@@ -19,7 +19,7 @@ export class RestoreDishVariantUsecase {
 
   async execute(dishId: string, variantId: string, authEntity: AuthEntity): Promise<IDishVariant> {
     const dish = await this.dishRepository.findById(dishId);
-    if (!dish || dish.restaurantId !== authEntity.restaurantId) {
+    if (!dish || !isInActiveBranch(authEntity, dish)) {
       throw new NotFoundException(DISH_ERROR_MESSAGES.NOT_FOUND);
     }
 

@@ -53,9 +53,9 @@ class OrderRepositoryImpl implements OrderRepository {
     return order ? this.toOrder(order) : null;
   }
 
-  async nextReference(restaurantId: string, options?: OrderFetchOptions): Promise<string> {
+  async nextReference(branchId: string, options?: OrderFetchOptions): Promise<string> {
     const prisma = options?.tx ?? this.prisma;
-    const placed = await prisma.order.count({ where: { restaurantId } });
+    const placed = await prisma.order.count({ where: { branchId } });
     return `#${FIRST_REFERENCE + placed + 1}`;
   }
 
@@ -66,7 +66,7 @@ class OrderRepositoryImpl implements OrderRepository {
     const created = await prisma.order.create({
       data: {
         ...order,
-        reference: await this.nextReference(order.restaurantId, options),
+        reference: await this.nextReference(order.branchId, options),
         items: {
           create: items.map(({ addOns, ...item }) => ({
             ...item,
@@ -97,6 +97,7 @@ class OrderRepositoryImpl implements OrderRepository {
 
     const where: Prisma.OrderWhereInput = {
       ...(query.restaurantId && { restaurantId: query.restaurantId }),
+      ...(query.branchId && { branchId: query.branchId }),
       ...(query.sessionId && { sessionId: query.sessionId }),
       ...(query.tableId && { tableId: query.tableId }),
       ...(query.orderType && { orderType: query.orderType }),
@@ -128,12 +129,13 @@ class OrderRepositoryImpl implements OrderRepository {
    * straight to SQL instead: one query, items and reviewed-dish ids folded in
    * via lateral joins rather than fetched separately.
    */
-  async findBySessionId(sessionId: string, restaurantId: string): Promise<IOrderWithItems[]> {
+  async findBySessionId(sessionId: string, restaurantId: string, branchId: string): Promise<IOrderWithItems[]> {
     const rows = await this.prisma.$queryRaw<IOrderWithItems[]>`
       SELECT
         o.id,
         o.reference,
         o.restaurant_id   AS "restaurantId",
+        o.branch_id       AS "branchId",
         o.table_id        AS "tableId",
         o.session_id      AS "sessionId",
         o.floor_id        AS "floorId",
@@ -162,9 +164,12 @@ class OrderRepositoryImpl implements OrderRepository {
         o.updated_at      AS "updatedAt",
         t.name            AS "tableName",
         f.name            AS "floorName",
+        c.name            AS "customerName",
+        c.phone           AS "customerPhone",
         COALESCE(items.rows, '[]'::json)             AS items,
         COALESCE(reviews.dish_ids, ARRAY[]::uuid[])  AS "reviewedDishIds"
       FROM orders o
+      LEFT JOIN customers c ON c.id = o.customer_id
       -- LEFT, not JOIN — a delivery order's table_id is null and would
       -- otherwise be dropped from the result entirely.
       LEFT JOIN dining_tables t ON t.id = o.table_id
@@ -210,6 +215,7 @@ class OrderRepositoryImpl implements OrderRepository {
       -- leading column) so this is an index scan, not a sequential one.
       WHERE o.session_id = ${sessionId}::uuid
         AND o.restaurant_id = ${restaurantId}::uuid
+        AND o.branch_id = ${branchId}::uuid
       ORDER BY o.created_at DESC
     `;
 

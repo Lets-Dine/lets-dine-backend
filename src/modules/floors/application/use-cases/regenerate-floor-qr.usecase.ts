@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { AuditAction } from "@prisma/client";
 import { NotFoundException } from "../../../../common/exceptions";
-import { AuthEntity } from "../../../../common/interfaces";
+import { AuthEntity, isInActiveBranch } from "../../../../common/interfaces";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
 import { generateQrToken } from "../../../tables/domain/utils/qr-token.util";
 import { FLOOR_ERROR_MESSAGES } from "../../domain/constants";
@@ -18,7 +18,7 @@ export class RegenerateFloorQrUsecase {
 
   async execute(id: string, authEntity: AuthEntity): Promise<IFloor> {
     const existing = await this.floorRepository.findById(id);
-    if (!existing || existing.restaurantId !== authEntity.restaurantId) {
+    if (!existing || !isInActiveBranch(authEntity, existing)) {
       throw new NotFoundException(FLOOR_ERROR_MESSAGES.NOT_FOUND);
     }
 

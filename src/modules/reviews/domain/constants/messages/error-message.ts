@@ -1,4 +1,5 @@
 export const DISH_REVIEW_ERROR_MESSAGES = {
+  BRANCH_FORBIDDEN: { key: "DISH_REVIEW_BRANCH_FORBIDDEN", message: "You do not have access to this branch's reviews" },
   NOT_FOUND: { key: "DISH_REVIEW_NOT_FOUND", message: "Review not found" },
   ORDER_NOT_FOUND: { key: "DISH_REVIEW_ORDER_NOT_FOUND", message: "That order is not yours to review" },
   DISH_NOT_SERVED: {

@@ -3,7 +3,7 @@ import { AuditAction, OrderStatus } from "@prisma/client";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { can } from "../../../../common/auth";
 import { ConflictException, ForbiddenException, NotFoundException } from "../../../../common/exceptions";
-import { AuthEntity } from "../../../../common/interfaces";
+import { AuthEntity, isInActiveBranch } from "../../../../common/interfaces";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
 import { DiningSessionService } from "../../../dining-sessions/application/dining-session.service";
 import { DiningSessionRepository } from "../../../dining-sessions/domain/repositories/dining-session.repository";
@@ -34,9 +34,9 @@ export class CompletePaymentUsecase {
   async execute(dto: CompletePaymentInput, authEntity: AuthEntity): Promise<IPaymentWithItems> {
     const [session, restaurant] = await Promise.all([
       this.diningSessionRepository.findById(dto.sessionId),
-      this.restaurantRepository.findById(authEntity.restaurantId),
+      this.restaurantRepository.findByIdForBranch(authEntity.restaurantId, authEntity.branchId),
     ]);
-    if (!session || session.restaurantId !== authEntity.restaurantId) throw new NotFoundException(PAYMENT_ERROR_MESSAGES.SESSION_NOT_FOUND);
+    if (!session || !isInActiveBranch(authEntity, session)) throw new NotFoundException(PAYMENT_ERROR_MESSAGES.SESSION_NOT_FOUND);
     if (!dto.orderId && session.endedAt) throw new ConflictException(PAYMENT_ERROR_MESSAGES.SESSION_ALREADY_ENDED);
     if (!restaurant) throw new NotFoundException(RESTAURANT_ERROR_MESSAGES.NOT_FOUND);
 
@@ -62,7 +62,7 @@ export class CompletePaymentUsecase {
 
       const items: IPaymentItemCreate[] = dto.items.map(line => {
         const dish = dishes.find(candidate => candidate.id === line.dishId);
-        if (!dish || dish.restaurantId !== authEntity.restaurantId) {
+        if (!dish || dish.branchId !== session.branchId) {
           throw new NotFoundException({ ...PAYMENT_ERROR_MESSAGES.DISH_NOT_FOUND, detail: { dishId: line.dishId } });
         }
         return { dishId: dish.id, dishNameSnapshot: dish.name, unitPrice: dish.price, quantity: line.quantity };
@@ -74,9 +74,11 @@ export class CompletePaymentUsecase {
       const payment = await this.paymentRepository.create(
         {
           restaurantId: authEntity.restaurantId,
+          branchId: session.branchId,
           sessionId: session.id,
           tableId: session.tableId,
           floorId: session.floorId,
+          customerId: await this.resolveCustomerId(session, order, authEntity.restaurantId),
           subtotal: totals.subtotal,
           serviceCharge: totals.serviceCharge,
           tax: totals.tax,
@@ -118,5 +120,21 @@ export class CompletePaymentUsecase {
 
       return payment;
     });
+  }
+
+  /**
+   * Who is paying. A floor payment settles one order, so that order's customer; a delivery session
+   * has its own; a table payment settles the whole visit, so it takes the customer the table
+   * session's orders were placed under (every order in a table session shares one — first wins).
+   */
+  private async resolveCustomerId(
+    session: { id: string; branchId: string; customerId: string | null },
+    order: { customerId: string | null } | null,
+    restaurantId: string
+  ): Promise<string | null> {
+    if (order) return order.customerId;
+    if (session.customerId) return session.customerId;
+    const orders = await this.orderRepository.findBySessionId(session.id, restaurantId, session.branchId);
+    return orders.find(candidate => candidate.customerId)?.customerId ?? null;
   }
 }

@@ -8,7 +8,7 @@ import { MenuCategoryRepository } from "../../../domain/repositories/menu-catego
 import { DeleteMenuCategoryUsecase } from "../delete-menu-category.usecase";
 
 const authUser = buildAuthEntity();
-const category = { id: "category-1", restaurantId: authUser.restaurantId, name: "Momo" } as any;
+const category = { id: "category-1", restaurantId: authUser.restaurantId, branchId: authUser.branchId, name: "Momo" } as any;
 
 describe("DeleteMenuCategoryUsecase", () => {
   let usecase: DeleteMenuCategoryUsecase;

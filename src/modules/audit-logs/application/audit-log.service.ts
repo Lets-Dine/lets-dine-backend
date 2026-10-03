@@ -26,6 +26,7 @@ export class AuditLogService {
     return this.auditLogRepository.create(
       {
         restaurantId: authEntity.restaurantId,
+        branchId: authEntity.branchId,
         actorId: authEntity.sub,
         actorName: authEntity.name,
         actorRole: authEntity.role,

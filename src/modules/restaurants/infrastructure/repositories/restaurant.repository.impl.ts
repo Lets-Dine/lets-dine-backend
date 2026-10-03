@@ -26,6 +26,24 @@ class RestaurantRepositoryImpl implements RestaurantRepository {
     return prisma.restaurant.findUnique({ where: { id } });
   }
 
+  async findByIdForBranch(id: string, branchId: string, options?: RestaurantFetchOptions): Promise<IRestaurant | null> {
+    const prisma = options?.tx ?? this.prisma;
+    const found = await prisma.restaurant.findUnique({
+      where: { id },
+      include: { branches: { where: { id: branchId }, select: { serviceChargeRate: true, taxRate: true, deliveryFeeAmount: true } } },
+    });
+    if (!found) return null;
+
+    const { branches, ...restaurant } = found;
+    const [branch] = branches;
+    return {
+      ...restaurant,
+      serviceChargeRate: branch?.serviceChargeRate ?? restaurant.serviceChargeRate,
+      taxRate: branch?.taxRate ?? restaurant.taxRate,
+      deliveryFeeAmount: branch?.deliveryFeeAmount ?? restaurant.deliveryFeeAmount,
+    };
+  }
+
   async findBySlug(slug: string, options?: RestaurantFetchOptions): Promise<IRestaurant | null> {
     const prisma = options?.tx ?? this.prisma;
     return prisma.restaurant.findUnique({ where: { slug } });

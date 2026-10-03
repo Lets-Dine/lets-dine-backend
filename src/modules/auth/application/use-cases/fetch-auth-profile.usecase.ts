@@ -3,6 +3,7 @@ import { AUTH_ERROR_MESSAGES } from "../../../../common/constants";
 import { UnauthorizedException } from "../../../../common/exceptions";
 import { AuthEntity } from "../../../../common/interfaces";
 import { RestaurantMemberRepository } from "../../../users/domain/repositories/restaurant-member.repository";
+import { BranchRepository } from "../../../branches/domain/repositories/branch.repository";
 import { IAuthProfile } from "../../domain/interfaces/auth-session.interface";
 
 /**
@@ -11,12 +12,18 @@ import { IAuthProfile } from "../../domain/interfaces/auth-session.interface";
  */
 @Injectable()
 export class FetchAuthProfileUsecase {
-  constructor(private readonly restaurantMemberRepository: RestaurantMemberRepository) {}
+  constructor(
+    private readonly restaurantMemberRepository: RestaurantMemberRepository,
+    private readonly branchRepository: BranchRepository
+  ) {}
 
   async execute(authEntity: AuthEntity): Promise<IAuthProfile> {
     const memberships = await this.restaurantMemberRepository.findActiveByUserId(authEntity.sub);
     const current = memberships.find(member => member.id === authEntity.memberId);
     if (!current) throw new UnauthorizedException(AUTH_ERROR_MESSAGES.ACCOUNT_INACTIVE);
+
+    // Fresh read, same reasoning as the membership: a branch unassigned minutes ago drops out now.
+    const branches = await this.branchRepository.findAccessible(current);
 
     return {
       id: current.userId,
@@ -25,6 +32,8 @@ export class FetchAuthProfileUsecase {
       memberId: current.id,
       restaurantId: current.restaurantId,
       role: current.role,
+      branchId: authEntity.branchId,
+      branches: branches.map(({ id, name, slug, isDefault }) => ({ id, name, slug, isDefault })),
       memberships: memberships.map(member => ({
         memberId: member.id,
         restaurantId: member.restaurantId,

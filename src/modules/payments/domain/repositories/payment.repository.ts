@@ -12,9 +12,11 @@ export interface IPaymentItemCreate {
 
 export interface IPaymentCreate {
   restaurantId: string;
+  branchId: string;
   sessionId: string;
   tableId: string | null;
   floorId?: string | null;
+  customerId?: string | null;
   subtotal: number;
   serviceCharge: number;
   tax: number;
@@ -29,6 +31,7 @@ export interface IPaymentCreate {
 
 export interface IPaymentsFetchQuery {
   restaurantId: string;
+  branchId: string;
   tableId?: string;
   from?: Date;
   to?: Date;
@@ -42,6 +45,6 @@ export abstract class PaymentRepository {
   abstract $transaction<T>(fn: (tx: PrismaTransaction) => Promise<T>): Promise<T>;
   abstract create(data: IPaymentCreate, options?: { tx?: PrismaTransaction }): Promise<IPaymentWithItems>;
   abstract fetchAll(query: IPaymentsFetchQuery, options?: IPaymentsFetchOptions): Promise<PaginatedResponse<IPaymentWithItems>>;
-  abstract findById(id: string, restaurantId: string): Promise<IPaymentWithItems | null>;
+  abstract findById(id: string, restaurantId: string, branchId: string): Promise<IPaymentWithItems | null>;
   abstract findBySessionId(sessionId: string): Promise<IPaymentWithItems | null>;
 }

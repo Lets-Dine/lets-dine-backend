@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { AuditAction } from "@prisma/client";
 import { NotFoundException } from "../../../../common/exceptions";
-import { AuthEntity } from "../../../../common/interfaces";
+import { AuthEntity, isInActiveBranch } from "../../../../common/interfaces";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
 import { RESTAURANT_ERROR_MESSAGES } from "../../../restaurants/domain/constants";
 import { RestaurantRepository } from "../../../restaurants/domain/repositories/restaurant.repository";
@@ -28,7 +28,7 @@ export class RemoveOrderItemUsecase {
   async execute(orderId: string, itemId: string, authEntity: AuthEntity): Promise<IOrderWithItems> {
     return this.orderRepository.$transaction(async tx => {
       const order = await this.orderRepository.findById(orderId, { tx });
-      if (!order || order.restaurantId !== authEntity.restaurantId) {
+      if (!order || !isInActiveBranch(authEntity, order)) {
         throw new NotFoundException(ORDER_ERROR_MESSAGES.NOT_FOUND);
       }
 
@@ -42,7 +42,7 @@ export class RemoveOrderItemUsecase {
           quantity: candidate.id === itemId ? candidate.quantity - 1 : candidate.quantity,
         }));
 
-      const restaurant = await this.restaurantRepository.findById(authEntity.restaurantId, { tx });
+      const restaurant = await this.restaurantRepository.findByIdForBranch(authEntity.restaurantId, order.branchId, { tx });
       if (!restaurant) throw new NotFoundException(RESTAURANT_ERROR_MESSAGES.NOT_FOUND);
 
       const totals = calculateOrderTotals(resultingLines, restaurant, 0, order.deliveryFee ?? 0);

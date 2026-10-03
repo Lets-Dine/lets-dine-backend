@@ -5,6 +5,8 @@ import { IAuditLog } from "../interfaces/audit-log.interface";
 
 export interface IAuditLogCreate {
   restaurantId: string;
+  /** The branch the actor was working in; null for restaurant-wide actions. */
+  branchId?: string | null;
   actorId: string;
   actorName: string;
   actorRole: StaffRole;
@@ -15,6 +17,8 @@ export interface IAuditLogCreate {
 
 export interface IAuditLogsFetchQuery {
   restaurantId: string;
+  /** Only entries recorded while the actor was working in this branch. */
+  branchId: string;
   action?: AuditAction;
   actorId?: string;
   from?: Date;

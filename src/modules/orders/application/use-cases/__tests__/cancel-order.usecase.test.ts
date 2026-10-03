@@ -15,7 +15,7 @@ const tx = {} as any;
 const restaurant = { id: authUser.restaurantId, serviceChargeRate: 0.1, taxRate: 0.13, currency: "NPR" };
 
 function buildOrder(status: OrderStatus, items: { id?: string; unitPrice?: number; quantity?: number; status: OrderItemStatus }[] = []) {
-  return { id: "order-1", reference: "#1001", restaurantId: authUser.restaurantId, status, discount: 0, items } as any;
+  return { id: "order-1", reference: "#1001", restaurantId: authUser.restaurantId, branchId: authUser.branchId, status, discount: 0, items } as any;
 }
 
 describe("CancelOrderUsecase", () => {
@@ -38,7 +38,7 @@ describe("CancelOrderUsecase", () => {
             updateItemStatus: jest.fn(),
           },
         },
-        { provide: RestaurantRepository, useValue: { findById: jest.fn() } },
+        { provide: RestaurantRepository, useValue: { findByIdForBranch: jest.fn() } },
         { provide: AuditLogService, useValue: { record: jest.fn() } },
         { provide: EventEmitter2, useValue: { emit: jest.fn() } },
       ],
@@ -50,7 +50,7 @@ describe("CancelOrderUsecase", () => {
     auditLogService = module.get(AuditLogService);
     eventEmitter = module.get(EventEmitter2);
 
-    restaurantRepository.findById.mockResolvedValue(restaurant as any);
+    restaurantRepository.findByIdForBranch.mockResolvedValue(restaurant as any);
   });
 
   describe("execute", () => {

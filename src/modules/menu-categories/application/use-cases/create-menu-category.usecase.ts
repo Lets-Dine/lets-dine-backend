@@ -16,11 +16,11 @@ export class CreateMenuCategoryUsecase {
   ) {}
 
   async execute(dto: CreateMenuCategoryInput, authEntity: AuthEntity): Promise<IMenuCategory> {
-    const existing = await this.menuCategoryRepository.findByName(authEntity.restaurantId, dto.name);
+    const existing = await this.menuCategoryRepository.findByName(authEntity.branchId, dto.name);
     if (existing) throw new ConflictException(MENU_CATEGORY_ERROR_MESSAGES.NAME_ALREADY_EXISTS);
 
     const category = await this.menuCategoryRepository.create(
-      { ...dto, restaurantId: authEntity.restaurantId },
+      { ...dto, restaurantId: authEntity.restaurantId, branchId: authEntity.branchId },
       { actorId: authEntity.sub }
     );
 

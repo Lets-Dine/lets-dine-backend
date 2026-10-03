@@ -62,6 +62,7 @@ class DishReviewRepositoryImpl implements DishReviewRepository {
 
     const where: Prisma.DishReviewWhereInput = {
       ...(query.restaurantId && { restaurantId: query.restaurantId }),
+      ...(query.branchIds && { order: { branchId: { in: query.branchIds } } }),
       ...(query.dishId && { dishId: query.dishId }),
       ...(query.sessionId && { sessionId: query.sessionId }),
       ...(query.onlyWithComment && { comment: { not: "" } }),

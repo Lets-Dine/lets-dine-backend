@@ -7,6 +7,7 @@ import { RestaurantMemberRepository } from "../../../../users/domain/repositorie
 import { UserRepository } from "../../../../users/domain/repositories/user.repository";
 import { hashPin } from "../../../../users/domain/utils/pin.util";
 import { AuthTokenService } from "../../auth-token.service";
+import { BranchScopeService } from "../../branch-scope.service";
 import { SignInStaffUsecase } from "../sign-in-staff.usecase";
 
 const PIN = "4821";
@@ -20,16 +21,22 @@ function buildMember(overrides: Partial<IStaffMember> = {}): IStaffMember {
     isActive: true,
     name: "Aarati Shrestha",
     email: "aarati@lets-dine.test",
+    branchIds: [],
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
   };
 }
 
+const branch = { id: "branch-1", name: "Main", slug: "main", isDefault: true } as any;
+const scope = { branches: [branch], active: branch, branchIds: ["branch-1"] };
+
 describe("SignInStaffUsecase", () => {
   let usecase: SignInStaffUsecase;
   let userRepository: jest.Mocked<UserRepository>;
   let restaurantMemberRepository: jest.Mocked<RestaurantMemberRepository>;
+  let branchScopeService: jest.Mocked<BranchScopeService>;
+  let authTokenService: jest.Mocked<AuthTokenService>;
   let pinHash: string;
 
   beforeAll(async () => {
@@ -43,12 +50,15 @@ describe("SignInStaffUsecase", () => {
         { provide: UserRepository, useValue: { findByEmail: jest.fn() } },
         { provide: RestaurantMemberRepository, useValue: { findActiveByUserId: jest.fn() } },
         { provide: AuthTokenService, useValue: { issue: jest.fn().mockResolvedValue("signed.jwt.token") } },
+        { provide: BranchScopeService, useValue: { resolve: jest.fn().mockResolvedValue(scope) } },
       ],
     }).compile();
 
     usecase = module.get(SignInStaffUsecase);
     userRepository = module.get(UserRepository);
     restaurantMemberRepository = module.get(RestaurantMemberRepository);
+    branchScopeService = module.get(BranchScopeService);
+    authTokenService = module.get(AuthTokenService);
   });
 
   describe("execute", () => {
@@ -70,6 +80,23 @@ describe("SignInStaffUsecase", () => {
       expect(result.accessToken).toBe("signed.jwt.token");
       expect(result.profile).toMatchObject({ memberId: "member-1", restaurantId: "restaurant-1", role: "MANAGER" });
       expect(result.profile.memberships).toHaveLength(1);
+      expect(result.profile).toMatchObject({ branchId: "branch-1", branches: [branch] });
+      expect(authTokenService.issue).toHaveBeenCalledWith(expect.objectContaining({ id: "member-1" }), {
+        branchId: "branch-1",
+        branchIds: ["branch-1"],
+      });
+    });
+
+    it("should start in the requested branch", async () => {
+      // Arrange
+      userRepository.findByEmail.mockResolvedValue({ id: "user-1", isActive: true, pinHash } as any);
+      restaurantMemberRepository.findActiveByUserId.mockResolvedValue([buildMember()]);
+
+      // Act
+      await usecase.execute({ email: "aarati@lets-dine.test", pin: PIN, branchId: "branch-1" });
+
+      // Assert
+      expect(branchScopeService.resolve).toHaveBeenCalledWith(expect.objectContaining({ id: "member-1" }), "branch-1");
     });
 
     it("should sign in to the requested restaurant when the person works at several", async () => {

@@ -1,5 +1,6 @@
 import { forwardRef, Module } from "@nestjs/common";
 import { AuditLogsModule } from "../audit-logs/audit-logs.module";
+import { BranchesModule } from "../branches/branches.module";
 import { CustomersModule } from "../customers/customers.module";
 import { FloorsModule } from "../floors/floors.module";
 import { OrdersModule } from "../orders/orders.module";
@@ -24,7 +25,7 @@ import { RestaurantDiningSessionController } from "./interfaces/http/restaurant-
   // `EndDiningSessionService` needs `OrderRepository` to close out a session's orders, and
   // `OrdersModule` needs `DiningSessionRepository` for order creation — a genuine cycle between
   // the two domains, broken with `forwardRef` on both sides (see `OrdersModule`'s own imports).
-  imports: [RestaurantsModule, TablesModule, FloorsModule, AuditLogsModule, CustomersModule, forwardRef(() => OrdersModule)],
+  imports: [BranchesModule, RestaurantsModule, TablesModule, FloorsModule, AuditLogsModule, CustomersModule, forwardRef(() => OrdersModule)],
   controllers: [DiningSessionController, RestaurantDiningSessionController],
   providers: [
     DiningSessionService,

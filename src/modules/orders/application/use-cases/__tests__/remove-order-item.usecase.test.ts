@@ -23,7 +23,7 @@ describe("RemoveOrderItemUsecase", () => {
       providers: [
         RemoveOrderItemUsecase,
         { provide: OrderRepository, useValue: { $transaction: jest.fn(fn => fn(tx)), findById: jest.fn(), syncItems: jest.fn() } },
-        { provide: RestaurantRepository, useValue: { findById: jest.fn() } },
+        { provide: RestaurantRepository, useValue: { findByIdForBranch: jest.fn() } },
         { provide: AuditLogService, useValue: { record: jest.fn() } },
       ],
     }).compile();
@@ -33,7 +33,7 @@ describe("RemoveOrderItemUsecase", () => {
     restaurantRepository = module.get(RestaurantRepository);
     auditLogService = module.get(AuditLogService);
 
-    restaurantRepository.findById.mockResolvedValue(restaurant as any);
+    restaurantRepository.findByIdForBranch.mockResolvedValue(restaurant as any);
   });
 
   describe("execute", () => {
@@ -43,6 +43,7 @@ describe("RemoveOrderItemUsecase", () => {
         id: "order-1",
         reference: "#1001",
         restaurantId: authUser.restaurantId,
+        branchId: authUser.branchId,
         items: [
           { id: "item-1", dishId: "dish-1", dishNameSnapshot: "Momo", imageUrlSnapshot: null, unitPrice: 200, quantity: 2, notes: "" },
         ],
@@ -69,6 +70,7 @@ describe("RemoveOrderItemUsecase", () => {
         id: "order-1",
         reference: "#1001",
         restaurantId: authUser.restaurantId,
+        branchId: authUser.branchId,
         items: [
           { id: "item-1", dishId: "dish-1", dishNameSnapshot: "Momo", imageUrlSnapshot: null, unitPrice: 200, quantity: 1, notes: "" },
         ],
@@ -90,6 +92,7 @@ describe("RemoveOrderItemUsecase", () => {
         id: "order-1",
         reference: "#1001",
         restaurantId: authUser.restaurantId,
+        branchId: authUser.branchId,
         status: "COMPLETED",
         items: [
           { id: "item-1", dishId: "dish-1", dishNameSnapshot: "Momo", imageUrlSnapshot: null, unitPrice: 200, quantity: 1, notes: "" },
@@ -112,7 +115,7 @@ describe("RemoveOrderItemUsecase", () => {
 
     it("should throw NotFoundException when the item is no longer on the order", async () => {
       // Arrange
-      orderRepository.findById.mockResolvedValue({ id: "order-1", restaurantId: authUser.restaurantId, items: [] } as any);
+      orderRepository.findById.mockResolvedValue({ id: "order-1", restaurantId: authUser.restaurantId, branchId: authUser.branchId, items: [] } as any);
 
       // Act & Assert
       await expect(usecase.execute("order-1", "item-1", authUser)).rejects.toThrow(

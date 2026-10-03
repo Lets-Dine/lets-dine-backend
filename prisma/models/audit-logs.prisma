@@ -3,6 +3,8 @@
 model AuditLog {
   id           String      @id @default(uuid()) @map("id") @db.Uuid
   restaurantId String      @map("restaurant_id") @db.Uuid
+  /// Null only until every row is backfilled and the column is tightened.
+  branchId     String?     @map("branch_id") @db.Uuid
   actorId      String      @map("actor_id") @db.Uuid
   actorName    String      @map("actor_name")
   actorRole    StaffRole   @map("actor_role")
@@ -14,9 +16,11 @@ model AuditLog {
   createdAt    DateTime    @default(now()) @map("created_at")
 
   restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  branch     Branch?    @relation(fields: [branchId], references: [id], onDelete: Restrict)
   actor      User       @relation(fields: [actorId], references: [id], onDelete: Restrict)
 
   @@index([restaurantId, createdAt])
+  @@index([branchId])
   @@map("audit_logs")
   @@schema("public")
 }
@@ -54,6 +58,11 @@ enum AuditAction {
   floor_renamed
   floor_disabled
   floor_enabled
+  branch_created
+  branch_updated
+  branch_disabled
+  branch_enabled
+  branch_hours_updated
   order_status_changed
   order_cancelled
   order_item_added
@@ -65,6 +74,7 @@ enum AuditAction {
   staff_invited
   staff_role_changed
   staff_deactivated
+  staff_branches_changed
 
   @@schema("public")
 }

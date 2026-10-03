@@ -21,7 +21,7 @@ export class FetchCurrentSessionUsecase {
   ) {}
 
   async execute(session: IDiningSession): Promise<IResolvedSession> {
-    const restaurant = await this.restaurantRepository.findById(session.restaurantId);
+    const restaurant = await this.restaurantRepository.findByIdForBranch(session.restaurantId, session.branchId);
     if (!restaurant) throw new NotFoundException(RESTAURANT_ERROR_MESSAGES.NOT_FOUND);
 
     if (session.floorId) {

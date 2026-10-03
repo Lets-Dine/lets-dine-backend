@@ -5,13 +5,14 @@ import { IStaffMember } from "../../users/domain/interfaces/restaurant-member.in
 
 /**
  * The only place a staff access token is minted. Restaurant scope and role are
- * baked into the token so no endpoint has to take the client's word for them.
+ * baked into the token so no endpoint has to take the client's word for them. Lifetime comes
+ * from `JWT_EXPIRES_IN` (see `AppModule`).
  */
 @Injectable()
 export class AuthTokenService {
   constructor(private readonly jwtService: JwtService) {}
 
-  async issue(member: IStaffMember): Promise<string> {
+  async issue(member: IStaffMember, branch: { branchId: string; branchIds: string[] | "all" }): Promise<string> {
     const payload: AuthEntity = {
       sub: member.userId,
       email: member.email,
@@ -19,8 +20,10 @@ export class AuthTokenService {
       memberId: member.id,
       restaurantId: member.restaurantId,
       role: member.role,
+      branchId: branch.branchId,
+      branchIds: branch.branchIds,
     };
 
-    return this.jwtService.signAsync(payload, {expiresIn: '168h'});
+    return this.jwtService.signAsync(payload);
   }
 }

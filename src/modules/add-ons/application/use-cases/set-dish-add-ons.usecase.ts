@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { AuditAction } from "@prisma/client";
 import { BadRequestException, NotFoundException } from "../../../../common/exceptions";
-import { AuthEntity } from "../../../../common/interfaces";
+import { AuthEntity, isInActiveBranch } from "../../../../common/interfaces";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
 import { DISH_ERROR_MESSAGES } from "../../../dishes/domain/constants";
 import { DishRepository } from "../../../dishes/domain/repositories/dish.repository";
@@ -21,12 +21,12 @@ export class SetDishAddOnsUsecase {
 
   async execute(dishId: string, dto: SetDishAddOnsInput, authEntity: AuthEntity): Promise<IAddOn[]> {
     const dish = await this.dishRepository.findById(dishId);
-    if (!dish || dish.restaurantId !== authEntity.restaurantId) {
+    if (!dish || !isInActiveBranch(authEntity, dish)) {
       throw new NotFoundException(DISH_ERROR_MESSAGES.NOT_FOUND);
     }
 
     const addOns = await this.addOnRepository.findManyByIds(dto.addOnIds);
-    if (addOns.length !== dto.addOnIds.length || addOns.some(addOn => addOn.restaurantId !== authEntity.restaurantId)) {
+    if (addOns.length !== dto.addOnIds.length || addOns.some(addOn => !isInActiveBranch(authEntity, addOn))) {
       throw new BadRequestException(ADD_ON_ERROR_MESSAGES.INVALID_ADD_ON_IDS);
     }
 

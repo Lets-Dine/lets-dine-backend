@@ -34,6 +34,7 @@ describe("ArchiveDishUsecase", () => {
       dishRepository.findById.mockResolvedValue({
         id: "dish-1",
         restaurantId: authUser.restaurantId,
+        branchId: authUser.branchId,
         name: "Chicken Sekuwa",
         isArchived: false,
       } as any);
@@ -57,6 +58,7 @@ describe("ArchiveDishUsecase", () => {
       dishRepository.findById.mockResolvedValue({
         id: "dish-1",
         restaurantId: authUser.restaurantId,
+        branchId: authUser.branchId,
         isArchived: true,
       } as any);
 

@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { AuditAction } from "@prisma/client";
 import { NotFoundException } from "../../../../common/exceptions";
-import { AuthEntity } from "../../../../common/interfaces";
+import { AuthEntity, isInActiveBranch } from "../../../../common/interfaces";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
 import { MENU_CATEGORY_ERROR_MESSAGES } from "../../domain/constants";
 import { IMenuCategory } from "../../domain/interfaces/menu-category.interface";
@@ -22,7 +22,7 @@ export class ReorderMenuCategoriesUsecase {
 
       for (const item of dto.items) {
         const existing = await this.menuCategoryRepository.findById(item.id, { tx });
-        if (!existing || existing.restaurantId !== authEntity.restaurantId) {
+        if (!existing || !isInActiveBranch(authEntity, existing)) {
           throw new NotFoundException({ ...MENU_CATEGORY_ERROR_MESSAGES.NOT_FOUND, detail: { id: item.id } });
         }
 

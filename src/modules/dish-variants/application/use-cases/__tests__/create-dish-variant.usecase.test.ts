@@ -9,7 +9,7 @@ import { DishVariantRepository } from "../../../domain/repositories/dish-variant
 import { CreateDishVariantUsecase } from "../create-dish-variant.usecase";
 
 const authUser = buildAuthEntity();
-const dish = { id: "dish-1", restaurantId: authUser.restaurantId, name: "BBQ Pizza" };
+const dish = { id: "dish-1", restaurantId: authUser.restaurantId, branchId: authUser.branchId, name: "BBQ Pizza" };
 const dto = { name: "Large", price: 65000 };
 
 describe("CreateDishVariantUsecase", () => {

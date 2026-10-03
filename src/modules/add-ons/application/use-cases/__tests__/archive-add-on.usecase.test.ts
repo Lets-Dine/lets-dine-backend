@@ -8,7 +8,7 @@ import { AddOnRepository } from "../../../domain/repositories/add-on.repository"
 import { ArchiveAddOnUsecase } from "../archive-add-on.usecase";
 
 const authUser = buildAuthEntity();
-const addOn = { id: "addon-1", restaurantId: authUser.restaurantId, name: "Extra Cheese", isArchived: false };
+const addOn = { id: "addon-1", restaurantId: authUser.restaurantId, branchId: authUser.branchId, name: "Extra Cheese", isArchived: false };
 
 describe("ArchiveAddOnUsecase", () => {
   let usecase: ArchiveAddOnUsecase;

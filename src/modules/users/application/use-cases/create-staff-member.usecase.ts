@@ -1,7 +1,8 @@
 import { Injectable } from "@nestjs/common";
-import { AuditAction } from "@prisma/client";
-import { ConflictException } from "../../../../common/exceptions";
+import { AuditAction, StaffRole } from "@prisma/client";
+import { BadRequestException, ConflictException } from "../../../../common/exceptions";
 import { AuthEntity } from "../../../../common/interfaces";
+import { BranchRepository } from "../../../branches/domain/repositories/branch.repository";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
 import { STAFF_MEMBER_ERROR_MESSAGES } from "../../domain/constants";
 import { IStaffMember } from "../../domain/interfaces/restaurant-member.interface";
@@ -20,7 +21,8 @@ export class CreateStaffMemberUsecase {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly restaurantMemberRepository: RestaurantMemberRepository,
-    private readonly auditLogService: AuditLogService
+    private readonly auditLogService: AuditLogService,
+    private readonly branchRepository: BranchRepository
   ) {}
 
   async execute(dto: CreateStaffMemberInput, authEntity: AuthEntity): Promise<IStaffMember> {
@@ -31,13 +33,14 @@ export class CreateStaffMemberUsecase {
       if (existingMember) throw new ConflictException(STAFF_MEMBER_ERROR_MESSAGES.ALREADY_EXISTS);
     }
 
+    const branchIds = await this.resolveBranchIds(dto, authEntity);
     const pinHash = await hashPin(dto.pin);
 
     const member = await this.userRepository.$transaction(async tx => {
       const user =
         existingUser ?? (await this.userRepository.create({ email: dto.email, name: dto.name, pinHash }, { tx, actorId: authEntity.sub }));
 
-      return this.restaurantMemberRepository.create({ userId: user.id, restaurantId: authEntity.restaurantId, role: dto.role }, { tx });
+      return this.restaurantMemberRepository.create({ userId: user.id, restaurantId: authEntity.restaurantId, role: dto.role, branchIds }, { tx });
     });
 
     await this.auditLogService.record(
@@ -46,5 +49,15 @@ export class CreateStaffMemberUsecase {
     );
 
     return member;
+  }
+
+  /** An OWNER reaches every branch and needs no rows; anybody else must be pinned to at least one. */
+  private async resolveBranchIds(dto: CreateStaffMemberInput, authEntity: AuthEntity): Promise<string[] | undefined> {
+    if (dto.role === StaffRole.OWNER) return undefined;
+
+    const requested = [...new Set(dto.branchIds ?? [authEntity.branchId])];
+    const valid = await this.branchRepository.findActiveByIds(authEntity.restaurantId, requested);
+    if (valid.length !== requested.length) throw new BadRequestException(STAFF_MEMBER_ERROR_MESSAGES.INVALID_BRANCHES);
+    return requested;
   }
 }

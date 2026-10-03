@@ -10,7 +10,7 @@ export class GetPaymentUsecase {
   constructor(private readonly paymentRepository: PaymentRepository) {}
 
   async execute(id: string, authEntity: AuthEntity): Promise<IPaymentWithItems> {
-    const payment = await this.paymentRepository.findById(id, authEntity.restaurantId);
+    const payment = await this.paymentRepository.findById(id, authEntity.restaurantId, authEntity.branchId);
     if (!payment) throw new NotFoundException(PAYMENT_ERROR_MESSAGES.NOT_FOUND);
     return payment;
   }

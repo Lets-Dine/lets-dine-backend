@@ -10,7 +10,7 @@ import { SettleTableUsecase } from "../settle-table.usecase";
 
 const authUser = buildAuthEntity();
 const tx = {} as any;
-const table = { id: "table-1", restaurantId: authUser.restaurantId, name: "Table 1" };
+const table = { id: "table-1", restaurantId: authUser.restaurantId, branchId: authUser.branchId, name: "Table 1" };
 
 describe("SettleTableUsecase", () => {
   let usecase: SettleTableUsecase;

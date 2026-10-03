@@ -10,6 +10,8 @@ export function buildAuthEntity(overrides: Partial<AuthEntity> = {}): AuthEntity
     memberId: "22222222-2222-4222-8222-222222222222",
     restaurantId: "33333333-3333-4333-8333-333333333333",
     role: StaffRole.OWNER,
+    branchId: "44444444-4444-4444-8444-444444444444",
+    branchIds: "all",
     ...overrides,
   };
 }

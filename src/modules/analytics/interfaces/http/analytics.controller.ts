@@ -3,15 +3,17 @@ import { AbilityGuard, AuthGuard, AuthUser, CheckPolicies, checkPermissionRules 
 import { type AuthEntity, IHttpResponse } from "../../../../common/interfaces";
 import { buildHttpResponse } from "../../../../common/utils";
 import { FetchAnalyticsDto } from "../../application/dto/fetch-analytics.dto";
+import { FetchBranchPerformanceDto } from "../../application/dto/fetch-branch-performance.dto";
 import { FetchOrderComparisonDto } from "../../application/dto/fetch-order-comparison.dto";
 import { FetchRevenueComparisonDto } from "../../application/dto/fetch-revenue-comparison.dto";
 import { FetchTopSellingDishesDto } from "../../application/dto/fetch-top-selling-dishes.dto";
 import { FetchAnalyticsOverviewUsecase } from "../../application/use-cases/fetch-analytics-overview.usecase";
+import { FetchBranchPerformanceUsecase } from "../../application/use-cases/fetch-branch-performance.usecase";
 import { FetchOrderComparisonUsecase } from "../../application/use-cases/fetch-order-comparison.usecase";
 import { FetchRevenueComparisonUsecase } from "../../application/use-cases/fetch-revenue-comparison.usecase";
 import { FetchTopSellingDishesUsecase } from "../../application/use-cases/fetch-top-selling-dishes.usecase";
 import { ANALYTICS_SUCCESS_MESSAGES } from "../../domain/constants";
-import { IAnalyticsOverview, IOrderComparison, IRevenueComparison, ITopSellingDish } from "../../domain/interfaces/analytics.interface";
+import { IAnalyticsOverview, IBranchPerformance, IOrderComparison, IRevenueComparison, ITopSellingDish } from "../../domain/interfaces/analytics.interface";
 
 @Controller("restaurant/analytics")
 export class AnalyticsController {
@@ -19,7 +21,8 @@ export class AnalyticsController {
     private readonly fetchAnalyticsOverviewUsecase: FetchAnalyticsOverviewUsecase,
     private readonly fetchRevenueComparisonUsecase: FetchRevenueComparisonUsecase,
     private readonly fetchOrderComparisonUsecase: FetchOrderComparisonUsecase,
-    private readonly fetchTopSellingDishesUsecase: FetchTopSellingDishesUsecase
+    private readonly fetchTopSellingDishesUsecase: FetchTopSellingDishesUsecase,
+    private readonly fetchBranchPerformanceUsecase: FetchBranchPerformanceUsecase
   ) {}
 
   @Get()
@@ -37,7 +40,7 @@ export class AnalyticsController {
     @Query() query: FetchRevenueComparisonDto,
     @AuthUser() authEntity: AuthEntity
   ): Promise<IHttpResponse<IRevenueComparison>> {
-    const comparison = await this.fetchRevenueComparisonUsecase.execute(query.period, authEntity);
+    const comparison = await this.fetchRevenueComparisonUsecase.execute(query.period, authEntity, query.branchId);
     return buildHttpResponse(comparison, ANALYTICS_SUCCESS_MESSAGES.REVENUE_COMPARISON_FETCHED);
   }
 
@@ -48,8 +51,19 @@ export class AnalyticsController {
     @Query() query: FetchOrderComparisonDto,
     @AuthUser() authEntity: AuthEntity
   ): Promise<IHttpResponse<IOrderComparison>> {
-    const comparison = await this.fetchOrderComparisonUsecase.execute(query.period, authEntity);
+    const comparison = await this.fetchOrderComparisonUsecase.execute(query.period, authEntity, query.branchId);
     return buildHttpResponse(comparison, ANALYTICS_SUCCESS_MESSAGES.ORDER_COMPARISON_FETCHED);
+  }
+
+  @Get("branches")
+  @UseGuards(AuthGuard, AbilityGuard)
+  @CheckPolicies(checkPermissionRules([["analytics:view"]]))
+  async fetchBranchPerformance(
+    @Query() query: FetchBranchPerformanceDto,
+    @AuthUser() authEntity: AuthEntity
+  ): Promise<IHttpResponse<IBranchPerformance[]>> {
+    const branches = await this.fetchBranchPerformanceUsecase.execute(query, authEntity);
+    return buildHttpResponse(branches, ANALYTICS_SUCCESS_MESSAGES.BRANCH_PERFORMANCE_FETCHED);
   }
 
   @Get("top-dishes")

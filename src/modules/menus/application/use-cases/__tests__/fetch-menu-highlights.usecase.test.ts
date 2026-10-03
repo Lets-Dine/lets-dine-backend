@@ -1,3 +1,4 @@
+import { PublicBranchService } from "../../../../branches/application/public-branch.service";
 import { Test, TestingModule } from "@nestjs/testing";
 import { NotFoundException } from "../../../../../common/exceptions";
 import { EMPTY_DISH_STATS, IDishStats } from "../../../../dishes/domain/interfaces/dish-stats.interface";
@@ -11,6 +12,7 @@ function buildDish(id: string, stats: Partial<IDishStats>): IDishWithStats {
   return {
     id,
     restaurantId: "restaurant-1",
+    branchId: "branch-1",
     categoryId: "category-1",
     name: id,
     slug: id,
@@ -40,6 +42,7 @@ describe("FetchMenuHighlightsUsecase", () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
+        { provide: PublicBranchService, useValue: { resolveOrDefault: jest.fn().mockResolvedValue({ id: "branch-1" }) } },
         FetchMenuHighlightsUsecase,
         { provide: RestaurantRepository, useValue: { findBySlug: jest.fn() } },
         { provide: DishRepository, useValue: { findAllWithStats: jest.fn() } },
@@ -66,7 +69,7 @@ describe("FetchMenuHighlightsUsecase", () => {
       // Assert
       expect(rails.map(rail => rail.key)).toEqual(expect.arrayContaining(["loved", "gem"]));
       expect(rails.find(rail => rail.key === "loved")?.title).toBe("Most loved here");
-      expect(dishRepository.findAllWithStats).toHaveBeenCalledWith({ restaurantId: "restaurant-1", isArchived: false });
+      expect(dishRepository.findAllWithStats).toHaveBeenCalledWith({ restaurantId: "restaurant-1", branchId: "branch-1", isArchived: false });
     });
 
     it("should return only the sections asked for", async () => {

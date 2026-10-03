@@ -5,6 +5,8 @@ export const signInStaffSchema = z.object({
   pin: z.string().regex(/^\d{4,8}$/, "PIN must be 4 to 8 digits"),
   /** Only needed by somebody who works at more than one restaurant. */
   restaurantId: z.string().uuid().optional(),
+  /** Branch to start in; falls back to the default (or first) branch the member can reach. */
+  branchId: z.string().uuid().optional(),
 });
 
 export type SignInStaffInput = z.infer<typeof signInStaffSchema>;

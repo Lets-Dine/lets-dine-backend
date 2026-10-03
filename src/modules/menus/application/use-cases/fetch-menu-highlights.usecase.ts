@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { NotFoundException } from "../../../../common/exceptions";
 import { DishRailKey, IDishRail } from "../../../dishes/domain/interfaces/dish-rail.interface";
+import { PublicBranchService } from "../../../branches/application/public-branch.service";
 import { DishRepository } from "../../../dishes/domain/repositories/dish.repository";
 import { buildDishRails } from "../../../dishes/domain/utils/dish-rails.util";
 import { RESTAURANT_ERROR_MESSAGES } from "../../../restaurants/domain/constants";
@@ -17,14 +18,16 @@ import { FetchMenuHighlightsQuery } from "../../interfaces/http/validations/fetc
 export class FetchMenuHighlightsUsecase {
   constructor(
     private readonly restaurantRepository: RestaurantRepository,
-    private readonly dishRepository: DishRepository
+    private readonly dishRepository: DishRepository,
+    private readonly publicBranchService: PublicBranchService
   ) {}
 
   async execute(restaurantSlug: string, query: FetchMenuHighlightsQuery = {}): Promise<IDishRail[]> {
     const restaurant = await this.restaurantRepository.findBySlug(restaurantSlug);
     if (!restaurant || !restaurant.isActive) throw new NotFoundException(RESTAURANT_ERROR_MESSAGES.NOT_FOUND);
 
-    const dishes = await this.dishRepository.findAllWithStats({ restaurantId: restaurant.id, isArchived: false });
+    const branch = await this.publicBranchService.resolveOrDefault(restaurant.id, query);
+    const dishes = await this.dishRepository.findAllWithStats({ restaurantId: restaurant.id, branchId: branch.id, isArchived: false });
 
     return buildDishRails(dishes, { sections: query.sections as DishRailKey[] | undefined, limit: query.limit });
   }

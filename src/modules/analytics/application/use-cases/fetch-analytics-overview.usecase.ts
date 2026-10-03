@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { BadRequestException } from "../../../../common/exceptions";
 import { AuthEntity } from "../../../../common/interfaces";
 import { IAnalyticsOverview, IAnalyticsRange } from "../../domain/interfaces/analytics.interface";
+import { resolveAnalyticsScope } from "../../domain/utils/resolve-analytics-scope.util";
 import { AnalyticsRepository } from "../../domain/repositories/analytics.repository";
 import { FetchAnalyticsQuery } from "../../interfaces/http/validations/fetch-analytics.validation";
 
@@ -19,13 +20,14 @@ export class FetchAnalyticsOverviewUsecase {
 
   async execute(query: FetchAnalyticsQuery, authEntity: AuthEntity): Promise<IAnalyticsOverview> {
     const range = this.resolveRange(query);
+    const scope = resolveAnalyticsScope(authEntity, query.branchId);
     const options = { dishLimit: query.dishLimit };
 
     const [orders, dishes, feedback, busiestHours] = await Promise.all([
-      this.analyticsRepository.fetchOrderSummary(authEntity.restaurantId, range, options),
-      this.analyticsRepository.fetchDishPerformance(authEntity.restaurantId, range, options),
-      this.analyticsRepository.fetchFeedbackSummary(authEntity.restaurantId, range, options),
-      this.analyticsRepository.fetchBusiestHours(authEntity.restaurantId, range, options),
+      this.analyticsRepository.fetchOrderSummary(scope, range, options),
+      this.analyticsRepository.fetchDishPerformance(scope, range, options),
+      this.analyticsRepository.fetchFeedbackSummary(scope, range, options),
+      this.analyticsRepository.fetchBusiestHours(scope, range, options),
     ]);
 
     return { range, orders, dishes, feedback, busiestHours };

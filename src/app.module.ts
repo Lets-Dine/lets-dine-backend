@@ -13,6 +13,7 @@ import { AuthModule } from "./modules/auth/auth.module";
 import { DiningSessionsModule } from "./modules/dining-sessions/dining-sessions.module";
 import { DishesModule } from "./modules/dishes/dishes.module";
 import { DishVariantsModule } from "./modules/dish-variants/dish-variants.module";
+import { BranchesModule } from "./modules/branches/branches.module";
 import { FloorsModule } from "./modules/floors/floors.module";
 import { MenuCategoriesModule } from "./modules/menu-categories/menu-categories.module";
 import { MenusModule } from "./modules/menus/menus.module";
@@ -32,13 +33,14 @@ import { AppController } from "./app.controller";
     JwtModule.register({
       global: true,
       secret: process.env.JWT_SECRET ?? "insecure-development-secret",
-      signOptions: { expiresIn: (process.env.JWT_EXPIRES_IN ?? "12h") as JwtSignOptions["expiresIn"] },
+      signOptions: { expiresIn: (process.env.JWT_EXPIRES_IN ?? "7d") as JwtSignOptions["expiresIn"] },
     }),
     AuditLogsModule,
     UsersModule,
     AuthModule,
     RestaurantsModule,
     TablesModule,
+    BranchesModule,
     FloorsModule,
     MenuCategoriesModule,
     DishesModule,

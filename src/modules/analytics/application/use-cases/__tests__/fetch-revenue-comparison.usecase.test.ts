@@ -49,7 +49,7 @@ describe("FetchRevenueComparisonUsecase", () => {
 
       // Assert
       expect(analyticsRepository.fetchRevenueComparison).toHaveBeenCalledWith(
-        authUser.restaurantId,
+        { restaurantId: authUser.restaurantId },
         { from: new Date("2026-01-14T00:00:00.000Z"), to: new Date("2026-01-14T10:30:00.000Z") },
         { from: new Date("2026-01-13T00:00:00.000Z"), to: new Date("2026-01-14T00:00:00.000Z") }
       );
@@ -65,7 +65,7 @@ describe("FetchRevenueComparisonUsecase", () => {
 
       // Assert — the full previous week, ending exactly where this week begins
       expect(analyticsRepository.fetchRevenueComparison).toHaveBeenCalledWith(
-        authUser.restaurantId,
+        { restaurantId: authUser.restaurantId },
         { from: new Date("2026-01-11T00:00:00.000Z"), to: new Date("2026-01-14T10:30:00.000Z") },
         { from: new Date("2026-01-04T00:00:00.000Z"), to: new Date("2026-01-11T00:00:00.000Z") }
       );
@@ -80,7 +80,7 @@ describe("FetchRevenueComparisonUsecase", () => {
 
       // Assert
       expect(analyticsRepository.fetchRevenueComparison).toHaveBeenCalledWith(
-        authUser.restaurantId,
+        { restaurantId: authUser.restaurantId },
         { from: new Date("2026-03-01T00:00:00.000Z"), to: new Date("2026-03-30T12:00:00.000Z") },
         { from: new Date("2026-02-01T00:00:00.000Z"), to: new Date("2026-03-01T00:00:00.000Z") }
       );
@@ -97,7 +97,7 @@ describe("FetchRevenueComparisonUsecase", () => {
       // Assert — "today" is Kathmandu's Jan 15, which starts at 18:15 UTC on Jan 14, not midnight UTC;
       // "previous" is the whole of Kathmandu's Jan 14, i.e. 18:15 UTC Jan 13 through 18:15 UTC Jan 14.
       expect(analyticsRepository.fetchRevenueComparison).toHaveBeenCalledWith(
-        authUser.restaurantId,
+        { restaurantId: authUser.restaurantId },
         { from: new Date("2026-01-14T18:15:00.000Z"), to: new Date("2026-01-14T20:00:00.000Z") },
         { from: new Date("2026-01-13T18:15:00.000Z"), to: new Date("2026-01-14T18:15:00.000Z") }
       );
@@ -114,7 +114,7 @@ describe("FetchRevenueComparisonUsecase", () => {
       // Assert — March (Kathmandu) started 18:15 UTC on Feb 28; the whole of February (Kathmandu)
       // ran from 18:15 UTC on Jan 31 through 18:15 UTC on Feb 28.
       expect(analyticsRepository.fetchRevenueComparison).toHaveBeenCalledWith(
-        authUser.restaurantId,
+        { restaurantId: authUser.restaurantId },
         { from: new Date("2026-02-28T18:15:00.000Z"), to: new Date("2026-02-28T19:00:00.000Z") },
         { from: new Date("2026-01-31T18:15:00.000Z"), to: new Date("2026-02-28T18:15:00.000Z") }
       );

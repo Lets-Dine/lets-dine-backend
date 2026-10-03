@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { AuditAction } from "@prisma/client";
 import { ConflictException, NotFoundException } from "../../../../common/exceptions";
-import { AuthEntity } from "../../../../common/interfaces";
+import { AuthEntity, isInActiveBranch } from "../../../../common/interfaces";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
 import { DiningTableRepository } from "../../../tables/domain/repositories/dining-table.repository";
 import { ORDER_ERROR_MESSAGES } from "../../domain/constants";
@@ -24,7 +24,7 @@ export class SettleTableUsecase {
 
   async execute(tableId: string, authEntity: AuthEntity): Promise<IOrderWithItems[]> {
     const table = await this.diningTableRepository.findById(tableId);
-    if (!table || table.restaurantId !== authEntity.restaurantId) {
+    if (!table || !isInActiveBranch(authEntity, table)) {
       throw new NotFoundException(ORDER_ERROR_MESSAGES.TABLE_NOT_FOUND);
     }
 

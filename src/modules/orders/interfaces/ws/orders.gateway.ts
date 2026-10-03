@@ -19,7 +19,7 @@ import { FetchSessionOrderUsecase } from "../../application/use-cases/fetch-sess
 import { type IOrderWithItems } from "../../domain/interfaces/order.interface";
 
 const orderRoom = (orderId: string) => `order:${orderId}`;
-const restaurantQueueRoom = (restaurantId: string) => `restaurant:${restaurantId}:orders`;
+const restaurantQueueRoom = (restaurantId: string, branchId: string) => `restaurant:${restaurantId}:branch:${branchId}:orders`;
 const sessionRoom = (sessionId: string) => `session:${sessionId}`;
 
 interface SubscribeOrderPayload {
@@ -50,7 +50,7 @@ interface SubscribeSessionPayload {
  *   is resolved — before any order exists to watch. It is the only channel
  *   that reaches a diner who is still just browsing the menu when staff
  *   closes the table out from under them.
- * - The restaurant's pass joins `restaurant:{restaurantId}:orders` — only
+ * - The restaurant's pass joins `restaurant:{restaurantId}:branch:{branchId}:orders` — only
  *   after verifying the staff JWT and the `orders:view` permission.
  */
 @WebSocketGateway({ cors: { origin: "*" } })
@@ -111,8 +111,10 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
         client.emit("subscribe:error", { scope: "queue", message: "You do not have permission to view orders." });
         return;
       }
-      await client.join(restaurantQueueRoom(authEntity.restaurantId));
-      client.emit("subscribe:ok", { scope: "queue", restaurantId: authEntity.restaurantId });
+      // A socket watches one branch's pass at a time — switching branch must not keep the old one's tickets flowing.
+      for (const room of client.rooms) if (room.startsWith("restaurant:")) await client.leave(room);
+      await client.join(restaurantQueueRoom(authEntity.restaurantId, authEntity.branchId));
+      client.emit("subscribe:ok", { scope: "queue", restaurantId: authEntity.restaurantId, branchId: authEntity.branchId });
     } catch {
       client.emit("subscribe:error", { scope: "queue", message: "Your session has ended. Please sign in again." });
     }
@@ -121,13 +123,13 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
   /** A brand-new ticket — the diner already has it from the create response, so only the pass needs telling. */
   @OnEvent("order.created")
   handleOrderCreated(order: IOrderWithItems): void {
-    this.server.to(restaurantQueueRoom(order.restaurantId)).emit("order.created", order);
+    this.server.to(restaurantQueueRoom(order.restaurantId, order.branchId)).emit("order.created", order);
   }
 
   /** A status change or cancellation — both the diner tracking it and the pass watching the queue need the update. */
   @OnEvent("order.updated")
   handleOrderUpdated(order: IOrderWithItems): void {
-    this.server.to(orderRoom(order.id)).to(restaurantQueueRoom(order.restaurantId)).emit("order.updated", order);
+    this.server.to(orderRoom(order.id)).to(restaurantQueueRoom(order.restaurantId, order.branchId)).emit("order.updated", order);
   }
 
   /** Staff closed the table out (or a payment settled it) — the diner on it can no longer place another order. */

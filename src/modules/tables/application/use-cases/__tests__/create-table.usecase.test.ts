@@ -40,10 +40,12 @@ describe("CreateTableUsecase", () => {
 
       // Assert
       expect(result).toBe(table);
+      expect(diningTableRepository.findByName).toHaveBeenCalledWith(authUser.branchId, "T1");
       expect(diningTableRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({
           name: "T1",
           restaurantId: authUser.restaurantId,
+          branchId: authUser.branchId,
           qrToken: expect.stringMatching(/^[\w-]{32}$/),
         }),
         { actorId: authUser.sub }

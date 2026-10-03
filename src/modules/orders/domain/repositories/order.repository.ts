@@ -18,6 +18,7 @@ export interface IOrderItemCreate {
 
 export interface IOrderCreate {
   restaurantId: string;
+  branchId: string;
   tableId: string | null;
   sessionId: string;
   floorId?: string | null;
@@ -75,6 +76,7 @@ export interface OrderFetchOptions {
 
 export interface IOrdersFetchQuery {
   restaurantId?: string;
+  branchId?: string;
   sessionId?: string;
   tableId?: string;
   orderType?: OrderType;
@@ -91,13 +93,13 @@ export abstract class OrderRepository {
   abstract $transaction<T>(fn: (tx: PrismaTransaction) => Promise<T>): Promise<T>;
   abstract findById(id: string, options?: OrderFetchOptions): Promise<IOrderWithItems | null>;
   abstract findByIdempotencyKey(key: string, options?: OrderFetchOptions): Promise<IOrderWithItems | null>;
-  /** §19 — the next ticket number for this restaurant (#1001, #1002 …). */
-  abstract nextReference(restaurantId: string, options?: OrderFetchOptions): Promise<string>;
+  /** §19 — the next ticket number for this branch (#1001, #1002 …). */
+  abstract nextReference(branchId: string, options?: OrderFetchOptions): Promise<string>;
   abstract create(data: IOrderCreate, options?: { tx?: PrismaTransaction }): Promise<IOrderWithItems>;
   abstract update(id: string, data: IOrderUpdate, options?: { tx?: PrismaTransaction; actorId?: string }): Promise<IOrderWithItems>;
   abstract fetchAll(query: IOrdersFetchQuery, options?: IOrdersFetchOptions): Promise<PaginatedResponse<IOrderWithItems>>;
   /** §21 — every order a table placed during one visit, items and all, in a single round trip. */
-  abstract findBySessionId(sessionId: string, restaurantId: string): Promise<IOrderWithItems[]>;
+  abstract findBySessionId(sessionId: string, restaurantId: string, branchId: string): Promise<IOrderWithItems[]>;
   /** The order a table's bill gets adjusted against — its most recent, whatever status it's in. */
   abstract findLatestByTableId(tableId: string, restaurantId: string, options?: OrderFetchOptions): Promise<IOrderWithItems | null>;
   /** Every order this table still owes on, to close out together on settle. */

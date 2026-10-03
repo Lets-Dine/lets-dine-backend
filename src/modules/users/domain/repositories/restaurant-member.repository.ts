@@ -8,9 +8,10 @@ export interface IRestaurantMemberCreate {
   restaurantId: string;
   role: StaffRole;
   isActive?: boolean;
+  branchIds?: string[];
 }
 
-export type IRestaurantMemberUpdate = Partial<Pick<IRestaurantMemberCreate, "role" | "isActive">>;
+export type IRestaurantMemberUpdate = Partial<Pick<IRestaurantMemberCreate, "role" | "isActive" | "branchIds">>;
 
 export interface IStaffMembersFetchQuery {
   restaurantId: string;

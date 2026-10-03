@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { AuditAction, OrderStatus } from "@prisma/client";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { BadRequestException, NotFoundException } from "../../../../common/exceptions";
-import { AuthEntity } from "../../../../common/interfaces";
+import { AuthEntity, isInActiveBranch } from "../../../../common/interfaces";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
 import { ORDER_ERROR_MESSAGES } from "../../domain/constants";
 import { OrderItemEntity } from "../../domain/entity/order-item.entity";
@@ -27,7 +27,7 @@ export class AdvanceOrderItemStatusUsecase {
   async execute(orderId: string, itemId: string, dto: AdvanceOrderItemStatusInput, authEntity: AuthEntity): Promise<IOrderWithItems> {
     return this.orderRepository.$transaction(async tx => {
       const order = await this.orderRepository.findById(orderId, { tx });
-      if (!order || order.restaurantId !== authEntity.restaurantId) {
+      if (!order || !isInActiveBranch(authEntity, order)) {
         throw new NotFoundException(ORDER_ERROR_MESSAGES.NOT_FOUND);
       }
 

@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { AuditAction } from "@prisma/client";
 import { NotFoundException } from "../../../../common/exceptions";
-import { AuthEntity } from "../../../../common/interfaces";
+import { AuthEntity, isInActiveBranch } from "../../../../common/interfaces";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
 import { DINING_TABLE_ERROR_MESSAGES } from "../../domain/constants";
 import { IDiningTable } from "../../domain/interfaces/dining-table.interface";
@@ -18,7 +18,7 @@ export class RegenerateTableQrUsecase {
 
   async execute(id: string, authEntity: AuthEntity): Promise<IDiningTable> {
     const existing = await this.diningTableRepository.findById(id);
-    if (!existing || existing.restaurantId !== authEntity.restaurantId) {
+    if (!existing || !isInActiveBranch(authEntity, existing)) {
       throw new NotFoundException(DINING_TABLE_ERROR_MESSAGES.NOT_FOUND);
     }
 

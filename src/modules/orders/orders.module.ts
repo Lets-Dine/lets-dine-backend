@@ -1,6 +1,7 @@
 import { forwardRef, Module } from "@nestjs/common";
 import { AddOnsModule } from "../add-ons/add-ons.module";
 import { AuditLogsModule } from "../audit-logs/audit-logs.module";
+import { BranchesModule } from "../branches/branches.module";
 import { CustomersModule } from "../customers/customers.module";
 import { DiningSessionsModule } from "../dining-sessions/dining-sessions.module";
 import { DishesModule } from "../dishes/dishes.module";
@@ -32,6 +33,7 @@ import { OrdersGateway } from "./interfaces/ws/orders.gateway";
   // needs `OrderRepository`) — a genuine cycle, broken with `forwardRef` on both sides.
   imports: [
     forwardRef(() => DiningSessionsModule),
+    BranchesModule,
     RestaurantsModule,
     DishesModule,
     TablesModule,

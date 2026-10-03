@@ -1,3 +1,4 @@
+import { PublicBranchService } from "../../../../branches/application/public-branch.service";
 import { Test, TestingModule } from "@nestjs/testing";
 import { NotFoundException } from "../../../../../common/exceptions";
 import { AddOnRepository } from "../../../../add-ons/domain/repositories/add-on.repository";
@@ -17,10 +18,12 @@ describe("FetchMenuUsecase", () => {
   let dishRepository: jest.Mocked<DishRepository>;
   let addOnRepository: jest.Mocked<AddOnRepository>;
   let dishVariantRepository: jest.Mocked<DishVariantRepository>;
+  let publicBranchService: jest.Mocked<PublicBranchService>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
+        { provide: PublicBranchService, useValue: { resolveOrDefault: jest.fn().mockResolvedValue({ id: "branch-1" }) } },
         FetchMenuUsecase,
         { provide: RestaurantRepository, useValue: { findBySlug: jest.fn() } },
         { provide: RestaurantRatingRepository, useValue: { fetchRating: jest.fn() } },
@@ -38,12 +41,46 @@ describe("FetchMenuUsecase", () => {
     dishRepository = module.get(DishRepository);
     addOnRepository = module.get(AddOnRepository);
     dishVariantRepository = module.get(DishVariantRepository);
+    publicBranchService = module.get(PublicBranchService);
     addOnRepository.fetchAll.mockResolvedValue({ rows: [], count: 0 });
     addOnRepository.findLinkedIdsByDishIds.mockResolvedValue({});
     dishVariantRepository.findManyByDishIds.mockResolvedValue({});
   });
 
   describe("execute", () => {
+    it("should read the menu of the branch that was named — sections, dishes and add-ons all scoped to it", async () => {
+      // Arrange
+      restaurantRepository.findBySlug.mockResolvedValue({ id: "restaurant-1", isActive: true } as any);
+      restaurantRatingRepository.fetchRating.mockResolvedValue({ avgRating: null, ratingCount: 0 });
+      menuCategoryRepository.fetchAll.mockResolvedValue({ rows: [], count: 0 });
+      dishRepository.findAllWithStats.mockResolvedValue([]);
+      publicBranchService.resolveOrDefault.mockResolvedValue({ id: "branch-2" } as any);
+
+      // Act
+      await usecase.execute("newa-kitchen", { branchSlug: "lazimpat" });
+
+      // Assert
+      expect(publicBranchService.resolveOrDefault).toHaveBeenCalledWith("restaurant-1", { branchSlug: "lazimpat" });
+      expect(menuCategoryRepository.fetchAll).toHaveBeenCalledWith({ restaurantId: "restaurant-1", branchId: "branch-2" });
+      expect(dishRepository.findAllWithStats).toHaveBeenCalledWith({ restaurantId: "restaurant-1", branchId: "branch-2", isArchived: false });
+      expect(addOnRepository.fetchAll).toHaveBeenCalledWith({ restaurantId: "restaurant-1", branchId: "branch-2", isArchived: false });
+    });
+
+    it("should fall back to the default branch's menu when no branch is named", async () => {
+      // Arrange
+      restaurantRepository.findBySlug.mockResolvedValue({ id: "restaurant-1", isActive: true } as any);
+      restaurantRatingRepository.fetchRating.mockResolvedValue({ avgRating: null, ratingCount: 0 });
+      menuCategoryRepository.fetchAll.mockResolvedValue({ rows: [], count: 0 });
+      dishRepository.findAllWithStats.mockResolvedValue([]);
+
+      // Act
+      await usecase.execute("newa-kitchen");
+
+      // Assert — `resolveOrDefault` is what supplies the default, so a menu is never restaurant-wide.
+      expect(publicBranchService.resolveOrDefault).toHaveBeenCalledWith("restaurant-1", {});
+      expect(dishRepository.findAllWithStats).toHaveBeenCalledWith(expect.objectContaining({ branchId: "branch-1" }));
+    });
+
     it("should compose restaurant, rating, categories, dishes and add-ons into one menu", async () => {
       // Arrange
       restaurantRepository.findBySlug.mockResolvedValue({ id: "restaurant-1", isActive: true } as any);
@@ -61,8 +98,8 @@ describe("FetchMenuUsecase", () => {
       expect(result.categories).toHaveLength(1);
       expect(result.dishes).toEqual([{ id: "dish-1", stats: {}, badges: [], addOnIds: ["addon-1"], variants: [] }]);
       expect(result.addOns).toEqual([{ id: "addon-1" }]);
-      expect(dishRepository.findAllWithStats).toHaveBeenCalledWith({ restaurantId: "restaurant-1", isArchived: false });
-      expect(addOnRepository.fetchAll).toHaveBeenCalledWith({ restaurantId: "restaurant-1", isArchived: false });
+      expect(dishRepository.findAllWithStats).toHaveBeenCalledWith({ restaurantId: "restaurant-1", branchId: "branch-1", isArchived: false });
+      expect(addOnRepository.fetchAll).toHaveBeenCalledWith({ restaurantId: "restaurant-1", branchId: "branch-1", isArchived: false });
     });
 
     it("should throw NotFoundException for an unknown or closed restaurant", async () => {

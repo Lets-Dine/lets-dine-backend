@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { AuditAction } from "@prisma/client";
 import { ConflictException, NotFoundException } from "../../../../common/exceptions";
-import { AuthEntity } from "../../../../common/interfaces";
+import { AuthEntity, isInActiveBranch } from "../../../../common/interfaces";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
 import { FLOOR_ERROR_MESSAGES } from "../../domain/constants";
 import { IFloor } from "../../domain/interfaces/floor.interface";
@@ -17,12 +17,12 @@ export class UpdateFloorUsecase {
 
   async execute(id: string, dto: UpdateFloorInput, authEntity: AuthEntity): Promise<IFloor> {
     const existing = await this.floorRepository.findById(id);
-    if (!existing || existing.restaurantId !== authEntity.restaurantId) {
+    if (!existing || !isInActiveBranch(authEntity, existing)) {
       throw new NotFoundException(FLOOR_ERROR_MESSAGES.NOT_FOUND);
     }
 
     if (dto.name && dto.name !== existing.name) {
-      const clash = await this.floorRepository.findByName(authEntity.restaurantId, dto.name);
+      const clash = await this.floorRepository.findByName(authEntity.branchId, dto.name);
       if (clash) throw new ConflictException(FLOOR_ERROR_MESSAGES.NAME_ALREADY_EXISTS);
     }
 

@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { AuditLogsModule } from "../audit-logs/audit-logs.module";
+import { BranchesModule } from "../branches/branches.module";
 import { CreateStaffMemberUsecase } from "./application/use-cases/create-staff-member.usecase";
 import { FetchAllStaffMembersUsecase } from "./application/use-cases/fetch-all-staff-members.usecase";
 import { UpdateStaffMemberUsecase } from "./application/use-cases/update-staff-member.usecase";
@@ -10,7 +11,7 @@ import UserRepositoryImpl from "./infrastructure/repositories/user.repository.im
 import { StaffMemberController } from "./interfaces/http/staff-member.controller";
 
 @Module({
-  imports: [AuditLogsModule],
+  imports: [AuditLogsModule, BranchesModule],
   controllers: [StaffMemberController],
   providers: [
     CreateStaffMemberUsecase,

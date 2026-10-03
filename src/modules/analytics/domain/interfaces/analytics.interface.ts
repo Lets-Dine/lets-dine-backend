@@ -1,3 +1,12 @@
+/**
+ * What an analytics read covers. `branchIds` undefined = every branch of the restaurant (an owner's
+ * whole-business view); otherwise only these. Always derived from the token by `resolveAnalyticsScope`.
+ */
+export interface IAnalyticsScope {
+  restaurantId: string;
+  branchIds?: string[];
+}
+
 export interface IAnalyticsRange {
   from: Date;
   to: Date;
@@ -64,6 +73,17 @@ export interface IOrderComparisonTotals {
 
 export interface IOrderComparison extends IOrderComparisonTotals {
   differencePercentage: number;
+}
+
+/** One branch's slice of the restaurant's results — the cross-branch comparison an owner reads. */
+export interface IBranchPerformance {
+  branchId: string;
+  branchName: string;
+  orders: number;
+  completed: number;
+  cancelled: number;
+  grossRevenue: number;
+  averageOrderValue: number;
 }
 
 /** Paid-for dishes on a given day, ranked by units sold — sourced from `payments`, not `orders`. */

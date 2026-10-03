@@ -4,6 +4,7 @@ import { IMenuCategory } from "../interfaces/menu-category.interface";
 
 export interface IMenuCategoryCreate {
   restaurantId: string;
+  branchId: string;
   name: string;
   emoji?: string;
   sortOrder?: number;
@@ -17,6 +18,8 @@ export interface MenuCategoryFetchOptions {
 
 export interface IMenuCategoriesFetchQuery {
   restaurantId: string;
+  /** Only this branch's sections. */
+  branchId?: string;
   keyword?: string;
 }
 
@@ -27,7 +30,7 @@ export interface IMenuCategoriesFetchOptions extends IPaginationOptions {
 export abstract class MenuCategoryRepository {
   abstract $transaction<T>(fn: (tx: PrismaTransaction) => Promise<T>): Promise<T>;
   abstract findById(id: string, options?: MenuCategoryFetchOptions): Promise<IMenuCategory | null>;
-  abstract findByName(restaurantId: string, name: string, options?: MenuCategoryFetchOptions): Promise<IMenuCategory | null>;
+  abstract findByName(branchId: string, name: string, options?: MenuCategoryFetchOptions): Promise<IMenuCategory | null>;
   abstract create(data: IMenuCategoryCreate, options?: { tx?: PrismaTransaction; actorId?: string }): Promise<IMenuCategory>;
   abstract update(id: string, data: IMenuCategoryUpdate, options?: { tx?: PrismaTransaction; actorId?: string }): Promise<IMenuCategory>;
   abstract delete(id: string, transaction?: PrismaTransaction): Promise<void>;

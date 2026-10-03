@@ -17,7 +17,7 @@ export class FetchAllDishesUsecase {
     const { keyword, categoryId, isAvailable, isArchived, isFeatured, ...pagination } = query;
 
     const { rows, count } = await this.dishRepository.fetchAll(
-      { restaurantId: authEntity.restaurantId, keyword, categoryId, isAvailable, isArchived, isFeatured },
+      { restaurantId: authEntity.restaurantId, branchId: authEntity.branchId, keyword, categoryId, isAvailable, isArchived, isFeatured },
       pagination
     );
 

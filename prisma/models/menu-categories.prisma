@@ -2,6 +2,8 @@
 model MenuCategory {
   id           String   @id @default(uuid()) @map("id") @db.Uuid
   restaurantId String   @map("restaurant_id") @db.Uuid
+  /// The branch whose menu this section belongs to.
+  branchId     String   @map("branch_id") @db.Uuid
   name         String   @map("name")
   emoji        String   @default("") @map("emoji")
   sortOrder    Int      @default(0) @map("sort_order")
@@ -11,10 +13,12 @@ model MenuCategory {
   updatedBy    String?  @map("updated_by") @db.Uuid
 
   restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  branch     Branch     @relation(fields: [branchId], references: [id], onDelete: Cascade)
   dishes     Dish[]
 
-  @@unique([restaurantId, name])
+  @@unique([branchId, name])
   @@index([restaurantId])
+  @@index([branchId])
   @@map("menu_categories")
   @@schema("public")
 }

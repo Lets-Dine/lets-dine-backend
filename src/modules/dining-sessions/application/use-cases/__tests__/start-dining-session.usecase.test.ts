@@ -12,6 +12,7 @@ const restaurant = { id: "restaurant-1", isActive: true } as any;
 const table = {
   id: "table-1",
   restaurantId: "restaurant-1",
+  branchId: "branch-1",
   currentSessionId: null,
   isActive: true,
 } as any;
@@ -78,6 +79,7 @@ describe("StartDiningSessionUsecase", () => {
         table: { ...table, currentSessionId: "session-1" },
       });
       const [created] = diningSessionRepository.create.mock.calls[0];
+      expect(created.branchId).toBe("branch-1");
       expect(created.anonymousSessionToken).toMatch(/^\d{8}$/);
       expect(created.expiresAt.getTime()).toBeGreaterThan(Date.now());
       expect(diningTableRepository.update).toHaveBeenCalledWith(table.id, { currentSessionId: "session-1" }, { tx });

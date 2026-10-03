@@ -6,6 +6,7 @@ function buildDish(id: string, price: number, stats: Partial<IDishStats>, overri
   return {
     id,
     restaurantId: "restaurant-1",
+    branchId: "branch-1",
     categoryId: "category-1",
     name: id,
     slug: id,

@@ -22,6 +22,8 @@ export interface DishReviewFetchOptions {
 
 export interface IDishReviewsFetchQuery {
   restaurantId?: string;
+  /** Reviews of orders placed at these branches — a review has no branch of its own. */
+  branchIds?: string[];
   dishId?: string;
   sessionId?: string;
   minRating?: number;

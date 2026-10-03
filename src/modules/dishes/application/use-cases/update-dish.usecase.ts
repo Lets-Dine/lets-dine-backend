@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { AuditAction } from "@prisma/client";
 import { ConflictException, ForbiddenException, NotFoundException } from "../../../../common/exceptions";
-import { AuthEntity } from "../../../../common/interfaces";
+import { AuthEntity, isInActiveBranch } from "../../../../common/interfaces";
 import { can } from "../../../../common/auth";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
 import { MenuCategoryRepository } from "../../../menu-categories/domain/repositories/menu-category.repository";
@@ -22,7 +22,7 @@ export class UpdateDishUsecase {
 
   async execute(id: string, dto: UpdateDishInput, authEntity: AuthEntity): Promise<IDish> {
     const existing = await this.dishRepository.findById(id);
-    if (!existing || existing.restaurantId !== authEntity.restaurantId) {
+    if (!existing || !isInActiveBranch(authEntity, existing)) {
       throw new NotFoundException(DISH_ERROR_MESSAGES.NOT_FOUND);
     }
 
@@ -33,7 +33,7 @@ export class UpdateDishUsecase {
 
     if (dto.categoryId && dto.categoryId !== existing.categoryId) {
       const category = await this.menuCategoryRepository.findById(dto.categoryId);
-      if (!category || category.restaurantId !== authEntity.restaurantId) {
+      if (!category || !isInActiveBranch(authEntity, category)) {
         throw new NotFoundException(DISH_ERROR_MESSAGES.CATEGORY_NOT_FOUND);
       }
     }
@@ -42,7 +42,7 @@ export class UpdateDishUsecase {
 
     if (dto.name && dto.name !== existing.name) {
       patch.slug = slugify(dto.name);
-      const clash = await this.dishRepository.findBySlug(authEntity.restaurantId, patch.slug);
+      const clash = await this.dishRepository.findBySlug(authEntity.branchId, patch.slug);
       if (clash && clash.id !== id) throw new ConflictException(DISH_ERROR_MESSAGES.SLUG_ALREADY_EXISTS);
     }
 

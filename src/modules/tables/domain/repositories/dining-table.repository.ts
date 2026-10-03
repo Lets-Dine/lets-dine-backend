@@ -4,6 +4,7 @@ import { IDiningTable } from "../interfaces/dining-table.interface";
 
 export interface IDiningTableCreate {
   restaurantId: string;
+  branchId: string;
   name: string;
   qrToken: string;
   capacity?: number;
@@ -20,6 +21,7 @@ export interface DiningTableFetchOptions {
 
 export interface IDiningTablesFetchQuery {
   restaurantId: string;
+  branchId: string;
   keyword?: string;
   isActive?: boolean;
 }
@@ -33,7 +35,7 @@ export abstract class DiningTableRepository {
   abstract lockById(id: string, options: { tx: PrismaTransaction }): Promise<void>;
   abstract findById(id: string, options?: DiningTableFetchOptions): Promise<IDiningTable | null>;
   abstract findByQrToken(qrToken: string, options?: DiningTableFetchOptions): Promise<IDiningTable | null>;
-  abstract findByName(restaurantId: string, name: string, options?: DiningTableFetchOptions): Promise<IDiningTable | null>;
+  abstract findByName(branchId: string, name: string, options?: DiningTableFetchOptions): Promise<IDiningTable | null>;
   abstract create(data: IDiningTableCreate, options?: { tx?: PrismaTransaction; actorId?: string }): Promise<IDiningTable>;
   abstract update(id: string, data: IDiningTableUpdate, options?: { tx?: PrismaTransaction; actorId?: string }): Promise<IDiningTable>;
   abstract fetchAll(query: IDiningTablesFetchQuery, options?: IDiningTablesFetchOptions): Promise<PaginatedResponse<IDiningTable>>;

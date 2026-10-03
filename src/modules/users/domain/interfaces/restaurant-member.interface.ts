@@ -14,4 +14,6 @@ export interface IRestaurantMember {
 export interface IStaffMember extends IRestaurantMember {
   name: string;
   email: string;
+  /** Branches a MANAGER/STAFF member is pinned to. Empty for an OWNER, who reaches every branch. */
+  branchIds: string[];
 }

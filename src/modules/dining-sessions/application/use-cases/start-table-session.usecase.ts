@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { AuditAction } from "@prisma/client";
 import { ConflictException, NotFoundException } from "../../../../common/exceptions";
-import { AuthEntity } from "../../../../common/interfaces";
+import { AuthEntity, isInActiveBranch } from "../../../../common/interfaces";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
 import { DINING_TABLE_ERROR_MESSAGES } from "../../../tables/domain/constants";
 import { IDiningTable } from "../../../tables/domain/interfaces/dining-table.interface";
@@ -29,7 +29,7 @@ export class StartTableSessionUsecase {
 
   async execute(tableId: string, authEntity: AuthEntity): Promise<IDiningTable> {
     const table = await this.diningTableRepository.findById(tableId);
-    if (!table || table.restaurantId !== authEntity.restaurantId) {
+    if (!table || !isInActiveBranch(authEntity, table)) {
       throw new NotFoundException(DINING_TABLE_ERROR_MESSAGES.NOT_FOUND);
     }
     if (!table.isActive) throw new ConflictException(DINING_TABLE_ERROR_MESSAGES.INACTIVE);
@@ -44,6 +44,7 @@ export class StartTableSessionUsecase {
       const session = await this.diningSessionRepository.create(
         {
           restaurantId: table.restaurantId,
+          branchId: table.branchId,
           tableId: table.id,
           anonymousSessionToken: generateSessionToken(),
           expiresAt: sessionExpiryFrom(startedAt, this.ttlMinutes()),

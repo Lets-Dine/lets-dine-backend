@@ -4,13 +4,14 @@ import { IAddOn } from "../interfaces/add-on.interface";
 
 export interface IAddOnCreate {
   restaurantId: string;
+  branchId: string;
   name: string;
   price: number;
   isAvailable?: boolean;
   sortOrder?: number;
 }
 
-export type IAddOnUpdate = Partial<Omit<IAddOnCreate, "restaurantId">> & { isArchived?: boolean };
+export type IAddOnUpdate = Partial<Omit<IAddOnCreate, "restaurantId" | "branchId">> & { isArchived?: boolean };
 
 export interface AddOnFetchOptions {
   tx?: PrismaTransaction;
@@ -18,6 +19,8 @@ export interface AddOnFetchOptions {
 
 export interface IAddOnsFetchQuery {
   restaurantId?: string;
+  /** Only this branch's add-ons. */
+  branchId?: string;
   keyword?: string;
   isAvailable?: boolean;
   isArchived?: boolean;

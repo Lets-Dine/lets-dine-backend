@@ -34,6 +34,7 @@ describe("RegenerateTableQrUsecase", () => {
       diningTableRepository.findById.mockResolvedValue({
         id: "table-1",
         restaurantId: authUser.restaurantId,
+        branchId: authUser.branchId,
         name: "T1",
         qrToken: "old-token",
       } as any);
@@ -50,6 +51,21 @@ describe("RegenerateTableQrUsecase", () => {
         expect.objectContaining({ action: AuditAction.qr_regenerated, subject: "T1" }),
         authUser
       );
+    });
+
+    it("should throw NotFoundException for a table in another branch", async () => {
+      // Arrange
+      diningTableRepository.findById.mockResolvedValue({
+        id: "table-1",
+        restaurantId: authUser.restaurantId,
+        branchId: "other-branch",
+        name: "T1",
+        qrToken: "old-token",
+      } as any);
+
+      // Act & Assert
+      await expect(usecase.execute("table-1", authUser)).rejects.toThrow(new NotFoundException(DINING_TABLE_ERROR_MESSAGES.NOT_FOUND));
+      expect(diningTableRepository.update).not.toHaveBeenCalled();
     });
 
     it("should throw NotFoundException when the table is not this restaurant's", async () => {

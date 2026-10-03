@@ -1,6 +1,8 @@
 import { PrismaTransaction } from "../../../../common/prisma";
 import {
   IAnalyticsRange,
+  IAnalyticsScope,
+  IBranchPerformance,
   IDishPerformance,
   IFeedbackSummary,
   IHourlyOrders,
@@ -17,22 +19,24 @@ export interface AnalyticsFetchOptions {
 }
 
 export abstract class AnalyticsRepository {
-  abstract fetchOrderSummary(restaurantId: string, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<IOrderSummary>;
-  abstract fetchDishPerformance(restaurantId: string, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<IDishPerformance[]>;
-  abstract fetchFeedbackSummary(restaurantId: string, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<IFeedbackSummary>;
-  abstract fetchBusiestHours(restaurantId: string, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<IHourlyOrders[]>;
+  abstract fetchOrderSummary(scope: IAnalyticsScope, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<IOrderSummary>;
+  abstract fetchDishPerformance(scope: IAnalyticsScope, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<IDishPerformance[]>;
+  abstract fetchFeedbackSummary(scope: IAnalyticsScope, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<IFeedbackSummary>;
+  abstract fetchBusiestHours(scope: IAnalyticsScope, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<IHourlyOrders[]>;
   abstract fetchRevenueComparison(
-    restaurantId: string,
+    scope: IAnalyticsScope,
     currentRange: IAnalyticsRange,
     previousRange: IAnalyticsRange,
     options?: AnalyticsFetchOptions
   ): Promise<IRevenueTotals>;
   abstract fetchOrderComparison(
-    restaurantId: string,
+    scope: IAnalyticsScope,
     currentRange: IAnalyticsRange,
     previousRange: IAnalyticsRange,
     options?: AnalyticsFetchOptions
   ): Promise<IOrderComparisonTotals>;
   /** §31 — units actually paid for on the day, ranked highest-first; `range` is one calendar day. */
-  abstract fetchTopSellingDishes(restaurantId: string, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<ITopSellingDish[]>;
+  abstract fetchTopSellingDishes(scope: IAnalyticsScope, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<ITopSellingDish[]>;
+  /** One row per branch in scope, highest revenue first — branches with no orders in the range still appear. */
+  abstract fetchBranchPerformance(scope: IAnalyticsScope, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<IBranchPerformance[]>;
 }

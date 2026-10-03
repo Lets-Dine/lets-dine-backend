@@ -31,6 +31,8 @@ export interface IOrder {
   id: string;
   reference: string;
   restaurantId: string;
+  /** The branch that took and fulfils this order; its reference sequence and fee overrides are the branch's. */
+  branchId: string;
   /** Null for a delivery order — see `orderType`. */
   tableId: string | null;
   sessionId: string;
@@ -40,6 +42,9 @@ export interface IOrder {
   orderType: OrderType;
   /** Set for a delivery order's own `Customer`, or a floor order's recognised one (§16b) — null for a table order. */
   customerId: string | null;
+  /** The linked customer's current name/phone — only the per-session read (`findBySessionId`) joins them in. */
+  customerName?: string | null;
+  customerPhone?: string | null;
   status: OrderStatus;
   subtotal: number;
   serviceCharge: number;

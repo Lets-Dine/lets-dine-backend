@@ -1,6 +1,8 @@
 export interface IDiningSession {
   id: string;
   restaurantId: string;
+  /** The branch this visit happened at — copied from its table/floor, never from the client. */
+  branchId: string;
   /** Null for a delivery or floor session — see `customerId`/`floorId`. */
   tableId: string | null;
   /** Set only for a delivery session — the `Customer` it was opened for. A floor order's own `Customer` lives on the order instead (§16b). */

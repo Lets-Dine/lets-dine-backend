@@ -33,6 +33,12 @@ export interface IRestaurantsFetchOptions extends IPaginationOptions {
 export abstract class RestaurantRepository {
   abstract $transaction<T>(fn: (tx: PrismaTransaction) => Promise<T>): Promise<T>;
   abstract findById(id: string, options?: RestaurantFetchOptions): Promise<IRestaurant | null>;
+  /**
+   * The restaurant with this branch's fee overrides applied — every total that is computed or
+   * recomputed for a branch's order or payment must use this, not `findById`, or the amounts
+   * would drift from what the branch actually charges. A null override inherits the restaurant's.
+   */
+  abstract findByIdForBranch(id: string, branchId: string, options?: RestaurantFetchOptions): Promise<IRestaurant | null>;
   abstract findBySlug(slug: string, options?: RestaurantFetchOptions): Promise<IRestaurant | null>;
   abstract create(data: IRestaurantCreate, options?: { tx?: PrismaTransaction; actorId?: string }): Promise<IRestaurant>;
   abstract update(id: string, data: IRestaurantUpdate, options?: { tx?: PrismaTransaction; actorId?: string }): Promise<IRestaurant>;

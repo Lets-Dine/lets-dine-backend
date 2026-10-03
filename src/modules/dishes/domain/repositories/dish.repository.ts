@@ -6,6 +6,7 @@ import { IDishWithStats } from "../interfaces/dish-with-stats.interface";
 
 export interface IDishCreate {
   restaurantId: string;
+  branchId: string;
   categoryId: string;
   name: string;
   slug: string;
@@ -19,7 +20,7 @@ export interface IDishCreate {
   dietaryType?: DishDietaryType;
 }
 
-export type IDishUpdate = Partial<Omit<IDishCreate, "restaurantId">> & { isArchived?: boolean };
+export type IDishUpdate = Partial<Omit<IDishCreate, "restaurantId" | "branchId">> & { isArchived?: boolean };
 
 export interface DishFetchOptions {
   tx?: PrismaTransaction;
@@ -27,6 +28,8 @@ export interface DishFetchOptions {
 
 export interface IDishesFetchQuery {
   restaurantId?: string;
+  /** Only this branch's menu. */
+  branchId?: string;
   categoryId?: string;
   keyword?: string;
   isAvailable?: boolean;
@@ -48,7 +51,7 @@ export interface IDishesWithStatsOptions {
 export abstract class DishRepository {
   abstract $transaction<T>(fn: (tx: PrismaTransaction) => Promise<T>): Promise<T>;
   abstract findById(id: string, options?: DishFetchOptions): Promise<IDish | null>;
-  abstract findBySlug(restaurantId: string, slug: string, options?: DishFetchOptions): Promise<IDish | null>;
+  abstract findBySlug(branchId: string, slug: string, options?: DishFetchOptions): Promise<IDish | null>;
   abstract findManyByIds(ids: string[], options?: DishFetchOptions): Promise<IDish[]>;
   abstract create(data: IDishCreate, options?: { tx?: PrismaTransaction; actorId?: string }): Promise<IDish>;
   abstract update(id: string, data: IDishUpdate, options?: { tx?: PrismaTransaction; actorId?: string }): Promise<IDish>;

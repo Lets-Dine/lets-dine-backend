@@ -19,7 +19,10 @@ export class AuthGuard implements CanActivate {
     if (!token) throw new UnauthorizedException(AUTH_ERROR_MESSAGES.MISSING_TOKEN);
 
     try {
-      request.authEntity = await this.jwtService.verifyAsync<AuthEntity>(token);
+      const authEntity = await this.jwtService.verifyAsync<AuthEntity>(token);
+      // Tokens minted before branches existed carry no branch scope — make them sign in again.
+      if (!authEntity.branchId || !authEntity.branchIds) throw new Error("token has no branch scope");
+      request.authEntity = authEntity;
     } catch {
       throw new UnauthorizedException(AUTH_ERROR_MESSAGES.INVALID_TOKEN);
     }

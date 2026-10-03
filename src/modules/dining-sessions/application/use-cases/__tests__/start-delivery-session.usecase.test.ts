@@ -1,5 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { BadRequestException, NotFoundException } from "../../../../../common/exceptions";
+import { BranchRepository } from "../../../../branches/domain/repositories/branch.repository";
 import { CustomerRepository } from "../../../../customers/domain/repositories/customer.repository";
 import { RESTAURANT_ERROR_MESSAGES } from "../../../../restaurants/domain/constants";
 import { RestaurantRepository } from "../../../../restaurants/domain/repositories/restaurant.repository";
@@ -9,6 +10,7 @@ import { StartDeliverySessionUsecase } from "../start-delivery-session.usecase";
 
 const dto = { restaurantSlug: "newa-kitchen", phone: "9800000000", name: "Hari Gurung", address: "Baneshwor, Kathmandu" };
 const restaurant = { id: "restaurant-1", isActive: true } as any;
+const branch = { id: "branch-1", slug: "main", isActive: true } as any;
 const customer = {
   id: "customer-1",
   restaurantId: "restaurant-1",
@@ -23,6 +25,7 @@ describe("StartDeliverySessionUsecase", () => {
   let diningSessionRepository: jest.Mocked<DiningSessionRepository>;
   let restaurantRepository: jest.Mocked<RestaurantRepository>;
   let customerRepository: jest.Mocked<CustomerRepository>;
+  let branchRepository: jest.Mocked<BranchRepository>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -31,6 +34,7 @@ describe("StartDeliverySessionUsecase", () => {
         { provide: DiningSessionRepository, useValue: { create: jest.fn() } },
         { provide: RestaurantRepository, useValue: { findBySlug: jest.fn() } },
         { provide: CustomerRepository, useValue: { findByPhone: jest.fn(), upsert: jest.fn() } },
+        { provide: BranchRepository, useValue: { findBySlug: jest.fn(), findDefault: jest.fn() } },
       ],
     }).compile();
 
@@ -38,8 +42,11 @@ describe("StartDeliverySessionUsecase", () => {
     diningSessionRepository = module.get(DiningSessionRepository);
     restaurantRepository = module.get(RestaurantRepository);
     customerRepository = module.get(CustomerRepository);
+    branchRepository = module.get(BranchRepository);
 
     restaurantRepository.findBySlug.mockResolvedValue(restaurant);
+    branchRepository.findDefault.mockResolvedValue(branch);
+    branchRepository.findBySlug.mockResolvedValue(branch);
   });
 
   describe("execute", () => {
@@ -62,7 +69,7 @@ describe("StartDeliverySessionUsecase", () => {
         defaultNote: null,
       });
       const [created] = diningSessionRepository.create.mock.calls[0];
-      expect(created).toMatchObject({ restaurantId: restaurant.id, tableId: null, customerId: customer.id });
+      expect(created).toMatchObject({ restaurantId: restaurant.id, branchId: branch.id, tableId: null, customerId: customer.id });
       expect(created.anonymousSessionToken).toMatch(/^\d{8}$/);
       expect(created.expiresAt.getTime()).toBeGreaterThan(Date.now());
     });
@@ -95,6 +102,33 @@ describe("StartDeliverySessionUsecase", () => {
         new BadRequestException(DINING_SESSION_ERROR_MESSAGES.CUSTOMER_NAME_REQUIRED)
       );
       expect(customerRepository.upsert).not.toHaveBeenCalled();
+    });
+
+    it("should deliver from the branch the customer picked", async () => {
+      // Arrange
+      const lazimpat = { id: "branch-2", slug: "lazimpat", isActive: true } as any;
+      branchRepository.findBySlug.mockResolvedValue(lazimpat);
+      customerRepository.findByPhone.mockResolvedValue(customer as any);
+      customerRepository.upsert.mockResolvedValue(customer as any);
+      diningSessionRepository.create.mockResolvedValue({ id: "session-1" } as any);
+
+      // Act
+      await usecase.execute({ ...dto, branchSlug: "lazimpat" });
+
+      // Assert
+      expect(branchRepository.findBySlug).toHaveBeenCalledWith(restaurant.id, "lazimpat");
+      expect(diningSessionRepository.create.mock.calls[0][0]).toMatchObject({ branchId: "branch-2" });
+    });
+
+    it("should throw NotFoundException for an unknown or disabled branch", async () => {
+      // Arrange
+      branchRepository.findBySlug.mockResolvedValue({ ...branch, isActive: false });
+
+      // Act & Assert
+      await expect(usecase.execute({ ...dto, branchSlug: "main" })).rejects.toThrow(
+        new NotFoundException(DINING_SESSION_ERROR_MESSAGES.BRANCH_NOT_FOUND)
+      );
+      expect(diningSessionRepository.create).not.toHaveBeenCalled();
     });
 
     it("should throw NotFoundException when the restaurant is unknown or closed", async () => {

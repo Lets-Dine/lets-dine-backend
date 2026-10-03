@@ -40,9 +40,9 @@ class DiningTableRepositoryImpl implements DiningTableRepository {
     return prisma.diningTable.findUnique({ where: { qrToken } }) as any;
   }
 
-  async findByName(restaurantId: string, name: string, options?: DiningTableFetchOptions): Promise<IDiningTable | null> {
+  async findByName(branchId: string, name: string, options?: DiningTableFetchOptions): Promise<IDiningTable | null> {
     const prisma = options?.tx ?? this.prisma;
-    return prisma.diningTable.findUnique({ where: { restaurantId_name: { restaurantId, name } } }) as any;
+    return prisma.diningTable.findUnique({ where: { branchId_name: { branchId, name } } }) as any;
   }
 
   async create(data: IDiningTableCreate, options?: { tx?: PrismaTransaction; actorId?: string }): Promise<IDiningTable> {
@@ -63,6 +63,7 @@ class DiningTableRepositoryImpl implements DiningTableRepository {
 
     const where: Prisma.DiningTableWhereInput = {
       restaurantId: query.restaurantId,
+      branchId: query.branchId,
       ...(query.keyword && { name: { contains: query.keyword, mode: "insensitive" } }),
       ...(query.isActive !== undefined && { isActive: query.isActive }),
     };

@@ -27,9 +27,9 @@ class FloorRepositoryImpl implements FloorRepository {
     return prisma.floor.findUnique({ where: { qrToken } });
   }
 
-  async findByName(restaurantId: string, name: string, options?: FloorFetchOptions): Promise<IFloor | null> {
+  async findByName(branchId: string, name: string, options?: FloorFetchOptions): Promise<IFloor | null> {
     const prisma = options?.tx ?? this.prisma;
-    return prisma.floor.findUnique({ where: { restaurantId_name: { restaurantId, name } } });
+    return prisma.floor.findUnique({ where: { branchId_name: { branchId, name } } });
   }
 
   async create(data: IFloorCreate, options?: { tx?: PrismaTransaction; actorId?: string }): Promise<IFloor> {
@@ -48,6 +48,7 @@ class FloorRepositoryImpl implements FloorRepository {
 
     const where: Prisma.FloorWhereInput = {
       restaurantId: query.restaurantId,
+      branchId: query.branchId,
       ...(query.keyword && { name: { contains: query.keyword, mode: "insensitive" } }),
       ...(query.isActive !== undefined && { isActive: query.isActive }),
     };

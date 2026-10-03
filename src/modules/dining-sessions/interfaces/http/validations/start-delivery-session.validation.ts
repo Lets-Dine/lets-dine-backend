@@ -6,6 +6,8 @@ import { z } from "zod";
  */
 export const startDeliverySessionSchema = z.object({
   restaurantSlug: z.string().min(1).max(80),
+  /** Which branch should deliver. Defaults to the restaurant's default branch. */
+  branchSlug: z.string().min(1).max(80).optional(),
   phone: z.string().min(6).max(20),
   name: z.string().min(1).max(120).optional(),
   address: z.string().min(1).max(500).optional(),
