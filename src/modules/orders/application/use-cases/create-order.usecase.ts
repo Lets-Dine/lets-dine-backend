@@ -4,6 +4,7 @@ import { OrderType } from "@prisma/client";
 import { BadRequestException, NotFoundException } from "../../../../common/exceptions";
 import { PrismaTransaction } from "../../../../common/prisma";
 import { AddOnRepository } from "../../../add-ons/domain/repositories/add-on.repository";
+import { EntitlementService } from "../../../billing/application/entitlement.service";
 import { BranchRepository } from "../../../branches/domain/repositories/branch.repository";
 import { isTakingOrders } from "../../../branches/domain/utils/branch-hours.util";
 import { CustomerRepository } from "../../../customers/domain/repositories/customer.repository";
@@ -39,7 +40,8 @@ export class CreateOrderUsecase {
     private readonly dishVariantRepository: DishVariantRepository,
     private readonly customerRepository: CustomerRepository,
     private readonly branchRepository: BranchRepository,
-    private readonly eventEmitter: EventEmitter2
+    private readonly eventEmitter: EventEmitter2,
+    private readonly entitlementService: EntitlementService
   ) {}
 
   async execute(dto: CreateOrderInput, session: IDiningSession, options?: { idempotencyKey?: string }): Promise<IOrderWithItems> {
@@ -108,6 +110,9 @@ export class CreateOrderUsecase {
     // Emitted after the transaction commits — the pass should never be told
     // about a ticket that a later step in the same transaction might still roll back.
     this.eventEmitter.emit("order.created", order);
+
+    // Soft usage count: never throws, so a billing fault cannot fail an order that is already committed.
+    await this.entitlementService.recordOrder(session.restaurantId);
 
     return order;
   }

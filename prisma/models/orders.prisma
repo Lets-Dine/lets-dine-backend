@@ -73,6 +73,8 @@ model Order {
   @@index([sessionId])
   @@index([tableId, status])
   @@index([floorId])
+  /// Newest order per restaurant (platform listing) and 8-week rhythm: an index probe, not a scan.
+  @@index([restaurantId, createdAt(sort: Desc)])
   @@map("orders")
   @@schema("public")
 }

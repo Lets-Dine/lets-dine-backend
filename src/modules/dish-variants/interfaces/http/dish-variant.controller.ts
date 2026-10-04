@@ -12,9 +12,10 @@ import { RestoreDishVariantUsecase } from "../../application/use-cases/restore-d
 import { UpdateDishVariantUsecase } from "../../application/use-cases/update-dish-variant.usecase";
 import { DISH_VARIANT_SUCCESS_MESSAGES } from "../../domain/constants";
 import { IDishVariant } from "../../domain/interfaces/dish-variant.interface";
+import { SubscriptionActiveGuard } from "../../../billing/interfaces/http/guards/subscription-active.guard";
 
 @Controller("restaurant/dishes/:dishId/variants")
-@UseGuards(AuthGuard, AbilityGuard)
+@UseGuards(AuthGuard, AbilityGuard, SubscriptionActiveGuard)
 export class DishVariantController {
   constructor(
     private readonly createDishVariantUsecase: CreateDishVariantUsecase,

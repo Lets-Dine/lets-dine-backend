@@ -20,7 +20,9 @@ export type Permission =
   | "audit:view"
   | "payments:view"
   | "customers:view"
-  | "payments:discount";
+  | "payments:discount"
+  | "billing:view"
+  | "billing:manage";
 
 const STAFF: Permission[] = ["orders:view", "orders:advance", "menu:view", "payments:view", "customers:view"];
 
@@ -36,12 +38,15 @@ const MANAGER: Permission[] = [
   "settings:view",
   "audit:view",
   "payments:discount",
+  // Status and usage, so a manager knows what the restaurant is on and when it needs attention. No money.
+  "billing:view",
 ];
 
 export const ROLE_GRANTS: Record<StaffRole, Permission[]> = {
   STAFF,
   MANAGER,
-  OWNER: [...MANAGER, "settings:edit"],
+  // Prices, invoices and changing plan are the owner's: it is the owner who commits the restaurant to a plan.
+  OWNER: [...MANAGER, "settings:edit", "billing:manage"],
 };
 
 export function can(role: StaffRole, permission: Permission): boolean {

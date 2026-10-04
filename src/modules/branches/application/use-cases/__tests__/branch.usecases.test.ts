@@ -1,6 +1,7 @@
 import { Test } from "@nestjs/testing";
 import { AuditAction } from "@prisma/client";
-import { BadRequestException, ConflictException, NotFoundException } from "../../../../../common/exceptions";
+import { EntitlementService } from "../../../../billing/application/entitlement.service";
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from "../../../../../common/exceptions";
 import { buildAuthEntity } from "../../../../../common/testing";
 import { AuditLogService } from "../../../../audit-logs/application/audit-log.service";
 import { IBranchWithHours } from "../../../domain/interfaces/branch.interface";
@@ -46,6 +47,7 @@ describe("branch use cases", () => {
   let repo: jest.Mocked<BranchRepository>;
   let audit: jest.Mocked<AuditLogService>;
   let copyMenu: jest.Mocked<CopyBranchMenuUsecase>;
+  let entitlements: jest.Mocked<EntitlementService>;
 
   beforeEach(async () => {
     const module = await Test.createTestingModule({
@@ -57,10 +59,18 @@ describe("branch use cases", () => {
         FetchBranchUsecase,
         {
           provide: BranchRepository,
-          useValue: { findById: jest.fn(), findBySlug: jest.fn(), fetchAll: jest.fn(), create: jest.fn(), update: jest.fn(), replaceHours: jest.fn() },
+          useValue: {
+            findById: jest.fn(),
+            findBySlug: jest.fn(),
+            fetchAll: jest.fn(),
+            create: jest.fn(),
+            update: jest.fn(),
+            replaceHours: jest.fn(),
+          },
         },
         { provide: AuditLogService, useValue: { record: jest.fn() } },
         { provide: CopyBranchMenuUsecase, useValue: { execute: jest.fn() } },
+        { provide: EntitlementService, useValue: { assertCanCreate: jest.fn().mockResolvedValue(undefined) } },
       ],
     }).compile();
 
@@ -72,6 +82,7 @@ describe("branch use cases", () => {
     repo = module.get(BranchRepository);
     audit = module.get(AuditLogService);
     copyMenu = module.get(CopyBranchMenuUsecase);
+    entitlements = module.get(EntitlementService);
   });
 
   describe("create", () => {
@@ -106,9 +117,46 @@ describe("branch use cases", () => {
       await expect(create.execute({ name: "Main" }, authUser)).rejects.toBeInstanceOf(ConflictException);
       expect(repo.create).not.toHaveBeenCalled();
     });
+
+    it("checks the plan's branch limit for the token's restaurant before creating anything", async () => {
+      repo.findBySlug.mockResolvedValue(null);
+      repo.create.mockResolvedValue(buildBranch());
+
+      await create.execute({ name: "Lazimpat" }, authUser);
+
+      expect(entitlements.assertCanCreate).toHaveBeenCalledWith("branch", authUser.restaurantId);
+    });
+
+    it("creates nothing once the plan's branch limit is reached", async () => {
+      entitlements.assertCanCreate.mockRejectedValue(new ForbiddenException({ key: "PLAN_LIMIT_REACHED", message: "full" }));
+
+      await expect(create.execute({ name: "Lazimpat" }, authUser)).rejects.toBeInstanceOf(ForbiddenException);
+
+      expect(repo.create).not.toHaveBeenCalled();
+      expect(audit.record).not.toHaveBeenCalled();
+    });
   });
 
   describe("update", () => {
+    it("holds re-enabling a disabled branch to the plan's branch limit", async () => {
+      repo.findById.mockResolvedValue(buildBranch({ isActive: false }));
+      entitlements.assertCanCreate.mockRejectedValue(new ForbiddenException({ key: "PLAN_LIMIT_REACHED", message: "full" }));
+
+      await expect(update.execute("x", { isActive: true }, authUser)).rejects.toBeInstanceOf(ForbiddenException);
+
+      expect(entitlements.assertCanCreate).toHaveBeenCalledWith("branch", authUser.restaurantId);
+      expect(repo.update).not.toHaveBeenCalled();
+    });
+
+    it("does not count an edit to an already-active branch against the limit", async () => {
+      repo.findById.mockResolvedValue(buildBranch());
+      repo.update.mockResolvedValue(buildBranch({ name: "Renamed" }));
+
+      await update.execute("x", { name: "Renamed", isActive: true }, authUser);
+
+      expect(entitlements.assertCanCreate).not.toHaveBeenCalled();
+    });
+
     it("404s for a branch of another restaurant", async () => {
       repo.findById.mockResolvedValue(buildBranch({ restaurantId: "other" }));
       await expect(update.execute("x", { name: "New" }, authUser)).rejects.toBeInstanceOf(NotFoundException);

@@ -8,9 +8,10 @@ import { UpdateMenuCategoryUsecase } from "./application/use-cases/update-menu-c
 import { MenuCategoryRepository } from "./domain/repositories/menu-category.repository";
 import MenuCategoryRepositoryImpl from "./infrastructure/repositories/menu-category.repository.impl";
 import { MenuCategoryController } from "./interfaces/http/menu-category.controller";
+import { BillingModule } from "../billing/billing.module";
 
 @Module({
-  imports: [AuditLogsModule],
+  imports: [AuditLogsModule, BillingModule],
   controllers: [MenuCategoryController],
   providers: [
     CreateMenuCategoryUsecase,

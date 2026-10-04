@@ -1,0 +1,14 @@
+/// Per-period order count, so the monthly order limit is a single row read
+/// instead of a COUNT(*) over the orders table on every order.
+model UsageCounter {
+  id           String   @id @default(uuid()) @map("id") @db.Uuid
+  restaurantId String   @map("restaurant_id") @db.Uuid
+  periodStart  DateTime @map("period_start")
+  orders       Int      @default(0) @map("orders")
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@unique([restaurantId, periodStart])
+  @@map("usage_counters")
+  @@schema("public")
+}

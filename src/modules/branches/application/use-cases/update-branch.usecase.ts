@@ -3,6 +3,7 @@ import { AuditAction } from "@prisma/client";
 import { BadRequestException, ConflictException, NotFoundException } from "../../../../common/exceptions";
 import { AuthEntity } from "../../../../common/interfaces";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
+import { EntitlementService } from "../../../billing/application/entitlement.service";
 import { slugify } from "../../../dishes/domain/utils/slug.util";
 import { BRANCH_ERROR_MESSAGES } from "../../domain/constants";
 import { IBranch } from "../../domain/interfaces/branch.interface";
@@ -13,13 +14,19 @@ import { UpdateBranchInput } from "../../interfaces/http/validations/update-bran
 export class UpdateBranchUsecase {
   constructor(
     private readonly branchRepository: BranchRepository,
-    private readonly auditLogService: AuditLogService
+    private readonly auditLogService: AuditLogService,
+    private readonly entitlementService: EntitlementService
   ) {}
 
   async execute(id: string, dto: UpdateBranchInput, authEntity: AuthEntity): Promise<IBranch> {
     const existing = await this.branchRepository.findById(id);
     if (!existing || existing.restaurantId !== authEntity.restaurantId) {
       throw new NotFoundException(BRANCH_ERROR_MESSAGES.NOT_FOUND);
+    }
+
+    // Bringing a disabled branch back uses a branch slot again, so it is held to the plan like a new one.
+    if (dto.isActive === true && !existing.isActive) {
+      await this.entitlementService.assertCanCreate("branch", authEntity.restaurantId);
     }
 
     if (dto.isActive === false && existing.isDefault) {

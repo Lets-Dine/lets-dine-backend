@@ -12,9 +12,10 @@ import { BranchMenuRepository } from "./domain/repositories/branch-menu.reposito
 import BranchMenuRepositoryImpl from "./infrastructure/repositories/branch-menu.repository.impl";
 import BranchRepositoryImpl from "./infrastructure/repositories/branch.repository.impl";
 import { BranchController } from "./interfaces/http/branch.controller";
+import { BillingModule } from "../billing/billing.module";
 
 @Module({
-  imports: [AuditLogsModule],
+  imports: [AuditLogsModule, BillingModule],
   controllers: [BranchController],
   providers: [
     CreateBranchUsecase,
@@ -29,9 +30,6 @@ import { BranchController } from "./interfaces/http/branch.controller";
     BranchRepositoryImpl,
     { provide: BranchRepository, useExisting: BranchRepositoryImpl },
   ],
-  exports: [
-    PublicBranchService,
-    { provide: BranchRepository, useExisting: BranchRepositoryImpl },
-  ],
+  exports: [PublicBranchService, { provide: BranchRepository, useExisting: BranchRepositoryImpl }],
 })
 export class BranchesModule {}

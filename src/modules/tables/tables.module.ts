@@ -7,9 +7,10 @@ import { UpdateTableUsecase } from "./application/use-cases/update-table.usecase
 import { DiningTableRepository } from "./domain/repositories/dining-table.repository";
 import DiningTableRepositoryImpl from "./infrastructure/repositories/dining-table.repository.impl";
 import { DiningTableController } from "./interfaces/http/dining-table.controller";
+import { BillingModule } from "../billing/billing.module";
 
 @Module({
-  imports: [AuditLogsModule],
+  imports: [AuditLogsModule, BillingModule],
   controllers: [DiningTableController],
   providers: [
     CreateTableUsecase,

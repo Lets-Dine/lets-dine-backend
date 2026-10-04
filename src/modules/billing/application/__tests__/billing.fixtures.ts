@@ -1,0 +1,56 @@
+import { IInvoice, IPlan, ISubscriptionDetail } from "../../domain/interfaces/billing.interface";
+
+export const buildPlan = (overrides: Partial<IPlan> = {}): IPlan => ({
+  id: "plan-growth",
+  key: "growth",
+  name: "Growth",
+  type: "SUBSCRIPTION",
+  monthlyPrice: 400000,
+  annualPrice: 4000000,
+  extraBranchPrice: 80000,
+  extraSeatPrice: null,
+  currency: "NPR",
+  limits: { branches: 5, staffSeats: 20, ordersPerMonth: 10000 },
+  features: { analyticsTier: "full", exports: true, auditRetentionDays: 365 },
+  isPublic: true,
+  isActive: true,
+  ...overrides,
+});
+
+export const buildSubscription = (overrides: Partial<ISubscriptionDetail> = {}): ISubscriptionDetail => ({
+  id: "sub-1",
+  restaurantId: "restaurant-1",
+  status: "ACTIVE",
+  interval: "MONTHLY",
+  trialEndsAt: null,
+  currentPeriodStart: new Date("2026-03-01T00:00:00.000Z"),
+  currentPeriodEnd: new Date("2026-04-01T00:00:00.000Z"),
+  pastDueSince: null,
+  pendingPlanId: null,
+  extraBranches: 0,
+  extraSeats: 0,
+  cancelledAt: null,
+  plan: buildPlan(),
+  pendingPlan: null,
+  ...overrides,
+});
+
+export const buildInvoice = (overrides: Partial<IInvoice> = {}): IInvoice => ({
+  id: "invoice-1",
+  subscriptionId: "sub-1",
+  restaurantId: "restaurant-1",
+  number: "INV-20260401-ABC123",
+  lines: [{ description: "Growth plan — monthly", quantity: 1, unitAmount: 400000, amount: 400000 }],
+  amount: 400000,
+  currency: "NPR",
+  periodStart: new Date("2026-04-01T00:00:00.000Z"),
+  periodEnd: new Date("2026-05-01T00:00:00.000Z"),
+  dueAt: new Date("2026-04-01T00:00:00.000Z"),
+  status: "OPEN",
+  paidAt: null,
+  paymentMethod: null,
+  paymentRef: null,
+  markedPaidBy: null,
+  createdAt: new Date("2026-03-25T00:00:00.000Z"),
+  ...overrides,
+});

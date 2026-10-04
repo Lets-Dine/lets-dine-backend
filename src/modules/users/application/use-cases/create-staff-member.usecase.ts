@@ -4,6 +4,7 @@ import { BadRequestException, ConflictException } from "../../../../common/excep
 import { AuthEntity } from "../../../../common/interfaces";
 import { BranchRepository } from "../../../branches/domain/repositories/branch.repository";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
+import { EntitlementService } from "../../../billing/application/entitlement.service";
 import { STAFF_MEMBER_ERROR_MESSAGES } from "../../domain/constants";
 import { IStaffMember } from "../../domain/interfaces/restaurant-member.interface";
 import { RestaurantMemberRepository } from "../../domain/repositories/restaurant-member.repository";
@@ -22,7 +23,8 @@ export class CreateStaffMemberUsecase {
     private readonly userRepository: UserRepository,
     private readonly restaurantMemberRepository: RestaurantMemberRepository,
     private readonly auditLogService: AuditLogService,
-    private readonly branchRepository: BranchRepository
+    private readonly branchRepository: BranchRepository,
+    private readonly entitlementService: EntitlementService
   ) {}
 
   async execute(dto: CreateStaffMemberInput, authEntity: AuthEntity): Promise<IStaffMember> {
@@ -33,6 +35,8 @@ export class CreateStaffMemberUsecase {
       if (existingMember) throw new ConflictException(STAFF_MEMBER_ERROR_MESSAGES.ALREADY_EXISTS);
     }
 
+    await this.entitlementService.assertCanCreate("seat", authEntity.restaurantId);
+
     const branchIds = await this.resolveBranchIds(dto, authEntity);
     const pinHash = await hashPin(dto.pin);
 
@@ -40,7 +44,10 @@ export class CreateStaffMemberUsecase {
       const user =
         existingUser ?? (await this.userRepository.create({ email: dto.email, name: dto.name, pinHash }, { tx, actorId: authEntity.sub }));
 
-      return this.restaurantMemberRepository.create({ userId: user.id, restaurantId: authEntity.restaurantId, role: dto.role, branchIds }, { tx });
+      return this.restaurantMemberRepository.create(
+        { userId: user.id, restaurantId: authEntity.restaurantId, role: dto.role, branchIds },
+        { tx }
+      );
     });
 
     await this.auditLogService.record(

@@ -1,0 +1,40 @@
+enum InvoiceStatus {
+  OPEN
+  PAID
+  VOID
+
+  @@schema("public")
+}
+
+/// What a restaurant owes for one billing period — the source of truth for
+/// billing. How it got paid is metadata only, so a manual admin action today and
+/// a gateway webhook later go through the same code path.
+model Invoice {
+  id             String        @id @default(uuid()) @map("id") @db.Uuid
+  subscriptionId String        @map("subscription_id") @db.Uuid
+  restaurantId   String        @map("restaurant_id") @db.Uuid
+  number         String        @unique @map("number")
+  /// Snapshot of the charged lines (plan, extras, overage), immune to later price edits.
+  lines          Json          @map("lines")
+  amount         Int           @map("amount")
+  currency       String        @map("currency")
+  periodStart    DateTime      @map("period_start")
+  periodEnd      DateTime      @map("period_end")
+  dueAt          DateTime      @map("due_at")
+  status         InvoiceStatus @default(OPEN) @map("status")
+  paidAt         DateTime?     @map("paid_at")
+  /// Free text ("bank", "esewa", "gateway") — the method is undecided, so not an enum.
+  paymentMethod  String?       @map("payment_method")
+  paymentRef     String?       @map("payment_ref")
+  markedPaidBy   String?       @map("marked_paid_by") @db.Uuid
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Restrict)
+  restaurant   Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId, status])
+  @@index([status, dueAt])
+  @@index([subscriptionId])
+  @@map("invoices")
+  @@schema("public")
+}

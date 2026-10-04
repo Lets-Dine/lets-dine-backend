@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
+import { StaffAccessPolicy } from "../../../../common/auth";
 import { AUTH_ERROR_MESSAGES } from "../../../../common/constants";
-import { UnauthorizedException } from "../../../../common/exceptions";
+import { ForbiddenException, UnauthorizedException } from "../../../../common/exceptions";
 import { IStaffMember } from "../../../users/domain/interfaces/restaurant-member.interface";
 import { RestaurantMemberRepository } from "../../../users/domain/repositories/restaurant-member.repository";
 import { UserRepository } from "../../../users/domain/repositories/user.repository";
@@ -20,7 +21,8 @@ export class SignInStaffUsecase {
     private readonly userRepository: UserRepository,
     private readonly restaurantMemberRepository: RestaurantMemberRepository,
     private readonly authTokenService: AuthTokenService,
-    private readonly branchScopeService: BranchScopeService
+    private readonly branchScopeService: BranchScopeService,
+    private readonly staffAccessPolicy: StaffAccessPolicy
   ) {}
 
   async execute(dto: SignInStaffInput): Promise<IAuthSession> {
@@ -32,7 +34,7 @@ export class SignInStaffUsecase {
     if (!pinMatches) throw new UnauthorizedException(AUTH_ERROR_MESSAGES.INVALID_CREDENTIALS);
 
     const memberships = await this.restaurantMemberRepository.findActiveByUserId(user.id);
-    const membership = this.pickMembership(memberships, dto.restaurantId);
+    const membership = await this.pickMembership(memberships, dto.restaurantId);
     if (!membership) throw new UnauthorizedException(AUTH_ERROR_MESSAGES.ACCOUNT_INACTIVE);
 
     const scope = await this.branchScopeService.resolve(membership, dto.branchId);
@@ -58,9 +60,28 @@ export class SignInStaffUsecase {
     };
   }
 
-  private pickMembership(memberships: IStaffMember[], restaurantId?: string): IStaffMember | undefined {
-    if (!restaurantId) return memberships[0];
-    return memberships.find(member => member.restaurantId === restaurantId);
+  /**
+   * Asked for a restaurant, that one or nothing. Not asked, the first restaurant the person can actually
+   * get into — somebody on two teams is not locked out of the working one by the other's suspension. If
+   * every candidate is locked out, the first one's reason is what they are told. An owner always passes
+   * here (`allowedWhenSuspended`): signing in is how they get to billing to restore the account.
+   */
+  private async pickMembership(memberships: IStaffMember[], restaurantId?: string): Promise<IStaffMember | undefined> {
+    const candidates = restaurantId ? memberships.filter(member => member.restaurantId === restaurantId) : memberships;
+
+    let lockedOut: ForbiddenException | undefined;
+    for (const candidate of candidates) {
+      try {
+        await this.staffAccessPolicy.assertCanAccess(candidate, { allowedWhenSuspended: true });
+        return candidate;
+      } catch (error) {
+        if (!(error instanceof ForbiddenException)) throw error;
+        lockedOut ??= error;
+      }
+    }
+
+    if (lockedOut) throw lockedOut;
+    return undefined;
   }
 }
 

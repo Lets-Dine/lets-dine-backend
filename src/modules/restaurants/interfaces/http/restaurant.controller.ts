@@ -7,6 +7,7 @@ import { FetchRestaurantProfileUsecase } from "../../application/use-cases/fetch
 import { UpdateRestaurantUsecase } from "../../application/use-cases/update-restaurant.usecase";
 import { RESTAURANT_SUCCESS_MESSAGES } from "../../domain/constants";
 import { IRestaurant } from "../../domain/interfaces/restaurant.interface";
+import { SubscriptionActiveGuard } from "../../../billing/interfaces/http/guards/subscription-active.guard";
 
 @Controller("restaurant/profile")
 export class RestaurantController {
@@ -24,7 +25,7 @@ export class RestaurantController {
   }
 
   @Patch()
-  @UseGuards(AuthGuard, AbilityGuard)
+  @UseGuards(AuthGuard, AbilityGuard, SubscriptionActiveGuard)
   @CheckPolicies(checkPermissionRules([["settings:edit"]]))
   async update(@Body() dto: UpdateRestaurantDto, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IRestaurant>> {
     const restaurant = await this.updateRestaurantUsecase.execute(dto, authEntity);

@@ -1,0 +1,15 @@
+export const BILLING_SUCCESS_MESSAGES = {
+  SUBSCRIPTION_FETCHED: { key: "SUBSCRIPTION_FETCHED", message: "Subscription fetched successfully" },
+  USAGE_FETCHED: { key: "USAGE_FETCHED", message: "Usage fetched successfully" },
+  PLANS_FETCHED: { key: "PLANS_FETCHED", message: "Plans fetched successfully" },
+  PLATFORM_PLANS_FETCHED: { key: "PLATFORM_PLANS_FETCHED", message: "Plans fetched successfully" },
+  PLATFORM_PLANS_UPDATED: { key: "PLATFORM_PLANS_UPDATED", message: "Plans saved successfully" },
+  TENANTS_FETCHED: { key: "TENANTS_FETCHED", message: "Restaurants fetched successfully" },
+  TENANT_COUNTS_FETCHED: { key: "TENANT_COUNTS_FETCHED", message: "Restaurant counts fetched successfully" },
+  INVOICES_FETCHED: { key: "INVOICES_FETCHED", message: "Invoices fetched successfully" },
+  PLAN_CHANGED: { key: "PLAN_CHANGED", message: "Plan updated successfully" },
+  PLAN_ASSIGNED: { key: "PLAN_ASSIGNED", message: "Plan assigned successfully" },
+  INVOICES_GENERATED: { key: "INVOICES_GENERATED", message: "Invoices generated successfully" },
+  INVOICE_PAID: { key: "INVOICE_PAID", message: "Invoice marked as paid" },
+  LIFECYCLE_RUN: { key: "BILLING_LIFECYCLE_RUN", message: "Subscription lifecycle processed" },
+};

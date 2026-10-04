@@ -4,8 +4,10 @@ import { FetchAllAuditLogsUsecase } from "./application/use-cases/fetch-all-audi
 import { AuditLogRepository } from "./domain/repositories/audit-log.repository";
 import AuditLogRepositoryImpl from "./infrastructure/repositories/audit-log.repository.impl";
 import { AuditLogController } from "./interfaces/http/audit-log.controller";
+import { BillingModule } from "../billing/billing.module";
 
 @Module({
+  imports: [BillingModule],
   controllers: [AuditLogController],
   providers: [
     AuditLogService,

@@ -11,11 +11,12 @@ import { UpdateAddOnUsecase } from "./application/use-cases/update-add-on.usecas
 import { AddOnRepository } from "./domain/repositories/add-on.repository";
 import AddOnRepositoryImpl from "./infrastructure/repositories/add-on.repository.impl";
 import { AddOnController } from "./interfaces/http/add-on.controller";
+import { BillingModule } from "../billing/billing.module";
 
 @Module({
   // DishesModule also depends on this module (FetchDishByIdUsecase needs AddOnRepository
   // to embed a dish's linked add-ons) — a genuine cycle, broken with forwardRef on both sides.
-  imports: [AuditLogsModule, forwardRef(() => DishesModule)],
+  imports: [AuditLogsModule, BillingModule, forwardRef(() => DishesModule)],
   controllers: [AddOnController],
   providers: [
     CreateAddOnUsecase,

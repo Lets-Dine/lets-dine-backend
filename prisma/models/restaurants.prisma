@@ -35,6 +35,10 @@ model Restaurant {
   customers  CustomerRestaurant[]
   branches   Branch[]
 
+  subscription  Subscription?
+  invoices      Invoice[]
+  usageCounters UsageCounter[]
+
   @@map("restaurants")
   @@schema("public")
 }

@@ -2,6 +2,7 @@ import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
 import { APP_FILTER, APP_PIPE } from "@nestjs/core";
 import { EventEmitterModule } from "@nestjs/event-emitter";
 import { JwtModule, JwtSignOptions } from "@nestjs/jwt";
+import { ScheduleModule } from "@nestjs/schedule";
 import { ZodValidationPipe } from "nestjs-zod";
 import { DomainExceptionFilter } from "./common/exceptions/filters/domain-exception.filter";
 import { RequestLoggerMiddleware } from "./common/middleware/request-logger.middleware";
@@ -13,6 +14,7 @@ import { AuthModule } from "./modules/auth/auth.module";
 import { DiningSessionsModule } from "./modules/dining-sessions/dining-sessions.module";
 import { DishesModule } from "./modules/dishes/dishes.module";
 import { DishVariantsModule } from "./modules/dish-variants/dish-variants.module";
+import { BillingModule } from "./modules/billing/billing.module";
 import { BranchesModule } from "./modules/branches/branches.module";
 import { FloorsModule } from "./modules/floors/floors.module";
 import { MenuCategoriesModule } from "./modules/menu-categories/menu-categories.module";
@@ -30,6 +32,7 @@ import { AppController } from "./app.controller";
   imports: [
     PrismaModule,
     EventEmitterModule.forRoot(),
+    ScheduleModule.forRoot(),
     JwtModule.register({
       global: true,
       secret: process.env.JWT_SECRET ?? "insecure-development-secret",
@@ -39,6 +42,7 @@ import { AppController } from "./app.controller";
     UsersModule,
     AuthModule,
     RestaurantsModule,
+    BillingModule,
     TablesModule,
     BranchesModule,
     FloorsModule,

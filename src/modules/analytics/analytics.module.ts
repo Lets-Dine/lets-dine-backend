@@ -9,9 +9,10 @@ import { FetchTopSellingDishesUsecase } from "./application/use-cases/fetch-top-
 import { AnalyticsRepository } from "./domain/repositories/analytics.repository";
 import AnalyticsRepositoryImpl from "./infrastructure/repositories/analytics.repository.impl";
 import { AnalyticsController } from "./interfaces/http/analytics.controller";
+import { BillingModule } from "../billing/billing.module";
 
 @Module({
-  imports: [RestaurantsModule],
+  imports: [RestaurantsModule, BillingModule],
   controllers: [AnalyticsController],
   providers: [
     FetchAnalyticsOverviewUsecase,

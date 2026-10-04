@@ -3,6 +3,7 @@ import { AuditAction } from "@prisma/client";
 import { ConflictException } from "../../../../common/exceptions";
 import { AuthEntity } from "../../../../common/interfaces";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
+import { EntitlementService } from "../../../billing/application/entitlement.service";
 import { slugify } from "../../../dishes/domain/utils/slug.util";
 import { BRANCH_ERROR_MESSAGES } from "../../domain/constants";
 import { IBranch } from "../../domain/interfaces/branch.interface";
@@ -15,10 +16,13 @@ export class CreateBranchUsecase {
   constructor(
     private readonly branchRepository: BranchRepository,
     private readonly auditLogService: AuditLogService,
-    private readonly copyBranchMenuUsecase: CopyBranchMenuUsecase
+    private readonly copyBranchMenuUsecase: CopyBranchMenuUsecase,
+    private readonly entitlementService: EntitlementService
   ) {}
 
   async execute(dto: CreateBranchInput, authEntity: AuthEntity): Promise<IBranch> {
+    await this.entitlementService.assertCanCreate("branch", authEntity.restaurantId);
+
     const { copyMenuFrom, ...fields } = dto;
     const slug = slugify(dto.name);
     const clash = await this.branchRepository.findBySlug(authEntity.restaurantId, slug);

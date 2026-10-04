@@ -21,6 +21,7 @@ import { UpdateDishUsecase } from "../../application/use-cases/update-dish.useca
 import { DISH_SUCCESS_MESSAGES } from "../../domain/constants";
 import { IDish } from "../../domain/interfaces/dish.interface";
 import { IDishWithStats } from "../../domain/interfaces/dish-with-stats.interface";
+import { SubscriptionActiveGuard } from "../../../billing/interfaces/http/guards/subscription-active.guard";
 
 @Controller("restaurant/dishes")
 export class DishController {
@@ -36,7 +37,7 @@ export class DishController {
   ) {}
 
   @Post()
-  @UseGuards(AuthGuard, AbilityGuard)
+  @UseGuards(AuthGuard, AbilityGuard, SubscriptionActiveGuard)
   @CheckPolicies(checkPermissionRules([["menu:edit"]]))
   async create(@Body() dto: CreateDishDto, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IDish>> {
     const dish = await this.createDishUsecase.execute(dto, authEntity);
@@ -55,7 +56,7 @@ export class DishController {
   }
 
   @Patch("/reorder")
-  @UseGuards(AuthGuard, AbilityGuard)
+  @UseGuards(AuthGuard, AbilityGuard, SubscriptionActiveGuard)
   @CheckPolicies(checkPermissionRules([["menu:edit"]]))
   async reorder(@Body() dto: ReorderDishesDto, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IDish[]>> {
     const dishes = await this.reorderDishesUsecase.execute(dto, authEntity);
@@ -71,7 +72,7 @@ export class DishController {
   }
 
   @Patch("/:id")
-  @UseGuards(AuthGuard, AbilityGuard)
+  @UseGuards(AuthGuard, AbilityGuard, SubscriptionActiveGuard)
   @CheckPolicies(checkPermissionRules([["menu:edit"]]))
   async update(
     @Param("id", ParseUuidPipe) id: string,
@@ -83,7 +84,7 @@ export class DishController {
   }
 
   @Post("/:id/archive")
-  @UseGuards(AuthGuard, AbilityGuard)
+  @UseGuards(AuthGuard, AbilityGuard, SubscriptionActiveGuard)
   @CheckPolicies(checkPermissionRules([["menu:edit"]]))
   async archive(@Param("id", ParseUuidPipe) id: string, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IDish>> {
     const dish = await this.archiveDishUsecase.execute(id, authEntity);
@@ -91,7 +92,7 @@ export class DishController {
   }
 
   @Post("/:id/restore")
-  @UseGuards(AuthGuard, AbilityGuard)
+  @UseGuards(AuthGuard, AbilityGuard, SubscriptionActiveGuard)
   @CheckPolicies(checkPermissionRules([["menu:edit"]]))
   async restore(@Param("id", ParseUuidPipe) id: string, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IDish>> {
     const dish = await this.restoreDishUsecase.execute(id, authEntity);
@@ -99,7 +100,7 @@ export class DishController {
   }
 
   @Put("/:id/add-ons")
-  @UseGuards(AuthGuard, AbilityGuard)
+  @UseGuards(AuthGuard, AbilityGuard, SubscriptionActiveGuard)
   @CheckPolicies(checkPermissionRules([["menu:edit"]]))
   async setAddOns(
     @Param("id", ParseUuidPipe) id: string,

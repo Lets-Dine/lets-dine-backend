@@ -1,4 +1,5 @@
 import { Test } from "@nestjs/testing";
+import { EntitlementService } from "../../../../billing/application/entitlement.service";
 import { BadRequestException } from "../../../../../common/exceptions";
 import { buildAuthEntity } from "../../../../../common/testing";
 import { AnalyticsRepository } from "../../../domain/repositories/analytics.repository";
@@ -10,7 +11,11 @@ describe("FetchBranchPerformanceUsecase", () => {
 
   beforeEach(async () => {
     const module = await Test.createTestingModule({
-      providers: [FetchBranchPerformanceUsecase, { provide: AnalyticsRepository, useValue: { fetchBranchPerformance: jest.fn() } }],
+      providers: [
+        FetchBranchPerformanceUsecase,
+        { provide: EntitlementService, useValue: { assertFeature: jest.fn().mockResolvedValue(undefined) } },
+        { provide: AnalyticsRepository, useValue: { fetchBranchPerformance: jest.fn() } },
+      ],
     }).compile();
     usecase = module.get(FetchBranchPerformanceUsecase);
     repo = module.get(AnalyticsRepository);

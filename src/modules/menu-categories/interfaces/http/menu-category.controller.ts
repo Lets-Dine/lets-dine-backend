@@ -14,6 +14,7 @@ import { ReorderMenuCategoriesUsecase } from "../../application/use-cases/reorde
 import { UpdateMenuCategoryUsecase } from "../../application/use-cases/update-menu-category.usecase";
 import { MENU_CATEGORY_SUCCESS_MESSAGES } from "../../domain/constants";
 import { IMenuCategory } from "../../domain/interfaces/menu-category.interface";
+import { SubscriptionActiveGuard } from "../../../billing/interfaces/http/guards/subscription-active.guard";
 
 @Controller("restaurant/categories")
 export class MenuCategoryController {
@@ -26,7 +27,7 @@ export class MenuCategoryController {
   ) {}
 
   @Post()
-  @UseGuards(AuthGuard, AbilityGuard)
+  @UseGuards(AuthGuard, AbilityGuard, SubscriptionActiveGuard)
   @CheckPolicies(checkPermissionRules([["menu:edit"]]))
   async create(@Body() dto: CreateMenuCategoryDto, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IMenuCategory>> {
     const category = await this.createMenuCategoryUsecase.execute(dto, authEntity);
@@ -45,7 +46,7 @@ export class MenuCategoryController {
   }
 
   @Patch("/reorder")
-  @UseGuards(AuthGuard, AbilityGuard)
+  @UseGuards(AuthGuard, AbilityGuard, SubscriptionActiveGuard)
   @CheckPolicies(checkPermissionRules([["menu:edit"]]))
   async reorder(@Body() dto: ReorderMenuCategoriesDto, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IMenuCategory[]>> {
     const categories = await this.reorderMenuCategoriesUsecase.execute(dto, authEntity);
@@ -53,7 +54,7 @@ export class MenuCategoryController {
   }
 
   @Patch("/:id")
-  @UseGuards(AuthGuard, AbilityGuard)
+  @UseGuards(AuthGuard, AbilityGuard, SubscriptionActiveGuard)
   @CheckPolicies(checkPermissionRules([["menu:edit"]]))
   async update(
     @Param("id", ParseUuidPipe) id: string,
@@ -66,7 +67,7 @@ export class MenuCategoryController {
 
   @Delete("/:id")
   @HttpCode(HttpStatus.OK)
-  @UseGuards(AuthGuard, AbilityGuard)
+  @UseGuards(AuthGuard, AbilityGuard, SubscriptionActiveGuard)
   @CheckPolicies(checkPermissionRules([["menu:edit"]]))
   async delete(@Param("id", ParseUuidPipe) id: string, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<null>> {
     await this.deleteMenuCategoryUsecase.execute(id, authEntity);

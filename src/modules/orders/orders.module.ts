@@ -27,11 +27,13 @@ import OrderRepositoryImpl from "./infrastructure/repositories/order.repository.
 import { OrderController } from "./interfaces/http/order.controller";
 import { RestaurantOrderController } from "./interfaces/http/restaurant-order.controller";
 import { OrdersGateway } from "./interfaces/ws/orders.gateway";
+import { BillingModule } from "../billing/billing.module";
 
 @Module({
   // `DiningSessionsModule` now also depends on this module (`EndDiningSessionService`
   // needs `OrderRepository`) — a genuine cycle, broken with `forwardRef` on both sides.
   imports: [
+    BillingModule,
     forwardRef(() => DiningSessionsModule),
     BranchesModule,
     RestaurantsModule,

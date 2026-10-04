@@ -1,4 +1,5 @@
 import { Test, TestingModule } from "@nestjs/testing";
+import { EntitlementService } from "../../../../billing/application/entitlement.service";
 import { buildAuthEntity } from "../../../../../common/testing";
 import { RestaurantRepository } from "../../../../restaurants/domain/repositories/restaurant.repository";
 import { AnalyticsRepository } from "../../../domain/repositories/analytics.repository";
@@ -15,6 +16,7 @@ describe("FetchRevenueTrendUsecase", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FetchRevenueTrendUsecase,
+        { provide: EntitlementService, useValue: { assertFeature: jest.fn().mockResolvedValue(undefined) } },
         { provide: AnalyticsRepository, useValue: { fetchRevenueByBucket: jest.fn().mockResolvedValue([]) } },
         { provide: RestaurantRepository, useValue: { findById: jest.fn().mockResolvedValue({ timezone: "UTC" }) } },
       ],

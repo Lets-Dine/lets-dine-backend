@@ -17,6 +17,7 @@ import { UpdateBranchUsecase } from "../../application/use-cases/update-branch.u
 import { BRANCH_SUCCESS_MESSAGES } from "../../domain/constants";
 import { IBranch, IBranchHours, IBranchWithHours } from "../../domain/interfaces/branch.interface";
 import { IMenuCopyResult } from "../../domain/repositories/branch-menu.repository";
+import { SubscriptionActiveGuard } from "../../../billing/interfaces/http/guards/subscription-active.guard";
 
 @Controller("restaurant/branches")
 export class BranchController {
@@ -30,7 +31,7 @@ export class BranchController {
   ) {}
 
   @Post()
-  @UseGuards(AuthGuard, AbilityGuard)
+  @UseGuards(AuthGuard, AbilityGuard, SubscriptionActiveGuard)
   @CheckPolicies(checkPermissionRules([["settings:edit"]]))
   async create(@Body() dto: CreateBranchDto, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IBranch>> {
     const branch = await this.createBranchUsecase.execute(dto, authEntity);
@@ -54,7 +55,7 @@ export class BranchController {
   }
 
   @Patch("/:id")
-  @UseGuards(AuthGuard, AbilityGuard)
+  @UseGuards(AuthGuard, AbilityGuard, SubscriptionActiveGuard)
   @CheckPolicies(checkPermissionRules([["settings:edit"]]))
   async update(
     @Param("id", ParseUuidPipe) id: string,
@@ -67,7 +68,7 @@ export class BranchController {
 
   /** Starts this branch's menu as a copy of another branch's. Only into an empty menu; the two stay independent afterwards. */
   @Post("/:id/copy-menu")
-  @UseGuards(AuthGuard, AbilityGuard)
+  @UseGuards(AuthGuard, AbilityGuard, SubscriptionActiveGuard)
   @CheckPolicies(checkPermissionRules([["settings:edit"]]))
   async copyMenu(
     @Param("id", ParseUuidPipe) id: string,
@@ -79,7 +80,7 @@ export class BranchController {
   }
 
   @Put("/:id/hours")
-  @UseGuards(AuthGuard, AbilityGuard)
+  @UseGuards(AuthGuard, AbilityGuard, SubscriptionActiveGuard)
   @CheckPolicies(checkPermissionRules([["settings:edit"]]))
   async setHours(
     @Param("id", ParseUuidPipe) id: string,

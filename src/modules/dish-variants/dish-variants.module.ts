@@ -9,12 +9,13 @@ import { UpdateDishVariantUsecase } from "./application/use-cases/update-dish-va
 import { DishVariantRepository } from "./domain/repositories/dish-variant.repository";
 import DishVariantRepositoryImpl from "./infrastructure/repositories/dish-variant.repository.impl";
 import { DishVariantController } from "./interfaces/http/dish-variant.controller";
+import { BillingModule } from "../billing/billing.module";
 
 @Module({
   // DishesModule also depends on this module (FetchDishByIdUsecase needs DishVariantRepository
   // to embed a dish's variants) — a genuine cycle, broken with forwardRef on both sides, same
   // shape as the existing AddOnsModule <-> DishesModule cycle.
-  imports: [AuditLogsModule, forwardRef(() => DishesModule)],
+  imports: [AuditLogsModule, BillingModule, forwardRef(() => DishesModule)],
   controllers: [DishVariantController],
   providers: [
     CreateDishVariantUsecase,

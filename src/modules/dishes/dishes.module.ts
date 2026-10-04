@@ -17,11 +17,12 @@ import DishRepositoryImpl from "./infrastructure/repositories/dish.repository.im
 import DishStatsRepositoryImpl from "./infrastructure/repositories/dish-stats.repository.impl";
 import { DishController } from "./interfaces/http/dish.controller";
 import { PublicDishController } from "./interfaces/http/public-dish.controller";
+import { BillingModule } from "../billing/billing.module";
 
 @Module({
   // AddOnsModule and DishVariantsModule also depend on this module (their use cases need
   // DishRepository to validate dish ownership) — genuine cycles, broken with forwardRef on both sides.
-  imports: [MenuCategoriesModule, AuditLogsModule, forwardRef(() => AddOnsModule), forwardRef(() => DishVariantsModule)],
+  imports: [MenuCategoriesModule, AuditLogsModule, BillingModule, forwardRef(() => AddOnsModule), forwardRef(() => DishVariantsModule)],
   controllers: [DishController, PublicDishController],
   providers: [
     DishStatsService,

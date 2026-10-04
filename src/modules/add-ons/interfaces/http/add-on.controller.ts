@@ -14,9 +14,10 @@ import { RestoreAddOnUsecase } from "../../application/use-cases/restore-add-on.
 import { UpdateAddOnUsecase } from "../../application/use-cases/update-add-on.usecase";
 import { ADD_ON_SUCCESS_MESSAGES } from "../../domain/constants";
 import { IAddOn } from "../../domain/interfaces/add-on.interface";
+import { SubscriptionActiveGuard } from "../../../billing/interfaces/http/guards/subscription-active.guard";
 
 @Controller("restaurant/add-ons")
-@UseGuards(AuthGuard, AbilityGuard)
+@UseGuards(AuthGuard, AbilityGuard, SubscriptionActiveGuard)
 export class AddOnController {
   constructor(
     private readonly createAddOnUsecase: CreateAddOnUsecase,

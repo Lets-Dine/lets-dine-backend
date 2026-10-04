@@ -4,6 +4,7 @@ import { BadRequestException, ForbiddenException, NotFoundException } from "../.
 import { AuthEntity } from "../../../../common/interfaces";
 import { BranchRepository } from "../../../branches/domain/repositories/branch.repository";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
+import { EntitlementService } from "../../../billing/application/entitlement.service";
 import { STAFF_MEMBER_ERROR_MESSAGES } from "../../domain/constants";
 import { IStaffMember } from "../../domain/interfaces/restaurant-member.interface";
 import { RestaurantMemberRepository } from "../../domain/repositories/restaurant-member.repository";
@@ -14,7 +15,8 @@ export class UpdateStaffMemberUsecase {
   constructor(
     private readonly restaurantMemberRepository: RestaurantMemberRepository,
     private readonly auditLogService: AuditLogService,
-    private readonly branchRepository: BranchRepository
+    private readonly branchRepository: BranchRepository,
+    private readonly entitlementService: EntitlementService
   ) {}
 
   async execute(id: string, dto: UpdateStaffMemberInput, authEntity: AuthEntity): Promise<IStaffMember> {
@@ -27,12 +29,21 @@ export class UpdateStaffMemberUsecase {
 
     await this.guardLastOwner(member, dto);
 
+    // Reactivating somebody takes a seat again, so it is held to the plan like adding a new one.
+    if (dto.isActive === true && !member.isActive) {
+      await this.entitlementService.assertCanCreate("seat", authEntity.restaurantId);
+    }
+
     const branchIds = await this.resolveBranchIds(member, dto, authEntity);
     const updated = await this.restaurantMemberRepository.update(id, { ...dto, branchIds });
 
     if (branchIds && !sameIds(branchIds, member.branchIds)) {
       await this.auditLogService.record(
-        { action: AuditAction.staff_branches_changed, subject: member.name, detail: `${member.branchIds.length} → ${branchIds.length} branches` },
+        {
+          action: AuditAction.staff_branches_changed,
+          subject: member.name,
+          detail: `${member.branchIds.length} → ${branchIds.length} branches`,
+        },
         authEntity
       );
     }

@@ -1,0 +1,46 @@
+/// How a plan is priced. USAGE is reserved for per-payment pricing, which only
+/// becomes enforceable once payments run through a gateway.
+enum PlanType {
+  SUBSCRIPTION
+  USAGE
+
+  @@schema("public")
+}
+
+enum BillingInterval {
+  MONTHLY
+  ANNUAL
+
+  @@schema("public")
+}
+
+/// A sellable plan. Limits and features live in JSON so a new plan or a changed
+/// cap is a data change, not a deploy; the entitlement service is the only reader
+/// and validates the shape with Zod. Money is integer minor units.
+model Plan {
+  id               String   @id @default(uuid()) @map("id") @db.Uuid
+  key              String   @unique @map("key")
+  name             String   @map("name")
+  type             PlanType @default(SUBSCRIPTION) @map("type")
+  monthlyPrice     Int      @default(0) @map("monthly_price")
+  annualPrice      Int      @default(0) @map("annual_price")
+  /// Minor units per branch/seat beyond what the plan includes; null = not purchasable.
+  extraBranchPrice Int?     @map("extra_branch_price")
+  extraSeatPrice   Int?     @map("extra_seat_price")
+  currency         String   @default("NPR") @map("currency")
+  /// { branches, staffSeats, ordersPerMonth } — a missing key means unlimited.
+  limits           Json     @map("limits")
+  /// { analyticsTier, exports, auditRetentionDays, ... }
+  features         Json     @map("features")
+  /// False for custom/enterprise plans that are assigned, never self-served.
+  isPublic         Boolean  @default(true) @map("is_public")
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  subscriptions        Subscription[] @relation("SubscriptionPlan")
+  pendingSubscriptions Subscription[] @relation("SubscriptionPendingPlan")
+
+  @@map("plans")
+  @@schema("public")
+}

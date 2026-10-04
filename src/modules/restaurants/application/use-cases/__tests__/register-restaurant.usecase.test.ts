@@ -1,5 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { StaffRole } from "@prisma/client";
+import { SubscriptionService } from "../../../../billing/application/subscription.service";
 import { ConflictException } from "../../../../../common/exceptions";
 import { PrismaTransaction } from "../../../../../common/prisma";
 import { BranchRepository } from "../../../../branches/domain/repositories/branch.repository";
@@ -12,7 +13,8 @@ import { RegisterRestaurantUsecase } from "../register-restaurant.usecase";
 const dto = {
   name: "Newa Kitchen",
   slug: "newa-kitchen",
-  coverImageUrl: "https://static.vecteezy.com/system/resources/thumbnails/054/611/336/small_2x/wide-angle-foodgraphy-for-restaurant-with-copy-space-photo.jpg",
+  coverImageUrl:
+    "https://static.vecteezy.com/system/resources/thumbnails/054/611/336/small_2x/wide-angle-foodgraphy-for-restaurant-with-copy-space-photo.jpg",
   owner: { name: "Aarati Shrestha", email: "aarati@lets-dine.test", pin: "4821" },
 };
 
@@ -22,6 +24,7 @@ describe("RegisterRestaurantUsecase", () => {
   let userRepository: jest.Mocked<UserRepository>;
   let restaurantMemberRepository: jest.Mocked<RestaurantMemberRepository>;
   let branchRepository: jest.Mocked<BranchRepository>;
+  let subscriptionService: jest.Mocked<SubscriptionService>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -38,6 +41,7 @@ describe("RegisterRestaurantUsecase", () => {
         { provide: UserRepository, useValue: { findByEmail: jest.fn(), create: jest.fn() } },
         { provide: RestaurantMemberRepository, useValue: { create: jest.fn() } },
         { provide: BranchRepository, useValue: { create: jest.fn() } },
+        { provide: SubscriptionService, useValue: { startTrial: jest.fn().mockResolvedValue(undefined) } },
       ],
     }).compile();
 
@@ -46,6 +50,7 @@ describe("RegisterRestaurantUsecase", () => {
     userRepository = module.get(UserRepository);
     restaurantMemberRepository = module.get(RestaurantMemberRepository);
     branchRepository = module.get(BranchRepository);
+    subscriptionService = module.get(SubscriptionService);
   });
 
   describe("execute", () => {
@@ -78,6 +83,22 @@ describe("RegisterRestaurantUsecase", () => {
       );
     });
 
+    it("should start the new restaurant's trial inside the same transaction", async () => {
+      // Arrange
+      const restaurant = { id: "restaurant-1", name: dto.name, timezone: "Asia/Kathmandu" } as any;
+      restaurantRepository.findBySlug.mockResolvedValue(null);
+      userRepository.findByEmail.mockResolvedValue(null);
+      restaurantRepository.create.mockResolvedValue(restaurant);
+      userRepository.create.mockResolvedValue({ id: "user-1" } as any);
+      restaurantMemberRepository.create.mockResolvedValue({ id: "member-1", role: StaffRole.OWNER } as any);
+
+      // Act
+      await usecase.execute(dto);
+
+      // Assert
+      expect(subscriptionService.startTrial).toHaveBeenCalledWith(restaurant.id, expect.objectContaining({ tx: expect.anything() }));
+    });
+
     it("should throw ConflictException when the slug is taken", async () => {
       // Arrange
       restaurantRepository.findBySlug.mockResolvedValue({ id: "restaurant-9" } as any);
@@ -85,6 +106,7 @@ describe("RegisterRestaurantUsecase", () => {
       // Act & Assert
       await expect(usecase.execute(dto)).rejects.toThrow(new ConflictException(RESTAURANT_ERROR_MESSAGES.SLUG_ALREADY_EXISTS));
       expect(restaurantRepository.create).not.toHaveBeenCalled();
+      expect(subscriptionService.startTrial).not.toHaveBeenCalled();
     });
 
     it("should throw ConflictException when the owner email already has an account", async () => {

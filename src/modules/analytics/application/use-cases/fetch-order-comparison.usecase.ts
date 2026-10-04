@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { AuthEntity } from "../../../../common/interfaces";
+import { EntitlementService } from "../../../billing/application/entitlement.service";
 import { RestaurantRepository } from "../../../restaurants/domain/repositories/restaurant.repository";
 import { ComparisonPeriod, IOrderComparison } from "../../domain/interfaces/analytics.interface";
 import { AnalyticsRepository } from "../../domain/repositories/analytics.repository";
@@ -10,10 +11,13 @@ import { comparisonPercentageDiff, resolveComparisonRanges } from "../../domain/
 export class FetchOrderComparisonUsecase {
   constructor(
     private readonly analyticsRepository: AnalyticsRepository,
-    private readonly restaurantRepository: RestaurantRepository
+    private readonly restaurantRepository: RestaurantRepository,
+    private readonly entitlementService: EntitlementService
   ) {}
 
   async execute(period: ComparisonPeriod, authEntity: AuthEntity, branchId?: string): Promise<IOrderComparison> {
+    await this.entitlementService.assertFeature(authEntity.restaurantId, "analyticsFull");
+
     const restaurant = await this.restaurantRepository.findById(authEntity.restaurantId);
     const timeZone = restaurant?.timezone ?? "UTC";
 

@@ -11,8 +11,10 @@ import {
   WebSocketServer,
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
-import { can } from "../../../../common/auth";
+import { can, StaffAccessPolicy } from "../../../../common/auth";
+import { ForbiddenException } from "../../../../common/exceptions";
 import { type AuthEntity } from "../../../../common/interfaces";
+import { SUBSCRIPTION_LOCKED_EVENT } from "../../../billing/domain/constants";
 import { DiningSessionService } from "../../../dining-sessions/application/dining-session.service";
 import { type IDiningSession } from "../../../dining-sessions/domain/interfaces/dining-session.interface";
 import { FetchSessionOrderUsecase } from "../../application/use-cases/fetch-session-order.usecase";
@@ -63,7 +65,8 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private readonly diningSessionService: DiningSessionService,
     private readonly fetchSessionOrderUsecase: FetchSessionOrderUsecase,
-    private readonly jwtService: JwtService
+    private readonly jwtService: JwtService,
+    private readonly staffAccessPolicy: StaffAccessPolicy
   ) {}
 
   handleConnection(client: Socket): void {
@@ -111,12 +114,33 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
         client.emit("subscribe:error", { scope: "queue", message: "You do not have permission to view orders." });
         return;
       }
+      // A suspended restaurant gets no live pass — the token alone would still verify for days.
+      await this.staffAccessPolicy.assertCanAccess(authEntity);
       // A socket watches one branch's pass at a time — switching branch must not keep the old one's tickets flowing.
       for (const room of client.rooms) if (room.startsWith("restaurant:")) await client.leave(room);
       await client.join(restaurantQueueRoom(authEntity.restaurantId, authEntity.branchId));
       client.emit("subscribe:ok", { scope: "queue", restaurantId: authEntity.restaurantId, branchId: authEntity.branchId });
-    } catch {
+    } catch (error) {
+      if (error instanceof ForbiddenException) {
+        client.emit("subscribe:error", { scope: "queue", message: error.message });
+        return;
+      }
       client.emit("subscribe:error", { scope: "queue", message: "Your session has ended. Please sign in again." });
+    }
+  }
+
+  /**
+   * The restaurant was suspended or cancelled: staff already watching the pass are put out of it. Joining
+   * again is refused (see `subscribe:queue`), so the socket stays out until the account is restored.
+   */
+  @OnEvent(SUBSCRIPTION_LOCKED_EVENT)
+  async handleSubscriptionLocked({ restaurantId }: { restaurantId: string }): Promise<void> {
+    const prefix = `restaurant:${restaurantId}:`;
+    const rooms = [...this.server.sockets.adapter.rooms.keys()].filter(room => room.startsWith(prefix));
+
+    for (const room of rooms) {
+      this.server.in(room).emit("subscribe:error", { scope: "queue", message: "This restaurant's subscription is suspended." });
+      await this.server.in(room).socketsLeave(room);
     }
   }
 

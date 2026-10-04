@@ -1,6 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { AuditAction, StaffRole } from "@prisma/client";
-import { BadRequestException, ConflictException } from "../../../../../common/exceptions";
+import { EntitlementService } from "../../../../billing/application/entitlement.service";
+import { BadRequestException, ConflictException, ForbiddenException } from "../../../../../common/exceptions";
 import { PrismaTransaction } from "../../../../../common/prisma";
 import { buildAuthEntity } from "../../../../../common/testing";
 import { AuditLogService } from "../../../../audit-logs/application/audit-log.service";
@@ -19,6 +20,7 @@ describe("CreateStaffMemberUsecase", () => {
   let restaurantMemberRepository: jest.Mocked<RestaurantMemberRepository>;
   let auditLogService: jest.Mocked<AuditLogService>;
   let branchRepository: jest.Mocked<BranchRepository>;
+  let entitlementService: jest.Mocked<EntitlementService>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -37,9 +39,12 @@ describe("CreateStaffMemberUsecase", () => {
           useValue: { findByUserAndRestaurant: jest.fn(), create: jest.fn() },
         },
         { provide: AuditLogService, useValue: { record: jest.fn() } },
+        { provide: EntitlementService, useValue: { assertCanCreate: jest.fn().mockResolvedValue(undefined) } },
         {
           provide: BranchRepository,
-          useValue: { findActiveByIds: jest.fn().mockImplementation((_r: string, ids: string[]) => Promise.resolve(ids.map(id => ({ id })))) },
+          useValue: {
+            findActiveByIds: jest.fn().mockImplementation((_r: string, ids: string[]) => Promise.resolve(ids.map(id => ({ id })))),
+          },
         },
       ],
     }).compile();
@@ -49,9 +54,35 @@ describe("CreateStaffMemberUsecase", () => {
     restaurantMemberRepository = module.get(RestaurantMemberRepository);
     auditLogService = module.get(AuditLogService);
     branchRepository = module.get(BranchRepository);
+    entitlementService = module.get(EntitlementService);
   });
 
   describe("execute", () => {
+    it("should check the plan's seat limit for the token's restaurant", async () => {
+      // Arrange
+      userRepository.findByEmail.mockResolvedValue(null);
+      userRepository.create.mockResolvedValue({ id: "user-1" } as any);
+      restaurantMemberRepository.create.mockResolvedValue({ id: "member-1", name: dto.name, role: dto.role } as any);
+
+      // Act
+      await usecase.execute(dto, authUser);
+
+      // Assert
+      expect(entitlementService.assertCanCreate).toHaveBeenCalledWith("seat", authUser.restaurantId);
+    });
+
+    it("should add nobody once the plan's seats are used up", async () => {
+      // Arrange
+      userRepository.findByEmail.mockResolvedValue(null);
+      entitlementService.assertCanCreate.mockRejectedValue(new ForbiddenException({ key: "PLAN_LIMIT_REACHED", message: "full" }));
+
+      // Act & Assert
+      await expect(usecase.execute(dto, authUser)).rejects.toBeInstanceOf(ForbiddenException);
+      expect(userRepository.create).not.toHaveBeenCalled();
+      expect(restaurantMemberRepository.create).not.toHaveBeenCalled();
+      expect(auditLogService.record).not.toHaveBeenCalled();
+    });
+
     it("should create the user and the membership, and record the action", async () => {
       // Arrange
       const member = { id: "member-1", name: dto.name, role: dto.role } as any;

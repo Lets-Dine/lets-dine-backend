@@ -4,3 +4,4 @@ export * from "./guards/ability.guard";
 export * from "./guards/auth.guard";
 export * from "./guards/platform.guard";
 export * from "./permissions";
+export * from "./staff-access.policy";

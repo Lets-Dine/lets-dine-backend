@@ -1,7 +1,8 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { StaffRole } from "@prisma/client";
 import { AUTH_ERROR_MESSAGES } from "../../../../../common/constants";
-import { UnauthorizedException } from "../../../../../common/exceptions";
+import { StaffAccessPolicy } from "../../../../../common/auth";
+import { ForbiddenException, UnauthorizedException } from "../../../../../common/exceptions";
 import { IStaffMember } from "../../../../users/domain/interfaces/restaurant-member.interface";
 import { RestaurantMemberRepository } from "../../../../users/domain/repositories/restaurant-member.repository";
 import { UserRepository } from "../../../../users/domain/repositories/user.repository";
@@ -37,6 +38,7 @@ describe("SignInStaffUsecase", () => {
   let restaurantMemberRepository: jest.Mocked<RestaurantMemberRepository>;
   let branchScopeService: jest.Mocked<BranchScopeService>;
   let authTokenService: jest.Mocked<AuthTokenService>;
+  let staffAccessPolicy: jest.Mocked<StaffAccessPolicy>;
   let pinHash: string;
 
   beforeAll(async () => {
@@ -51,6 +53,7 @@ describe("SignInStaffUsecase", () => {
         { provide: RestaurantMemberRepository, useValue: { findActiveByUserId: jest.fn() } },
         { provide: AuthTokenService, useValue: { issue: jest.fn().mockResolvedValue("signed.jwt.token") } },
         { provide: BranchScopeService, useValue: { resolve: jest.fn().mockResolvedValue(scope) } },
+        { provide: StaffAccessPolicy, useValue: { assertCanAccess: jest.fn().mockResolvedValue(undefined) } },
       ],
     }).compile();
 
@@ -59,6 +62,7 @@ describe("SignInStaffUsecase", () => {
     restaurantMemberRepository = module.get(RestaurantMemberRepository);
     branchScopeService = module.get(BranchScopeService);
     authTokenService = module.get(AuthTokenService);
+    staffAccessPolicy = module.get(StaffAccessPolicy);
   });
 
   describe("execute", () => {
@@ -112,6 +116,90 @@ describe("SignInStaffUsecase", () => {
 
       // Assert
       expect(result.profile.memberId).toBe("member-2");
+    });
+
+    describe("when a restaurant's subscription is suspended", () => {
+      const suspended = new ForbiddenException({ key: "SUBSCRIPTION_SUSPENDED", message: "suspended" });
+      const signIn = { email: "aarati@lets-dine.test", pin: PIN };
+
+      beforeEach(() => {
+        userRepository.findByEmail.mockResolvedValue({ id: "user-1", isActive: true, pinHash } as any);
+      });
+
+      it("should ask the access policy about the restaurant being signed in to, letting an owner through (they need billing)", async () => {
+        // Arrange
+        const owner = buildMember({ role: StaffRole.OWNER });
+        restaurantMemberRepository.findActiveByUserId.mockResolvedValue([owner]);
+
+        // Act
+        await usecase.execute(signIn);
+
+        // Assert
+        expect(staffAccessPolicy.assertCanAccess).toHaveBeenCalledWith(owner, { allowedWhenSuspended: true });
+      });
+
+      it("should refuse the sign-in, without minting a token, when the policy locks the member out", async () => {
+        // Arrange
+        restaurantMemberRepository.findActiveByUserId.mockResolvedValue([buildMember()]);
+        staffAccessPolicy.assertCanAccess.mockRejectedValue(suspended);
+
+        // Act & Assert
+        await expect(usecase.execute(signIn)).rejects.toBe(suspended);
+        expect(authTokenService.issue).not.toHaveBeenCalled();
+      });
+
+      it("should refuse a requested restaurant that is locked, rather than quietly signing in to another", async () => {
+        // Arrange
+        restaurantMemberRepository.findActiveByUserId.mockResolvedValue([
+          buildMember(),
+          buildMember({ id: "member-2", restaurantId: "restaurant-2" }),
+        ]);
+        staffAccessPolicy.assertCanAccess.mockImplementation(async subject => {
+          if (subject.restaurantId === "restaurant-2") throw suspended;
+        });
+
+        // Act & Assert
+        await expect(usecase.execute({ ...signIn, restaurantId: "restaurant-2" })).rejects.toBe(suspended);
+        expect(authTokenService.issue).not.toHaveBeenCalled();
+      });
+
+      it("should, when no restaurant is requested, sign in to the first one the person can actually get into", async () => {
+        // Arrange — locked out of the first, fine at the second
+        restaurantMemberRepository.findActiveByUserId.mockResolvedValue([
+          buildMember(),
+          buildMember({ id: "member-2", restaurantId: "restaurant-2" }),
+        ]);
+        staffAccessPolicy.assertCanAccess.mockImplementation(async subject => {
+          if (subject.restaurantId === "restaurant-1") throw suspended;
+        });
+
+        // Act
+        const result = await usecase.execute(signIn);
+
+        // Assert
+        expect(result.profile.memberId).toBe("member-2");
+      });
+
+      it("should tell the person why when every restaurant they work at is locked", async () => {
+        // Arrange
+        restaurantMemberRepository.findActiveByUserId.mockResolvedValue([
+          buildMember(),
+          buildMember({ id: "member-2", restaurantId: "restaurant-2" }),
+        ]);
+        staffAccessPolicy.assertCanAccess.mockRejectedValue(suspended);
+
+        // Act & Assert
+        await expect(usecase.execute(signIn)).rejects.toBe(suspended);
+      });
+
+      it("should not hide a policy failure that is not a lockout", async () => {
+        // Arrange
+        restaurantMemberRepository.findActiveByUserId.mockResolvedValue([buildMember()]);
+        staffAccessPolicy.assertCanAccess.mockRejectedValue(new Error("db down"));
+
+        // Act & Assert
+        await expect(usecase.execute(signIn)).rejects.toThrow("db down");
+      });
     });
 
     it("should throw UnauthorizedException for an unknown email", async () => {

@@ -1,5 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { AuditAction, StaffRole } from "@prisma/client";
+import { EntitlementService } from "../../../../billing/application/entitlement.service";
 import { BadRequestException, ForbiddenException, NotFoundException } from "../../../../../common/exceptions";
 import { buildAuthEntity } from "../../../../../common/testing";
 import { AuditLogService } from "../../../../audit-logs/application/audit-log.service";
@@ -32,6 +33,7 @@ describe("UpdateStaffMemberUsecase", () => {
   let restaurantMemberRepository: jest.Mocked<RestaurantMemberRepository>;
   let auditLogService: jest.Mocked<AuditLogService>;
   let branchRepository: jest.Mocked<BranchRepository>;
+  let entitlementService: jest.Mocked<EntitlementService>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -42,6 +44,7 @@ describe("UpdateStaffMemberUsecase", () => {
           useValue: { findById: jest.fn(), update: jest.fn(), countActiveByRole: jest.fn() },
         },
         { provide: AuditLogService, useValue: { record: jest.fn() } },
+        { provide: EntitlementService, useValue: { assertCanCreate: jest.fn().mockResolvedValue(undefined) } },
         { provide: BranchRepository, useValue: { findActiveByIds: jest.fn() } },
       ],
     }).compile();
@@ -50,9 +53,48 @@ describe("UpdateStaffMemberUsecase", () => {
     restaurantMemberRepository = module.get(RestaurantMemberRepository);
     auditLogService = module.get(AuditLogService);
     branchRepository = module.get(BranchRepository);
+    entitlementService = module.get(EntitlementService);
   });
 
   describe("execute", () => {
+    it("should hold reactivating a deactivated member to the plan's seat limit", async () => {
+      // Arrange
+      const member = buildMember({ isActive: false });
+      restaurantMemberRepository.findById.mockResolvedValue(member);
+      entitlementService.assertCanCreate.mockRejectedValue(new ForbiddenException({ key: "PLAN_LIMIT_REACHED", message: "full" }));
+
+      // Act & Assert
+      await expect(usecase.execute(member.id, { isActive: true }, authUser)).rejects.toBeInstanceOf(ForbiddenException);
+      expect(entitlementService.assertCanCreate).toHaveBeenCalledWith("seat", authUser.restaurantId);
+      expect(restaurantMemberRepository.update).not.toHaveBeenCalled();
+    });
+
+    it("should not count an edit to an already-active member against the seat limit", async () => {
+      // Arrange
+      const member = buildMember();
+      restaurantMemberRepository.findById.mockResolvedValue(member);
+      restaurantMemberRepository.update.mockResolvedValue(member);
+
+      // Act
+      await usecase.execute(member.id, { isActive: true }, authUser);
+
+      // Assert
+      expect(entitlementService.assertCanCreate).not.toHaveBeenCalled();
+    });
+
+    it("should always let somebody be deactivated, even when the plan is restricted", async () => {
+      // Arrange
+      const member = buildMember();
+      restaurantMemberRepository.findById.mockResolvedValue(member);
+      restaurantMemberRepository.update.mockResolvedValue(buildMember({ isActive: false }));
+
+      // Act
+      await usecase.execute(member.id, { isActive: false }, authUser);
+
+      // Assert
+      expect(entitlementService.assertCanCreate).not.toHaveBeenCalled();
+    });
+
     it("should replace branch assignments after validating them against the restaurant", async () => {
       // Arrange
       const member = buildMember();

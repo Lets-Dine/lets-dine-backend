@@ -13,9 +13,10 @@ import RestaurantRepositoryImpl from "./infrastructure/repositories/restaurant.r
 import { PlatformRestaurantController } from "./interfaces/http/platform-restaurant.controller";
 import { PublicRestaurantController } from "./interfaces/http/public-restaurant.controller";
 import { RestaurantController } from "./interfaces/http/restaurant.controller";
+import { BillingModule } from "../billing/billing.module";
 
 @Module({
-  imports: [UsersModule, AuditLogsModule, BranchesModule],
+  imports: [UsersModule, AuditLogsModule, BranchesModule, BillingModule],
   controllers: [PublicRestaurantController, RestaurantController, PlatformRestaurantController],
   providers: [
     RegisterRestaurantUsecase,

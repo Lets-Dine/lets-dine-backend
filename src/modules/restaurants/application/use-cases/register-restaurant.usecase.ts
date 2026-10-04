@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { StaffRole } from "@prisma/client";
 import { ConflictException } from "../../../../common/exceptions";
+import { SubscriptionService } from "../../../billing/application/subscription.service";
 import { BranchRepository } from "../../../branches/domain/repositories/branch.repository";
 import { IStaffMember } from "../../../users/domain/interfaces/restaurant-member.interface";
 import { RestaurantMemberRepository } from "../../../users/domain/repositories/restaurant-member.repository";
@@ -28,7 +29,8 @@ export class RegisterRestaurantUsecase {
     private readonly restaurantRepository: RestaurantRepository,
     private readonly userRepository: UserRepository,
     private readonly restaurantMemberRepository: RestaurantMemberRepository,
-    private readonly branchRepository: BranchRepository
+    private readonly branchRepository: BranchRepository,
+    private readonly subscriptionService: SubscriptionService
   ) {}
 
   async execute(dto: RegisterRestaurantInput): Promise<IRegisteredRestaurant> {
@@ -53,6 +55,8 @@ export class RegisterRestaurantUsecase {
         { restaurantId: restaurant.id, name: "Main", slug: "main", timezone: restaurant.timezone, isDefault: true },
         { tx, actorId: user.id }
       );
+
+      await this.subscriptionService.startTrial(restaurant.id, { tx });
 
       return { restaurant, owner: member };
     });

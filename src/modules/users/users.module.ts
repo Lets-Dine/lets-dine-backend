@@ -9,9 +9,10 @@ import { UserRepository } from "./domain/repositories/user.repository";
 import RestaurantMemberRepositoryImpl from "./infrastructure/repositories/restaurant-member.repository.impl";
 import UserRepositoryImpl from "./infrastructure/repositories/user.repository.impl";
 import { StaffMemberController } from "./interfaces/http/staff-member.controller";
+import { BillingModule } from "../billing/billing.module";
 
 @Module({
-  imports: [AuditLogsModule, BranchesModule],
+  imports: [AuditLogsModule, BranchesModule, BillingModule],
   controllers: [StaffMemberController],
   providers: [
     CreateStaffMemberUsecase,

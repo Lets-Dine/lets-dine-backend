@@ -7,9 +7,10 @@ import { UpdateFloorUsecase } from "./application/use-cases/update-floor.usecase
 import { FloorRepository } from "./domain/repositories/floor.repository";
 import FloorRepositoryImpl from "./infrastructure/repositories/floor.repository.impl";
 import { FloorController } from "./interfaces/http/floor.controller";
+import { BillingModule } from "../billing/billing.module";
 
 @Module({
-  imports: [AuditLogsModule],
+  imports: [AuditLogsModule, BillingModule],
   controllers: [FloorController],
   providers: [
     CreateFloorUsecase,

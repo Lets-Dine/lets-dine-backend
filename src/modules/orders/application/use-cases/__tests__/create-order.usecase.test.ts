@@ -1,3 +1,4 @@
+import { EntitlementService } from "../../../../billing/application/entitlement.service";
 import { BranchRepository } from "../../../../branches/domain/repositories/branch.repository";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Test, TestingModule } from "@nestjs/testing";
@@ -15,7 +16,14 @@ import { ORDER_ERROR_MESSAGES } from "../../../domain/constants";
 import { OrderRepository } from "../../../domain/repositories/order.repository";
 import { CreateOrderUsecase } from "../create-order.usecase";
 
-const session = { id: "session-1", restaurantId: "restaurant-1", branchId: "branch-1", tableId: "table-1", customerId: null, floorId: null } as IDiningSession;
+const session = {
+  id: "session-1",
+  restaurantId: "restaurant-1",
+  branchId: "branch-1",
+  tableId: "table-1",
+  customerId: null,
+  floorId: null,
+} as IDiningSession;
 const deliverySession = {
   id: "session-2",
   restaurantId: "restaurant-1",
@@ -72,11 +80,15 @@ describe("CreateOrderUsecase", () => {
   let customerRepository: jest.Mocked<CustomerRepository>;
   let eventEmitter: jest.Mocked<EventEmitter2>;
   let branchRepository: jest.Mocked<BranchRepository>;
+  let entitlementService: jest.Mocked<EntitlementService>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        { provide: BranchRepository, useValue: { findById: jest.fn().mockResolvedValue({ id: "branch-1", isActive: true, timezone: "Asia/Kathmandu", hours: [] }) } },
+        {
+          provide: BranchRepository,
+          useValue: { findById: jest.fn().mockResolvedValue({ id: "branch-1", isActive: true, timezone: "Asia/Kathmandu", hours: [] }) },
+        },
         CreateOrderUsecase,
         {
           provide: OrderRepository,
@@ -93,6 +105,7 @@ describe("CreateOrderUsecase", () => {
         { provide: DishVariantRepository, useValue: { findManyByDishIds: jest.fn() } },
         { provide: CustomerRepository, useValue: { findById: jest.fn(), upsert: jest.fn() } },
         { provide: EventEmitter2, useValue: { emit: jest.fn() } },
+        { provide: EntitlementService, useValue: { recordOrder: jest.fn().mockResolvedValue({ used: 1, level: "ok" }) } },
       ],
     }).compile();
 
@@ -105,6 +118,7 @@ describe("CreateOrderUsecase", () => {
     customerRepository = module.get(CustomerRepository);
     eventEmitter = module.get(EventEmitter2);
     branchRepository = module.get(BranchRepository);
+    entitlementService = module.get(EntitlementService);
     dishVariantRepository.findManyByDishIds.mockResolvedValue({});
   });
 
@@ -137,10 +151,41 @@ describe("CreateOrderUsecase", () => {
       expect(eventEmitter.emit).toHaveBeenCalledWith("order.created", { id: "order-1" });
     });
 
+    it("should count the order against the restaurant's plan once it is placed", async () => {
+      // Arrange
+      restaurantRepository.findByIdForBranch.mockResolvedValue(restaurant);
+      dishRepository.findManyByIds.mockResolvedValue([dish]);
+      orderRepository.create.mockResolvedValue({ id: "order-1" } as any);
+
+      // Act
+      await usecase.execute({ lines: [{ dishId: "dish-1", quantity: 1, addOnIds: [] }] }, session);
+
+      // Assert
+      expect(entitlementService.recordOrder).toHaveBeenCalledTimes(1);
+      expect(entitlementService.recordOrder).toHaveBeenCalledWith(session.restaurantId);
+    });
+
+    it("should not count an order that failed to be placed", async () => {
+      // Arrange
+      restaurantRepository.findByIdForBranch.mockResolvedValue(restaurant);
+      dishRepository.findManyByIds.mockResolvedValue([{ ...dish, isAvailable: false }]);
+
+      // Act & Assert
+      await expect(usecase.execute({ lines: [{ dishId: "dish-1", quantity: 1, addOnIds: [] }] }, session)).rejects.toBeInstanceOf(
+        BadRequestException
+      );
+      expect(entitlementService.recordOrder).not.toHaveBeenCalled();
+    });
+
     it("should refuse an order while the branch is closed, before touching the menu or writing anything", async () => {
       // Arrange — a schedule that never opens on any day.
       restaurantRepository.findByIdForBranch.mockResolvedValue(restaurant);
-      branchRepository.findById.mockResolvedValue({ id: "branch-1", isActive: true, timezone: "Asia/Kathmandu", hours: [{ dayOfWeek: 0, opensAt: "00:00", closesAt: "00:01", isClosed: false }] } as any);
+      branchRepository.findById.mockResolvedValue({
+        id: "branch-1",
+        isActive: true,
+        timezone: "Asia/Kathmandu",
+        hours: [{ dayOfWeek: 0, opensAt: "00:00", closesAt: "00:01", isClosed: false }],
+      } as any);
       jest.useFakeTimers().setSystemTime(new Date("2026-10-05T06:00:00Z")); // a Monday: the schedule above only covers Sunday
 
       // Act & Assert
@@ -272,6 +317,8 @@ describe("CreateOrderUsecase", () => {
       expect(result).toBe(placed);
       expect(orderRepository.create).not.toHaveBeenCalled();
       expect(eventEmitter.emit).not.toHaveBeenCalled();
+      // A retry is the same order, so it must not use up the allowance twice.
+      expect(entitlementService.recordOrder).not.toHaveBeenCalled();
     });
 
     it("should throw BadRequestException when a dish has just gone unavailable", async () => {

@@ -12,6 +12,7 @@ import { RegenerateTableQrUsecase } from "../../application/use-cases/regenerate
 import { UpdateTableUsecase } from "../../application/use-cases/update-table.usecase";
 import { DINING_TABLE_SUCCESS_MESSAGES } from "../../domain/constants";
 import { IDiningTable } from "../../domain/interfaces/dining-table.interface";
+import { SubscriptionActiveGuard } from "../../../billing/interfaces/http/guards/subscription-active.guard";
 
 @Controller("restaurant/tables")
 export class DiningTableController {
@@ -23,7 +24,7 @@ export class DiningTableController {
   ) {}
 
   @Post()
-  @UseGuards(AuthGuard, AbilityGuard)
+  @UseGuards(AuthGuard, AbilityGuard, SubscriptionActiveGuard)
   @CheckPolicies(checkPermissionRules([["tables:edit"]]))
   async create(@Body() dto: CreateTableDto, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IDiningTable>> {
     const table = await this.createTableUsecase.execute(dto, authEntity);
@@ -42,7 +43,7 @@ export class DiningTableController {
   }
 
   @Patch("/:id")
-  @UseGuards(AuthGuard, AbilityGuard)
+  @UseGuards(AuthGuard, AbilityGuard, SubscriptionActiveGuard)
   @CheckPolicies(checkPermissionRules([["tables:edit"]]))
   async update(
     @Param("id", ParseUuidPipe) id: string,
@@ -54,7 +55,7 @@ export class DiningTableController {
   }
 
   @Post("/:id/qr")
-  @UseGuards(AuthGuard, AbilityGuard)
+  @UseGuards(AuthGuard, AbilityGuard, SubscriptionActiveGuard)
   @CheckPolicies(checkPermissionRules([["tables:edit"]]))
   async regenerateQr(@Param("id", ParseUuidPipe) id: string, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IDiningTable>> {
     const table = await this.regenerateTableQrUsecase.execute(id, authEntity);

@@ -1,5 +1,5 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from "@nestjs/common";
-import { AuthGuard, AuthUser } from "../../../../common/auth";
+import { AllowWhenSuspended, AuthGuard, AuthUser } from "../../../../common/auth";
 import { type AuthEntity, IHttpResponse } from "../../../../common/interfaces";
 import { buildHttpResponse } from "../../../../common/utils";
 import { SwitchBranchDto } from "../../application/dto/switch-branch.dto";
@@ -33,7 +33,9 @@ export class AuthController {
     return buildHttpResponse(session, AUTH_SUCCESS_MESSAGES.BRANCH_SWITCHED);
   }
 
+  // An owner of a suspended restaurant still needs this to render the dashboard that leads to billing.
   @Get("/me")
+  @AllowWhenSuspended()
   @UseGuards(AuthGuard)
   async fetchProfile(@AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IAuthProfile>> {
     const profile = await this.fetchAuthProfileUsecase.execute(authEntity);

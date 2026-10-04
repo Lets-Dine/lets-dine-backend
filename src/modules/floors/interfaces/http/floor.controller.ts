@@ -12,6 +12,7 @@ import { RegenerateFloorQrUsecase } from "../../application/use-cases/regenerate
 import { UpdateFloorUsecase } from "../../application/use-cases/update-floor.usecase";
 import { FLOOR_SUCCESS_MESSAGES } from "../../domain/constants";
 import { IFloor } from "../../domain/interfaces/floor.interface";
+import { SubscriptionActiveGuard } from "../../../billing/interfaces/http/guards/subscription-active.guard";
 
 @Controller("restaurant/floors")
 export class FloorController {
@@ -23,7 +24,7 @@ export class FloorController {
   ) {}
 
   @Post()
-  @UseGuards(AuthGuard, AbilityGuard)
+  @UseGuards(AuthGuard, AbilityGuard, SubscriptionActiveGuard)
   @CheckPolicies(checkPermissionRules([["tables:edit"]]))
   async create(@Body() dto: CreateFloorDto, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IFloor>> {
     const floor = await this.createFloorUsecase.execute(dto, authEntity);
@@ -39,7 +40,7 @@ export class FloorController {
   }
 
   @Patch("/:id")
-  @UseGuards(AuthGuard, AbilityGuard)
+  @UseGuards(AuthGuard, AbilityGuard, SubscriptionActiveGuard)
   @CheckPolicies(checkPermissionRules([["tables:edit"]]))
   async update(
     @Param("id", ParseUuidPipe) id: string,
@@ -51,7 +52,7 @@ export class FloorController {
   }
 
   @Post("/:id/qr")
-  @UseGuards(AuthGuard, AbilityGuard)
+  @UseGuards(AuthGuard, AbilityGuard, SubscriptionActiveGuard)
   @CheckPolicies(checkPermissionRules([["tables:edit"]]))
   async regenerateQr(@Param("id", ParseUuidPipe) id: string, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IFloor>> {
     const floor = await this.regenerateFloorQrUsecase.execute(id, authEntity);
