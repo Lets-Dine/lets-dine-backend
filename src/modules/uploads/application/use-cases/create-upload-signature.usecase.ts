@@ -27,6 +27,10 @@ export interface IUploadSignature {
 @Injectable()
 export class CreateUploadSignatureUsecase {
   execute(dto: CreateUploadSignatureInput, authEntity: AuthEntity): IUploadSignature {
+    return this.sign(`lets-dine/${authEntity.restaurantId}/${FOLDER_BY_TARGET[dto.target]}`);
+  }
+
+  sign(folder: string): IUploadSignature {
     const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
     const apiKey = process.env.CLOUDINARY_API_KEY;
     const apiSecret = process.env.CLOUDINARY_API_SECRET;
@@ -34,7 +38,6 @@ export class CreateUploadSignatureUsecase {
       throw new BadRequestException(UPLOAD_ERROR_MESSAGES.NOT_CONFIGURED);
     }
 
-    const folder = `lets-dine/${authEntity.restaurantId}/${FOLDER_BY_TARGET[dto.target]}`;
     const timestamp = Math.floor(Date.now() / 1000);
 
     // Cloudinary's signing rule: every param the UI will send (except file/api_key/resource_type),

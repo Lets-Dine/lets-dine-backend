@@ -1,0 +1,12 @@
+/// A platform-curated photo restaurants can pick for a dish. `name` is the dish it
+/// shows ("Momo"); several photos can share one name. Not tenant-owned.
+model DishPhoto {
+  id        String   @id @default(uuid()) @map("id") @db.Uuid
+  name      String   @map("name")
+  imageUrl  String   @map("image_url")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([name])
+  @@map("dish_photos")
+  @@schema("public")
+}

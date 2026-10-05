@@ -12,6 +12,7 @@ import { AnalyticsModule } from "./modules/analytics/analytics.module";
 import { AuditLogsModule } from "./modules/audit-logs/audit-logs.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { DiningSessionsModule } from "./modules/dining-sessions/dining-sessions.module";
+import { DishPhotosModule } from "./modules/dish-photos/dish-photos.module";
 import { DishesModule } from "./modules/dishes/dishes.module";
 import { DishVariantsModule } from "./modules/dish-variants/dish-variants.module";
 import { BillingModule } from "./modules/billing/billing.module";
@@ -57,6 +58,7 @@ import { AppController } from "./app.controller";
     ReviewsModule,
     AnalyticsModule,
     UploadsModule,
+    DishPhotosModule,
   ],
   controllers: [AppController],
   providers: [
