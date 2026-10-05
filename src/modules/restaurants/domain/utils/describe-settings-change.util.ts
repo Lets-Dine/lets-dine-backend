@@ -10,6 +10,7 @@ const TRACKED_FIELDS: (keyof IRestaurant)[] = [
   "serviceChargeRate",
   "taxRate",
   "deliveryFeeAmount",
+  "vatPanNumber",
   "isActive",
 ];
 

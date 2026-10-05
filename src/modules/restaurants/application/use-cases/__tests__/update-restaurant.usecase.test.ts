@@ -23,6 +23,7 @@ function buildRestaurant(overrides: Partial<IRestaurant> = {}): IRestaurant {
     serviceChargeRate: 0.1,
     taxRate: 0.13,
     deliveryFeeAmount: null,
+    vatPanNumber: null,
     isActive: true,
     createdAt: new Date(),
     updatedAt: new Date(),

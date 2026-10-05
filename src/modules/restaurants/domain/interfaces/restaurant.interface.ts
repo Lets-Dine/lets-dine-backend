@@ -12,6 +12,8 @@ export interface IRestaurant {
   taxRate: number;
   /** Flat minor-unit delivery charge; null/0 = no fee. */
   deliveryFeeAmount: number | null;
+  /** VAT/PAN registration number printed on receipts. */
+  vatPanNumber: string | null;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;

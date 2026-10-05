@@ -13,6 +13,7 @@ export interface IRestaurantCreate {
   serviceChargeRate?: number;
   taxRate?: number;
   deliveryFeeAmount?: number | null;
+  vatPanNumber?: string | null;
 }
 
 export type IRestaurantUpdate = Partial<Omit<IRestaurantCreate, "slug">> & { isActive?: boolean };

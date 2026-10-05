@@ -36,4 +36,6 @@ export interface IPayment {
 /** What both the receipt and any later lookup actually need: the charge and exactly what it was for. */
 export interface IPaymentWithItems extends IPayment {
   items: IPaymentItem[];
+  /** The paying customer's name, joined in read-side for the receipt; null when no customer is linked. */
+  customerName: string | null;
 }

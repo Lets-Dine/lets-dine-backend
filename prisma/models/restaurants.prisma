@@ -15,6 +15,8 @@ model Restaurant {
   /// Flat minor-unit delivery charge; null/0 = no fee. Owner-editable
   /// alongside `serviceChargeRate`/`taxRate`.
   deliveryFeeAmount Int?     @map("delivery_fee_amount")
+  /// VAT/PAN registration number printed on receipts; null = not registered/not shown.
+  vatPanNumber      String?  @map("vat_pan_number")
   isActive          Boolean  @default(true) @map("is_active")
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
