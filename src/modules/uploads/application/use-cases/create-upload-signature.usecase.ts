@@ -8,6 +8,7 @@ import { CreateUploadSignatureInput } from "../../interfaces/http/validations/cr
 const FOLDER_BY_TARGET: Record<CreateUploadSignatureInput["target"], string> = {
   dish: "dishes",
   "restaurant-cover": "restaurant-covers",
+  "restaurant-logo": "restaurant-logos",
 };
 
 export interface IUploadSignature {

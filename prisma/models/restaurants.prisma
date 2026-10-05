@@ -7,6 +7,7 @@ model Restaurant {
   tagline           String   @default("") @map("tagline")
   description       String   @default("") @map("description")
   coverImageUrl     String?  @map("cover_image_url")
+  logoUrl           String?  @map("logo_url")
   currency          String   @default("NPR") @map("currency")
   timezone          String   @default("Asia/Kathmandu") @map("timezone")
   /// Ratios, not money — money itself is always integer minor units.

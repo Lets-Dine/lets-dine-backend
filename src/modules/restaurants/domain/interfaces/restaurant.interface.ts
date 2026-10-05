@@ -5,6 +5,7 @@ export interface IRestaurant {
   tagline: string;
   description: string;
   coverImageUrl: string | null;
+  logoUrl: string | null;
   currency: string;
   timezone: string;
   /** Ratios (0..1) the order total is built from — §41, never hardcoded. */

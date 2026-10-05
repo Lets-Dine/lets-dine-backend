@@ -18,6 +18,7 @@ function buildRestaurant(overrides: Partial<IRestaurant> = {}): IRestaurant {
     tagline: "",
     description: "",
     coverImageUrl: null,
+    logoUrl: null,
     currency: "NPR",
     timezone: "Asia/Kathmandu",
     serviceChargeRate: 0.1,

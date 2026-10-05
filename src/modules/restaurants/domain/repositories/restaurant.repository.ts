@@ -8,6 +8,7 @@ export interface IRestaurantCreate {
   tagline?: string;
   description?: string;
   coverImageUrl?: string | null;
+  logoUrl?: string | null;
   currency?: string;
   timezone?: string;
   serviceChargeRate?: number;

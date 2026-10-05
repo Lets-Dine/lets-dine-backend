@@ -5,6 +5,7 @@ const TRACKED_FIELDS: (keyof IRestaurant)[] = [
   "tagline",
   "description",
   "coverImageUrl",
+  "logoUrl",
   "currency",
   "timezone",
   "serviceChargeRate",
