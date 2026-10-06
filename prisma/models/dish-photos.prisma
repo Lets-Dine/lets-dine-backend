@@ -4,6 +4,8 @@ model DishPhoto {
   id        String   @id @default(uuid()) @map("id") @db.Uuid
   name      String   @map("name")
   imageUrl  String   @map("image_url")
+  /// Alternate names ("dumpling", "steamed") — matched like `name`, so suggestions catch more spellings.
+  tags      String[] @default([]) @map("tags")
   createdAt DateTime @default(now()) @map("created_at")
 
   @@index([name])

@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { AbilityGuard, AuthGuard, CheckPolicies, checkPermissionRules, PlatformGuard } from "../../../../common/auth";
 import { IHttpResponse } from "../../../../common/interfaces";
 import { ParseUuidPipe } from "../../../../common/pipes";
@@ -7,7 +7,7 @@ import {
   CreateUploadSignatureUsecase,
   type IUploadSignature,
 } from "../../../uploads/application/use-cases/create-upload-signature.usecase";
-import { CreateDishPhotoDto, SuggestDishPhotosDto } from "../../application/dish-photo.dto";
+import { CreateDishPhotoDto, SuggestDishPhotosDto, UpdateDishPhotoGroupDto } from "../../application/dish-photo.dto";
 import { DishPhotosService, type IDishPhoto } from "../../application/dish-photos.service";
 import { DISH_PHOTO_MESSAGES } from "../../dish-photos.constants";
 
@@ -35,6 +35,12 @@ export class PlatformDishPhotoController {
   @HttpCode(201)
   async signature(): Promise<IHttpResponse<IUploadSignature>> {
     return buildHttpResponse(this.signer.sign("lets-dine/platform/dish-library"), DISH_PHOTO_MESSAGES.FETCHED);
+  }
+
+  @Patch()
+  async updateGroup(@Body() dto: UpdateDishPhotoGroupDto): Promise<IHttpResponse<null>> {
+    await this.photos.updateGroup(dto);
+    return buildHttpResponse(null, DISH_PHOTO_MESSAGES.UPDATED);
   }
 
   @Delete("/:id")

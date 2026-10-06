@@ -7,6 +7,7 @@ export interface IDishPhoto {
   id: string;
   name: string;
   imageUrl: string;
+  tags: string[];
   createdAt: Date;
 }
 
@@ -16,10 +17,13 @@ const words = (text: string): string[] =>
     .split(/[^\p{L}\p{N}]+/u)
     .filter(Boolean);
 
+/** Every word of `label` appears in `typed`, or every word of `typed` appears in `label`. */
+const matches = (label: string[], typed: string[]) => label.every(w => typed.includes(w)) || typed.every(w => label.includes(w));
+
 /**
  * The platform's shared photo library. Matching is by words: a photo named "Momo"
- * suits "Chicken Momo" and "Momo (steamed)" — every word of the photo's name must
- * appear in the dish name, or the dish name's words must all appear in the photo's.
+ * suits "Chicken Momo" and "Momo (steamed)". Tags are alternate names, matched the
+ * same way; a match on the name itself ranks ahead of one on a tag.
  */
 @Injectable()
 export class DishPhotosService {
@@ -29,8 +33,17 @@ export class DishPhotosService {
     return this.prisma.dishPhoto.findMany({ orderBy: [{ name: "asc" }, { createdAt: "asc" }] });
   }
 
-  create(input: { name: string; imageUrl: string }): Promise<IDishPhoto> {
+  create(input: { name: string; imageUrl: string; tags: string[] }): Promise<IDishPhoto> {
     return this.prisma.dishPhoto.create({ data: input });
+  }
+
+  /** Renames and retags every photo filed under `from` (any casing). Renaming onto an existing dish merges the two. */
+  async updateGroup(input: { from: string; name: string; tags: string[] }): Promise<void> {
+    const { count } = await this.prisma.dishPhoto.updateMany({
+      where: { name: { equals: input.from, mode: "insensitive" } },
+      data: { name: input.name, tags: input.tags },
+    });
+    if (count === 0) throw new NotFoundException(DISH_PHOTO_MESSAGES.NOT_FOUND);
   }
 
   async remove(id: string): Promise<void> {
@@ -43,9 +56,8 @@ export class DishPhotosService {
     const all = await this.list();
     const typed = words(name ?? "");
     if (typed.length === 0) return all;
-    return all.filter(photo => {
-      const label = words(photo.name);
-      return label.every(w => typed.includes(w)) || typed.every(w => label.includes(w));
-    });
+    const byName = all.filter(photo => matches(words(photo.name), typed));
+    const byTag = all.filter(photo => !byName.includes(photo) && photo.tags.some(tag => matches(words(tag), typed)));
+    return [...byName, ...byTag];
   }
 }
