@@ -41,6 +41,8 @@ model Restaurant {
   customers  CustomerRestaurant[]
   branches   Branch[]
 
+  fonepayConfig RestaurantFonepayConfig?
+
   subscription  Subscription?
   invoices      Invoice[]
   usageCounters UsageCounter[]

@@ -1,0 +1,20 @@
+/// A restaurant's own Fonepay merchant credentials, supplied by the restaurant and used
+/// to generate dynamic QRs that settle into its account. `secretKey` and `password` are
+/// AES-256-GCM encrypted (see fonepay/secret-box.ts) — never store or return them in clear.
+model RestaurantFonepayConfig {
+  id           String   @id @default(uuid()) @map("id") @db.Uuid
+  restaurantId String   @unique @map("restaurant_id") @db.Uuid
+  merchantCode String   @map("merchant_code")
+  username     String   @map("username")
+  secretKey    String   @map("secret_key")
+  password     String   @map("password")
+  /// The restaurant can switch the mode off without losing its credentials.
+  enabled      Boolean  @default(true) @map("enabled")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@map("restaurant_fonepay_configs")
+  @@schema("public")
+}

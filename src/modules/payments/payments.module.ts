@@ -9,22 +9,25 @@ import { CompletePaymentUsecase } from "./application/use-cases/complete-payment
 import { FetchSessionPaymentUsecase } from "./application/use-cases/fetch-session-payment.usecase";
 import { GetPaymentUsecase } from "./application/use-cases/get-payment.usecase";
 import { ListPaymentsUsecase } from "./application/use-cases/list-payments.usecase";
+import { FonepayService } from "./infrastructure/fonepay/fonepay.service";
 import { PaymentRepository } from "./domain/repositories/payment.repository";
 import PaymentRepositoryImpl from "./infrastructure/repositories/payment.repository.impl";
+import { FonepayController } from "./interfaces/http/fonepay.controller";
 import { PaymentController } from "./interfaces/http/payment.controller";
 import { PublicPaymentController } from "./interfaces/http/public-payment.controller";
 
 @Module({
   imports: [BranchesModule, DiningSessionsModule, DishesModule, OrdersModule, RestaurantsModule, AuditLogsModule],
-  controllers: [PaymentController, PublicPaymentController],
+  controllers: [FonepayController, PaymentController, PublicPaymentController],
   providers: [
     CompletePaymentUsecase,
     ListPaymentsUsecase,
     GetPaymentUsecase,
     FetchSessionPaymentUsecase,
+    FonepayService,
     PaymentRepositoryImpl,
     { provide: PaymentRepository, useExisting: PaymentRepositoryImpl },
   ],
-  exports: [{ provide: PaymentRepository, useExisting: PaymentRepositoryImpl }],
+  exports: [FonepayService, { provide: PaymentRepository, useExisting: PaymentRepositoryImpl }],
 })
 export class PaymentsModule {}
