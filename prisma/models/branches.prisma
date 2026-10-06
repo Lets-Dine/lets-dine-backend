@@ -36,6 +36,8 @@ model Branch {
   sessions   DiningSession[]
   orders     Order[]
   payments   Payment[]
+  expenses   Expense[]
+  cashCloses CashClose[]
   auditLogs  AuditLog[]
 
   @@unique([restaurantId, slug])

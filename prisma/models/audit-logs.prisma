@@ -75,6 +75,7 @@ enum AuditAction {
   staff_role_changed
   staff_deactivated
   staff_branches_changed
+  ledger_reopened
 
   @@schema("public")
 }

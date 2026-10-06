@@ -1,0 +1,45 @@
+enum FeedbackType {
+  BUG
+  IDEA
+  QUESTION
+  PRAISE
+
+  @@schema("public")
+}
+
+enum FeedbackStatus {
+  NEW
+  REVIEWING
+  DONE
+
+  @@schema("public")
+}
+
+/// A note from a restaurant's staff to the product team. One-way: the restaurant sends and the
+/// operator triages in the platform console; nothing is shown back to the sender. Who and where
+/// are snapshots so the note still reads right after the person or branch changes.
+model Feedback {
+  id             String         @id @default(uuid()) @map("id") @db.Uuid
+  restaurantId   String         @map("restaurant_id") @db.Uuid
+  branchId       String?        @map("branch_id") @db.Uuid
+  senderId       String         @map("sender_id") @db.Uuid
+  senderName     String         @map("sender_name")
+  senderEmail    String         @map("sender_email")
+  senderRole     StaffRole      @map("sender_role")
+  type           FeedbackType   @map("type")
+  message        String         @map("message")
+  /// Cloudinary URL of an optional screenshot.
+  screenshotUrl  String?        @map("screenshot_url")
+  /// The admin page the sender was on, e.g. `/admin/ledger`.
+  pagePath       String         @default("") @map("page_path")
+  status         FeedbackStatus @default(NEW) @map("status")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([restaurantId])
+  @@map("feedback")
+  @@schema("public")
+}

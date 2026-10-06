@@ -1,0 +1,78 @@
+enum ExpenseKind {
+  EXPENSE
+  /// Money in that is not a sale — a deposit, a refund from a supplier, a cash top-up.
+  INCOME
+  /// Cash taken from the drawer to the bank. Never income or spend — it only moves money between the two.
+  DEPOSIT
+  /// Cash taken from the bank into the drawer.
+  WITHDRAWAL
+
+  @@schema("public")
+}
+
+/// Money a branch spent, or took in outside of sales (`kind`). Sales are never stored here — they
+/// are read off `Payment`. Named for its main use; INCOME rows share it because they carry the
+/// same fields and the same period rules.
+model Expense {
+  id            String        @id @default(uuid()) @map("id") @db.Uuid
+  restaurantId  String        @map("restaurant_id") @db.Uuid
+  branchId      String        @map("branch_id") @db.Uuid
+  kind          ExpenseKind   @default(EXPENSE) @map("kind")
+  amount        Int           @map("amount")
+  /// CASH comes out of the drawer; CARD (anything off-cash) does not.
+  method        PaymentMethod @default(CASH) @map("method")
+  /// Free text so a restaurant can use its own words: rent, stock, salaries…
+  category      String        @map("category")
+  note          String        @default("") @map("note")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  createdBy     String?       @map("created_by") @db.Uuid
+  createdByName String?       @map("created_by_name")
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  branch     Branch     @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  @@index([branchId, createdAt])
+  @@map("expenses")
+  @@schema("public")
+}
+
+/// One cash-up. A branch's books run in periods: a period starts when the previous close happened
+/// (its counted cash is this period's opening) and ends at the next close. The first row of a
+/// branch is its baseline — the opening float, with no sales or expenses behind it.
+model CashClose {
+  id              String   @id @default(uuid()) @map("id") @db.Uuid
+  restaurantId    String   @map("restaurant_id") @db.Uuid
+  branchId        String   @map("branch_id") @db.Uuid
+  /// Cash in the drawer at the start of the period — the previous close's `closingCounted`.
+  opening         Int      @map("opening")
+  cashSales       Int      @map("cash_sales")
+  cardSales       Int      @map("card_sales")
+  cashExpenses    Int      @map("cash_expenses")
+  cardExpenses    Int      @map("card_expenses")
+  cashIncome      Int      @default(0) @map("cash_income")
+  deposits        Int      @default(0) @map("deposits")
+  withdrawals     Int      @default(0) @map("withdrawals")
+  /// Off-cash money (card, bank): its balance at the start of the period…
+  bankOpening     Int      @default(0) @map("bank_opening")
+  /// …what it should hold now, and what the bank actually showed at the close.
+  bankExpected    Int      @default(0) @map("bank_expected")
+  bankCounted     Int      @default(0) @map("bank_counted")
+  bankVariance    Int      @default(0) @map("bank_variance")
+  cardIncome      Int      @default(0) @map("card_income")
+  /// opening + cashSales + cashIncome − cashExpenses.
+  closingExpected Int      @map("closing_expected")
+  closingCounted  Int      @map("closing_counted")
+  /// counted − expected: negative means the drawer is short.
+  variance        Int      @map("variance")
+  note            String   @default("") @map("note")
+  closedAt        DateTime @default(now()) @map("closed_at")
+  closedBy        String?  @map("closed_by") @db.Uuid
+  closedByName    String?  @map("closed_by_name")
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  branch     Branch     @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  @@index([branchId, closedAt])
+  @@map("cash_closes")
+  @@schema("public")
+}
