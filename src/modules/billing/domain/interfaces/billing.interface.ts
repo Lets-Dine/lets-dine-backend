@@ -80,6 +80,13 @@ export interface IPlanView
   features: PlanFeaturesConfig;
 }
 
+/** What the public pricing page may show: self-serve plans, plus which plan a new restaurant trials. */
+export interface IPublicPlanCatalogue {
+  plans: IPlanView[];
+  trialDays: number;
+  trialPlanKey: string;
+}
+
 /** The platform Plans page: the catalogue plus how many restaurants are on each plan, by plan key. */
 export interface IPlatformPlans {
   plans: IPlanView[];

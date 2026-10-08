@@ -13,6 +13,7 @@ import { FetchPlatformTenantsUsecase } from "./application/use-cases/fetch-platf
 import { FetchPlatformPlansUsecase } from "./application/use-cases/fetch-platform-plans.usecase";
 import { UpdatePlatformPlansUsecase } from "./application/use-cases/update-platform-plans.usecase";
 import { FetchPlansUsecase } from "./application/use-cases/fetch-plans.usecase";
+import { FetchPublicPlansUsecase } from "./application/use-cases/fetch-public-plans.usecase";
 import { FetchPlatformInvoicesUsecase } from "./application/use-cases/fetch-platform-invoices.usecase";
 import { FetchSubscriptionUsecase } from "./application/use-cases/fetch-subscription.usecase";
 import { FetchUsageUsecase } from "./application/use-cases/fetch-usage.usecase";
@@ -31,6 +32,7 @@ import SubscriptionRepositoryImpl from "./infrastructure/repositories/subscripti
 import TenantRepositoryImpl from "./infrastructure/repositories/tenant.repository.impl";
 import UsageRepositoryImpl from "./infrastructure/repositories/usage.repository.impl";
 import { BillingController } from "./interfaces/http/billing.controller";
+import { PublicPlansController } from "./interfaces/http/public-plans.controller";
 import { SubscriptionActiveGuard } from "./interfaces/http/guards/subscription-active.guard";
 import { PlatformBillingController } from "./interfaces/http/platform-billing.controller";
 
@@ -45,7 +47,7 @@ import { PlatformBillingController } from "./interfaces/http/platform-billing.co
  */
 @Global()
 @Module({
-  controllers: [BillingController, PlatformBillingController],
+  controllers: [BillingController, PublicPlansController, PlatformBillingController],
   providers: [
     EntitlementService,
     SubscriptionService,
@@ -56,6 +58,7 @@ import { PlatformBillingController } from "./interfaces/http/platform-billing.co
     FetchSubscriptionUsecase,
     FetchUsageUsecase,
     FetchPlansUsecase,
+    FetchPublicPlansUsecase,
     FetchPlatformPlansUsecase,
     FetchPlatformTenantsUsecase,
     FetchPlatformTenantCountsUsecase,
