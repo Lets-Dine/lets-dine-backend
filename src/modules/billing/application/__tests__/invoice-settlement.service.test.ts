@@ -26,6 +26,7 @@ describe("InvoiceSettlementService", () => {
             findById: jest.fn().mockResolvedValue(buildInvoice()),
             markPaidIfOpen: jest.fn().mockResolvedValue(true),
             voidOpenForSubscription: jest.fn().mockResolvedValue(0),
+            recordAsExpense: jest.fn(),
           },
         },
         {
@@ -60,6 +61,38 @@ describe("InvoiceSettlementService", () => {
         expect.objectContaining({ status: "ACTIVE", pastDueSince: null, currentPeriodEnd: new Date("2026-05-01T00:00:00.000Z") }),
         { tx }
       );
+    });
+
+    it("should book a paid invoice as a ledger expense, but not a free one", async () => {
+      // Arrange
+      invoiceRepository.findById.mockResolvedValue(buildInvoice());
+
+      // Act
+      await service.settle("invoice-1", { paymentMethod: "bank" }, NOW);
+
+      // Assert
+      expect(invoiceRepository.recordAsExpense).toHaveBeenCalledTimes(1);
+
+      // Arrange — a zero invoice
+      invoiceRepository.recordAsExpense.mockClear();
+      invoiceRepository.findById.mockResolvedValue(buildInvoice({ amount: 0 }));
+
+      // Act
+      await service.settle("invoice-1", { paymentMethod: "none" }, NOW);
+
+      // Assert
+      expect(invoiceRepository.recordAsExpense).not.toHaveBeenCalled();
+    });
+
+    it("should switch the plan, not the paid window, when an upgrade invoice is paid", async () => {
+      // Arrange
+      invoiceRepository.findById.mockResolvedValue(buildInvoice({ kind: "UPGRADE", upgradePlanId: "plan-growth" }));
+
+      // Act
+      await service.settle("invoice-1", { paymentMethod: "esewa" }, NOW);
+
+      // Assert
+      expect(subscriptionRepository.update).toHaveBeenCalledWith("sub-1", { planId: "plan-growth", pendingPlanId: null }, { tx });
     });
 
     it("should void any other open invoice of the subscription, now that the period is paid", async () => {

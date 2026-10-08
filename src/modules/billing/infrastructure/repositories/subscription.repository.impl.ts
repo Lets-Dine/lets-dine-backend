@@ -57,7 +57,8 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
       where: {
         status: { not: "CANCELLED" },
         currentPeriodEnd: { lte: periodEndBy },
-        invoices: { none: { status: "OPEN" } },
+        // An open upgrade invoice is a one-off charge; it must not hold back the renewal.
+        invoices: { none: { status: "OPEN", kind: "RENEWAL" } },
       },
       include: DETAIL_INCLUDE,
       orderBy: { currentPeriodEnd: "asc" },

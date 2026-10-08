@@ -1,4 +1,4 @@
-import { BillingInterval, InvoiceStatus, PlanType, SubscriptionStatus } from "@prisma/client";
+import { BillingInterval, InvoiceKind, InvoiceStatus, PlanType, SubscriptionStatus } from "@prisma/client";
 import { PlanFeaturesConfig, PlanLimitsConfig } from "../../interfaces/http/validations/plan-config.validation";
 
 /** A subscription joined to its plan. `limits`/`features` are raw JSON until the entitlement service parses them. */
@@ -139,6 +139,8 @@ export interface IInvoice {
   periodEnd: Date;
   dueAt: Date;
   status: InvoiceStatus;
+  kind: InvoiceKind;
+  upgradePlanId: string | null;
   paidAt: Date | null;
   paymentMethod: string | null;
   paymentRef: string | null;

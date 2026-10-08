@@ -6,6 +6,7 @@ import { BranchRepository } from "../../../branches/domain/repositories/branch.r
 import { IStaffMember } from "../../../users/domain/interfaces/restaurant-member.interface";
 import { RestaurantMemberRepository } from "../../../users/domain/repositories/restaurant-member.repository";
 import { UserRepository } from "../../../users/domain/repositories/user.repository";
+import { emailKey } from "../../../users/domain/utils/email.util";
 import { hashPin } from "../../../users/domain/utils/pin.util";
 import { RESTAURANT_ERROR_MESSAGES } from "../../domain/constants";
 import { IRestaurant } from "../../domain/interfaces/restaurant.interface";
@@ -18,7 +19,7 @@ export interface IRegisteredRestaurant {
 }
 
 /**
- * Platform onboarding. The restaurant, its first OWNER account and the
+ * Platform and self sign-up onboarding. The restaurant, its first OWNER account and the
  * membership joining them are created together — a restaurant nobody can sign
  * in to is not a useful half-result. Its default branch is created in the same
  * transaction, since tables, orders and payments all belong to a branch.
@@ -40,12 +41,17 @@ export class RegisterRestaurantUsecase {
     const existingUser = await this.userRepository.findByEmail(dto.owner.email);
     if (existingUser) throw new ConflictException(RESTAURANT_ERROR_MESSAGES.OWNER_EMAIL_ALREADY_EXISTS);
 
+    const key = emailKey(dto.owner.email);
+    const { phone } = dto.owner;
+    const sameOwner = (await this.userRepository.findByEmailKey(key)) ?? (phone ? await this.userRepository.findByPhone(phone) : null);
+    if (sameOwner) throw new ConflictException(RESTAURANT_ERROR_MESSAGES.OWNER_ALREADY_REGISTERED);
+
     const { owner, ...restaurantData } = dto;
     const pinHash = await hashPin(owner.pin);
 
     return this.restaurantRepository.$transaction(async tx => {
       const restaurant = await this.restaurantRepository.create(restaurantData, { tx });
-      const user = await this.userRepository.create({ email: owner.email, name: owner.name, pinHash }, { tx });
+      const user = await this.userRepository.create({ email: owner.email, name: owner.name, pinHash, emailKey: key, phone }, { tx });
       const member = await this.restaurantMemberRepository.create(
         { userId: user.id, restaurantId: restaurant.id, role: StaffRole.OWNER },
         { tx }

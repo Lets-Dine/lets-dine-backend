@@ -14,7 +14,7 @@ export interface ISettlement {
 
 /**
  * The single path by which an invoice becomes paid and its subscription is
- * renewed. A manual mark-paid today, a gateway webhook or an auto-settled zero
+ * renewed (or, for an upgrade invoice, moved to the new plan). A manual mark-paid today, a gateway webhook or an auto-settled zero
  * invoice later — they all come through here, so renewal rules live in one place.
  */
 @Injectable()
@@ -48,10 +48,17 @@ export class InvoiceSettlementService {
 
       // A second open invoice (two simultaneous generations) is now redundant — the period is paid.
       await this.invoiceRepository.voidOpenForSubscription(subscription.id, { tx, exceptId: invoice.id });
-      await this.subscriptionRepository.update(subscription.id, applyInvoicePayment(subscription, invoice, now), { tx });
+      // An upgrade invoice switches the plan; it never touches the paid window, which the renewal invoice covers.
+      const update =
+        invoice.kind === "UPGRADE" && invoice.upgradePlanId
+          ? { planId: invoice.upgradePlanId, pendingPlanId: null }
+          : applyInvoicePayment(subscription, invoice, now);
+      await this.subscriptionRepository.update(subscription.id, update, { tx });
 
-      const paid = await this.invoiceRepository.findById(invoice.id, { tx });
-      return paid as IInvoice;
+      const paid = (await this.invoiceRepository.findById(invoice.id, { tx })) as IInvoice;
+      // What the restaurant paid us is its expense too; a free invoice has nothing to book.
+      if (paid.amount > 0) await this.invoiceRepository.recordAsExpense(paid, { tx });
+      return paid;
     });
   }
 }

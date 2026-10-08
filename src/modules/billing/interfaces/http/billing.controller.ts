@@ -1,8 +1,10 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query, UseGuards } from "@nestjs/common";
 import { AbilityGuard, AllowWhenSuspended, AuthGuard, AuthUser, CheckPolicies, checkPermissionRules } from "../../../../common/auth";
 import { type AuthEntity, IHttpResponse, PaginatedResponse } from "../../../../common/interfaces";
 import { buildHttpResponse } from "../../../../common/utils";
+import { EsewaCheckoutService, IEsewaCheckout } from "../../application/esewa-checkout.service";
 import { ChangePlanDto } from "../../application/dto/change-plan.dto";
+import { ConfirmEsewaDto } from "../../application/dto/confirm-esewa.dto";
 import { FetchInvoicesDto } from "../../application/dto/fetch-invoices.dto";
 import { ChangePlanUsecase, IChangePlanResult } from "../../application/use-cases/change-plan.usecase";
 import { FetchInvoicesUsecase } from "../../application/use-cases/fetch-invoices.usecase";
@@ -28,7 +30,8 @@ export class BillingController {
     private readonly fetchUsageUsecase: FetchUsageUsecase,
     private readonly fetchPlansUsecase: FetchPlansUsecase,
     private readonly fetchInvoicesUsecase: FetchInvoicesUsecase,
-    private readonly changePlanUsecase: ChangePlanUsecase
+    private readonly changePlanUsecase: ChangePlanUsecase,
+    private readonly esewaCheckoutService: EsewaCheckoutService
   ) {}
 
   @Get("subscription")
@@ -72,5 +75,21 @@ export class BillingController {
   async changePlan(@Body() dto: ChangePlanDto, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IChangePlanResult>> {
     const result = await this.changePlanUsecase.execute(dto, authEntity);
     return buildHttpResponse(result, BILLING_SUCCESS_MESSAGES.PLAN_CHANGED);
+  }
+
+  @Post("invoices/:id/esewa")
+  @UseGuards(AuthGuard, AbilityGuard)
+  @CheckPolicies(checkPermissionRules([["billing:manage"]]))
+  async startEsewa(@Param("id", ParseUUIDPipe) id: string, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IEsewaCheckout>> {
+    const checkout = await this.esewaCheckoutService.start(id, authEntity.restaurantId);
+    return buildHttpResponse(checkout, BILLING_SUCCESS_MESSAGES.ESEWA_STARTED);
+  }
+
+  @Post("esewa/verify")
+  @UseGuards(AuthGuard, AbilityGuard)
+  @CheckPolicies(checkPermissionRules([["billing:manage"]]))
+  async confirmEsewa(@Body() dto: ConfirmEsewaDto, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IInvoice>> {
+    const invoice = await this.esewaCheckoutService.confirm(dto.data, authEntity.restaurantId);
+    return buildHttpResponse(invoice, BILLING_SUCCESS_MESSAGES.INVOICE_PAID);
   }
 }

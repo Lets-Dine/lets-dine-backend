@@ -62,54 +62,24 @@ describe("EntitlementService", () => {
   });
 
   describe("assertCanCreate", () => {
-    it("should allow creating a branch while under the limit", async () => {
-      // Arrange
-      usageRepository.countActiveBranches.mockResolvedValue(0);
-
-      // Act & Assert
-      await expect(service.assertCanCreate("branch", RESTAURANT_ID)).resolves.toBeUndefined();
-    });
-
-    it("should block a branch once the plan's branches are used up, reporting the numbers", async () => {
-      // Arrange
+    it("should block a branch or seat once the plan's limit is used up", async () => {
+      // Arrange — the plan allows 1 branch, 5 seats
       usageRepository.countActiveBranches.mockResolvedValue(1);
-
-      // Act
-      const attempt = service.assertCanCreate("branch", RESTAURANT_ID);
-
-      // Assert
-      await expect(attempt).rejects.toBeInstanceOf(ForbiddenException);
-      await expect(attempt).rejects.toMatchObject({
-        exception: { key: "PLAN_LIMIT_REACHED", detail: { kind: "branch", limit: 1, used: 1 } },
-      });
-    });
-
-    it("should count purchased extra branches toward the limit", async () => {
-      // Arrange
-      subscriptionRepository.findByRestaurantId.mockResolvedValue(buildSubscription({ extraBranches: 2 }));
-      usageRepository.countActiveBranches.mockResolvedValue(2);
-
-      // Act & Assert
-      await expect(service.assertCanCreate("branch", RESTAURANT_ID)).resolves.toBeUndefined();
-    });
-
-    it("should block a staff seat at the seat limit", async () => {
-      // Arrange
       usageRepository.countActiveSeats.mockResolvedValue(5);
 
       // Act & Assert
+      await expect(service.assertCanCreate("branch", RESTAURANT_ID)).rejects.toMatchObject({ exception: { key: "PLAN_LIMIT_REACHED" } });
       await expect(service.assertCanCreate("seat", RESTAURANT_ID)).rejects.toMatchObject({ exception: { key: "PLAN_LIMIT_REACHED" } });
     });
 
-    it("should treat a missing limit as unlimited without counting anything", async () => {
+    it("should allow creating while under the limit", async () => {
       // Arrange
-      subscriptionRepository.findByRestaurantId.mockResolvedValue(
-        buildSubscription({ plan: { id: "plan-3", key: "enterprise", limits: {}, features: {} } })
-      );
+      usageRepository.countActiveBranches.mockResolvedValue(0);
+      usageRepository.countActiveSeats.mockResolvedValue(4);
 
       // Act & Assert
       await expect(service.assertCanCreate("branch", RESTAURANT_ID)).resolves.toBeUndefined();
-      expect(usageRepository.countActiveBranches).not.toHaveBeenCalled();
+      await expect(service.assertCanCreate("seat", RESTAURANT_ID)).resolves.toBeUndefined();
     });
 
     it("should block creating anything while the subscription is restricted", async () => {

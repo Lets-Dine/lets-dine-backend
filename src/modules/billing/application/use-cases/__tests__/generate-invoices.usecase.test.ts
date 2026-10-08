@@ -1,4 +1,5 @@
 import { Test, TestingModule } from "@nestjs/testing";
+import { UsageRepository } from "../../../domain/repositories/usage.repository";
 import { InvoiceRepository } from "../../../domain/repositories/invoice.repository";
 import { SubscriptionRepository } from "../../../domain/repositories/subscription.repository";
 import { InvoiceSettlementService } from "../../invoice-settlement.service";
@@ -12,6 +13,7 @@ describe("GenerateInvoicesUsecase", () => {
   let usecase: GenerateInvoicesUsecase;
   let subscriptionRepository: jest.Mocked<SubscriptionRepository>;
   let invoiceRepository: jest.Mocked<InvoiceRepository>;
+  let usageRepository: jest.Mocked<UsageRepository>;
   let settlement: jest.Mocked<InvoiceSettlementService>;
 
   beforeEach(async () => {
@@ -23,6 +25,10 @@ describe("GenerateInvoicesUsecase", () => {
           provide: InvoiceRepository,
           useValue: { create: jest.fn().mockImplementation(async data => buildInvoice({ ...data, id: "invoice-new" })) },
         },
+        {
+          provide: UsageRepository,
+          useValue: { countActiveBranches: jest.fn().mockResolvedValue(1), countActiveSeats: jest.fn().mockResolvedValue(1) },
+        },
         { provide: InvoiceSettlementService, useValue: { settle: jest.fn() } },
       ],
     }).compile();
@@ -30,6 +36,7 @@ describe("GenerateInvoicesUsecase", () => {
     usecase = module.get(GenerateInvoicesUsecase);
     subscriptionRepository = module.get(SubscriptionRepository);
     invoiceRepository = module.get(InvoiceRepository);
+    usageRepository = module.get(UsageRepository);
     settlement = module.get(InvoiceSettlementService);
   });
 
@@ -131,6 +138,46 @@ describe("GenerateInvoicesUsecase", () => {
       // Assert
       expect(result.generated).toHaveLength(2);
       expect(none.generated).toHaveLength(0);
+    });
+  });
+
+  it("should bill branches in use past the plan's limit", async () => {
+    // Arrange — Growth includes 5 branches; 7 are open
+    subscriptionRepository.findDueForInvoicing.mockResolvedValue([buildSubscription()]);
+    (usageRepository.countActiveBranches as jest.Mock).mockResolvedValue(7);
+
+    // Act
+    const { generated } = await usecase.execute({}, NOW);
+
+    // Assert
+    expect(generated[0].amount).toBe(400000 + 2 * 80000);
+  });
+
+  describe("executeForRestaurant", () => {
+    const stub = (sub: unknown, open: unknown[] = []) => {
+      (subscriptionRepository as unknown as { findDetailByRestaurantId: jest.Mock }).findDetailByRestaurantId = jest
+        .fn()
+        .mockResolvedValue(sub);
+      (invoiceRepository as unknown as { fetchAll: jest.Mock }).fetchAll = jest.fn().mockResolvedValue({ rows: open, count: open.length });
+    };
+
+    it("should invoice one restaurant now, outside any lead window", async () => {
+      stub(buildSubscription({ currentPeriodEnd: new Date(NOW.getTime() + 20 * DAY_MS) }));
+
+      const invoice = await usecase.executeForRestaurant("restaurant-1", NOW);
+
+      expect(invoice.amount).toBe(400000);
+      expect(invoiceRepository.create).toHaveBeenCalledTimes(1);
+    });
+
+    it("should refuse when an invoice is already open, a cancelled subscription, or an unknown restaurant", async () => {
+      stub(buildSubscription(), [buildInvoice()]);
+      await expect(usecase.executeForRestaurant("restaurant-1", NOW)).rejects.toThrow();
+      stub(buildSubscription({ status: "CANCELLED" }));
+      await expect(usecase.executeForRestaurant("restaurant-1", NOW)).rejects.toThrow();
+      stub(null);
+      await expect(usecase.executeForRestaurant("restaurant-1", NOW)).rejects.toThrow();
+      expect(invoiceRepository.create).not.toHaveBeenCalled();
     });
   });
 });

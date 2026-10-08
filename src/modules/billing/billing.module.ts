@@ -1,6 +1,7 @@
 import { Global, Module } from "@nestjs/common";
 import { StaffAccessPolicy } from "../../common/auth";
 import { EntitlementService } from "./application/entitlement.service";
+import { EsewaCheckoutService } from "./application/esewa-checkout.service";
 import { InvoiceSettlementService } from "./application/invoice-settlement.service";
 import { SubscriptionStaffAccessPolicy } from "./application/subscription-staff-access.policy";
 import { SubscriptionService } from "./application/subscription.service";
@@ -49,6 +50,7 @@ import { PlatformBillingController } from "./interfaces/http/platform-billing.co
     EntitlementService,
     SubscriptionService,
     InvoiceSettlementService,
+    EsewaCheckoutService,
     { provide: StaffAccessPolicy, useClass: SubscriptionStaffAccessPolicy },
     SubscriptionActiveGuard,
     FetchSubscriptionUsecase,

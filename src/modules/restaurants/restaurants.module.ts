@@ -28,6 +28,6 @@ import { BillingModule } from "../billing/billing.module";
     RestaurantRepositoryImpl,
     { provide: RestaurantRepository, useExisting: RestaurantRepositoryImpl },
   ],
-  exports: [{ provide: RestaurantRepository, useExisting: RestaurantRepositoryImpl }],
+  exports: [RegisterRestaurantUsecase, { provide: RestaurantRepository, useExisting: RestaurantRepositoryImpl }],
 })
 export class RestaurantsModule {}

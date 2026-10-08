@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { Invoice, Prisma } from "@prisma/client";
+import { Invoice, InvoiceKind, Prisma } from "@prisma/client";
 import { buildPaginationQuery } from "../../../../common/helpers";
 import { PaginatedResponse } from "../../../../common/interfaces";
 import { PrismaService, PrismaTransaction } from "../../../../common/prisma";
@@ -60,10 +60,28 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
     return count === 1;
   }
 
-  async voidOpenForSubscription(subscriptionId: string, options?: IInvoiceOptions & { exceptId?: string }): Promise<number> {
+  async recordAsExpense(invoice: IInvoice, options?: IInvoiceOptions): Promise<void> {
+    const prisma = options?.tx ?? this.prisma;
+    const branch = await prisma.branch.findFirst({ where: { restaurantId: invoice.restaurantId, isDefault: true }, select: { id: true } });
+    if (!branch) return;
+    await prisma.expense.create({
+      data: {
+        restaurantId: invoice.restaurantId,
+        branchId: branch.id,
+        kind: "EXPENSE",
+        amount: invoice.amount,
+        method: invoice.paymentMethod === "cash" ? "CASH" : "CARD",
+        category: "Subscription",
+        note: `${invoice.number} · ${invoice.lines[0]?.description ?? "FeastoX plan"}`,
+        createdByName: "FeastoX billing",
+      },
+    });
+  }
+
+  async voidOpenForSubscription(subscriptionId: string, options?: IInvoiceOptions & { exceptId?: string; kind?: InvoiceKind }): Promise<number> {
     const prisma = options?.tx ?? this.prisma;
     const { count } = await prisma.invoice.updateMany({
-      where: { subscriptionId, status: "OPEN", ...(options?.exceptId && { id: { not: options.exceptId } }) },
+      where: { subscriptionId, status: "OPEN", ...(options?.kind && { kind: options.kind }), ...(options?.exceptId && { id: { not: options.exceptId } }) },
       data: { status: "VOID" },
     });
     return count;

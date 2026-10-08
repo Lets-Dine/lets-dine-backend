@@ -1,4 +1,4 @@
-import { InvoiceStatus } from "@prisma/client";
+import { InvoiceKind, InvoiceStatus } from "@prisma/client";
 import { PaginatedResponse } from "../../../../common/interfaces";
 import { IPaginationOptions } from "../../../../common/interfaces/pagination.interface";
 import { PrismaTransaction } from "../../../../common/prisma";
@@ -14,6 +14,8 @@ export interface IInvoiceCreate {
   periodStart: Date;
   periodEnd: Date;
   dueAt: Date;
+  kind?: InvoiceKind;
+  upgradePlanId?: string;
 }
 
 export interface IInvoiceFetchQuery {
@@ -44,6 +46,12 @@ export abstract class InvoiceRepository {
    * conditional write is what stops two simultaneous payments both succeeding.
    */
   abstract markPaidIfOpen(id: string, payment: IInvoicePayment, options?: IInvoiceOptions): Promise<boolean>;
-  /** Voids every open invoice of a subscription, optionally sparing one. Returns how many were voided. */
-  abstract voidOpenForSubscription(subscriptionId: string, options?: IInvoiceOptions & { exceptId?: string }): Promise<number>;
+  /**
+   * Books a paid invoice as an expense in the restaurant's default branch ledger, so the cash book
+   * shows what the subscription cost. Off-cash (card/bank/eSewa) unless it was paid in cash.
+   * Reads the ledger table directly: billing imports no feature module.
+   */
+  abstract recordAsExpense(invoice: IInvoice, options?: IInvoiceOptions): Promise<void>;
+  /** Voids every open invoice of a subscription (or just one `kind`), optionally sparing one. Returns how many were voided. */
+  abstract voidOpenForSubscription(subscriptionId: string, options?: IInvoiceOptions & { exceptId?: string; kind?: InvoiceKind }): Promise<number>;
 }

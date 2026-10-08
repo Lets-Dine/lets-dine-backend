@@ -1,7 +1,7 @@
 import { buildPlan } from "../../../application/__tests__/billing.fixtures";
 import { buildInvoiceLines, buildInvoiceNumber, resolveInvoicePeriod, sumLines } from "../invoice-builder.util";
 
-const monthly = { interval: "MONTHLY", extraBranches: 0, extraSeats: 0 } as const;
+const monthly = { interval: "MONTHLY", extraBranches: 0, extraSeats: 0, usedBranches: 1, usedSeats: 1 } as const;
 
 describe("buildInvoiceLines", () => {
   it("should bill just the monthly plan fee when there are no extras", () => {
@@ -31,7 +31,7 @@ describe("buildInvoiceLines", () => {
 
   it("should charge extras for 10 months on an annual subscription, matching the plan's own two free months", () => {
     // Act
-    const lines = buildInvoiceLines(buildPlan(), { interval: "ANNUAL", extraBranches: 1, extraSeats: 0 });
+    const lines = buildInvoiceLines(buildPlan(), { ...monthly, interval: "ANNUAL", extraBranches: 1 });
 
     // Assert
     expect(lines[1]).toMatchObject({ description: "Extra branch", unitAmount: 800000, amount: 800000 });
@@ -43,6 +43,27 @@ describe("buildInvoiceLines", () => {
 
     // Assert
     expect(lines).toHaveLength(1);
+  });
+
+  it("should bill branches in use past the plan's limit even if none were purchased", () => {
+    // Act — Growth includes 5 branches; 7 are open
+    const lines = buildInvoiceLines(buildPlan(), { ...monthly, usedBranches: 7 });
+
+    // Assert
+    expect(lines[1]).toEqual({ description: "Extra branch", quantity: 2, unitAmount: 80000, amount: 160000 });
+  });
+
+  it("should not bill purchased and in-use extras twice", () => {
+    // Act — 3 purchased, 7 in use (2 past the limit): the larger count is billed, not the sum
+    const lines = buildInvoiceLines(buildPlan(), { ...monthly, extraBranches: 3, usedBranches: 7 });
+
+    // Assert
+    expect(lines[1]).toMatchObject({ quantity: 3 });
+  });
+
+  it("should bill nothing extra for usage within the limit, or for an unlimited plan", () => {
+    expect(buildInvoiceLines(buildPlan(), { ...monthly, usedBranches: 5 })).toHaveLength(1);
+    expect(buildInvoiceLines(buildPlan({ limits: {} }), { ...monthly, usedBranches: 50 })).toHaveLength(1);
   });
 
   it("should bill a free plan at zero", () => {

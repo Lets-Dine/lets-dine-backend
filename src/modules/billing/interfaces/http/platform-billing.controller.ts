@@ -78,6 +78,12 @@ export class PlatformBillingController {
     return buildHttpResponse(result, BILLING_SUCCESS_MESSAGES.INVOICES_GENERATED);
   }
 
+  @Post("restaurants/:restaurantId/invoices")
+  async generateInvoiceForRestaurant(@Param("restaurantId", ParseUuidPipe) restaurantId: string): Promise<IHttpResponse<IInvoice>> {
+    const invoice = await this.generateInvoicesUsecase.executeForRestaurant(restaurantId);
+    return buildHttpResponse(invoice, BILLING_SUCCESS_MESSAGES.INVOICES_GENERATED);
+  }
+
   @Post("invoices/:id/mark-paid")
   @HttpCode(HttpStatus.OK)
   async markInvoicePaid(@Param("id", ParseUuidPipe) id: string, @Body() dto: MarkInvoicePaidDto): Promise<IHttpResponse<IInvoice>> {

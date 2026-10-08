@@ -47,6 +47,8 @@ export const buildInvoice = (overrides: Partial<IInvoice> = {}): IInvoice => ({
   periodEnd: new Date("2026-05-01T00:00:00.000Z"),
   dueAt: new Date("2026-04-01T00:00:00.000Z"),
   status: "OPEN",
+  kind: "RENEWAL",
+  upgradePlanId: null,
   paidAt: null,
   paymentMethod: null,
   paymentRef: null,

@@ -4,6 +4,9 @@ model User {
   id        String   @id @default(uuid()) @map("id") @db.Uuid
   email     String   @unique @map("email")
   name      String   @map("name")
+  /// Email with `+tag` and gmail dots stripped; set at self sign-up so aliases of one address can't each claim a trial.
+  emailKey  String?  @unique @map("email_key")
+  phone     String?  @unique @map("phone")
   /// Hashed with scrypt — never the PIN itself.
   pinHash   String   @map("pin_hash")
   isActive  Boolean  @default(true) @map("is_active")

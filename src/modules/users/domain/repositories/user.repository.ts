@@ -5,6 +5,8 @@ export interface IUserCreate {
   email: string;
   name: string;
   pinHash: string;
+  emailKey?: string;
+  phone?: string;
   isActive?: boolean;
 }
 
@@ -18,6 +20,8 @@ export abstract class UserRepository {
   abstract $transaction<T>(fn: (tx: PrismaTransaction) => Promise<T>): Promise<T>;
   abstract findById(id: string, options?: UserFetchOptions): Promise<IUser | null>;
   abstract findByEmail(email: string, options?: UserFetchOptions): Promise<IUserCredentials | null>;
+  abstract findByEmailKey(emailKey: string, options?: UserFetchOptions): Promise<IUser | null>;
+  abstract findByPhone(phone: string, options?: UserFetchOptions): Promise<IUser | null>;
   abstract create(data: IUserCreate, options?: { tx?: PrismaTransaction; actorId?: string }): Promise<IUser>;
   abstract update(id: string, data: IUserUpdate, transaction?: PrismaTransaction): Promise<IUser>;
 }

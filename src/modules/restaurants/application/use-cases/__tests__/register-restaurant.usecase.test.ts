@@ -38,7 +38,7 @@ describe("RegisterRestaurantUsecase", () => {
             create: jest.fn(),
           },
         },
-        { provide: UserRepository, useValue: { findByEmail: jest.fn(), create: jest.fn() } },
+        { provide: UserRepository, useValue: { findByEmail: jest.fn(), findByEmailKey: jest.fn().mockResolvedValue(null), findByPhone: jest.fn().mockResolvedValue(null), create: jest.fn() } },
         { provide: RestaurantMemberRepository, useValue: { create: jest.fn() } },
         { provide: BranchRepository, useValue: { create: jest.fn() } },
         { provide: SubscriptionService, useValue: { startTrial: jest.fn().mockResolvedValue(undefined) } },
@@ -117,6 +117,29 @@ describe("RegisterRestaurantUsecase", () => {
       // Act & Assert
       await expect(usecase.execute(dto)).rejects.toThrow(new ConflictException(RESTAURANT_ERROR_MESSAGES.OWNER_EMAIL_ALREADY_EXISTS));
       expect(restaurantRepository.create).not.toHaveBeenCalled();
+    });
+
+    it("should throw ConflictException when an alias of the owner's email already has an account", async () => {
+      // Arrange
+      restaurantRepository.findBySlug.mockResolvedValue(null);
+      userRepository.findByEmail.mockResolvedValue(null);
+      userRepository.findByEmailKey.mockResolvedValue({ id: "user-9" } as any);
+
+      // Act & Assert
+      await expect(usecase.execute(dto)).rejects.toThrow(new ConflictException(RESTAURANT_ERROR_MESSAGES.OWNER_ALREADY_REGISTERED));
+      expect(restaurantRepository.create).not.toHaveBeenCalled();
+    });
+
+    it("should throw ConflictException when the owner's phone already has an account", async () => {
+      // Arrange
+      restaurantRepository.findBySlug.mockResolvedValue(null);
+      userRepository.findByEmail.mockResolvedValue(null);
+      userRepository.findByPhone.mockResolvedValue({ id: "user-9" } as any);
+
+      // Act & Assert
+      await expect(usecase.execute({ ...dto, owner: { ...dto.owner, phone: "9800000000" } })).rejects.toThrow(
+        new ConflictException(RESTAURANT_ERROR_MESSAGES.OWNER_ALREADY_REGISTERED)
+      );
     });
   });
 });

@@ -23,6 +23,16 @@ class UserRepositoryImpl implements UserRepository {
     return user ? { ...this.toUser(user), pinHash: user.pinHash } : null;
   }
 
+  async findByEmailKey(emailKey: string, options?: UserFetchOptions): Promise<IUser | null> {
+    const user = await (options?.tx ?? this.prisma).user.findUnique({ where: { emailKey } });
+    return user ? this.toUser(user) : null;
+  }
+
+  async findByPhone(phone: string, options?: UserFetchOptions): Promise<IUser | null> {
+    const user = await (options?.tx ?? this.prisma).user.findUnique({ where: { phone } });
+    return user ? this.toUser(user) : null;
+  }
+
   async create(data: IUserCreate, options?: { tx?: PrismaTransaction; actorId?: string }): Promise<IUser> {
     const prisma = options?.tx ?? this.prisma;
     const user = await prisma.user.create({

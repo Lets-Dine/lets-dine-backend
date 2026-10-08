@@ -6,6 +6,15 @@ enum InvoiceStatus {
   @@schema("public")
 }
 
+enum InvoiceKind {
+  /// The next period's fee — paying it extends the paid window.
+  RENEWAL
+  /// The prorated difference for moving up a plan mid-period — paying it switches the plan, not the window.
+  UPGRADE
+
+  @@schema("public")
+}
+
 /// What a restaurant owes for one billing period — the source of truth for
 /// billing. How it got paid is metadata only, so a manual admin action today and
 /// a gateway webhook later go through the same code path.
@@ -22,6 +31,9 @@ model Invoice {
   periodEnd      DateTime      @map("period_end")
   dueAt          DateTime      @map("due_at")
   status         InvoiceStatus @default(OPEN) @map("status")
+  kind           InvoiceKind   @default(RENEWAL) @map("kind")
+  /// UPGRADE only: the plan the subscription moves to once this is paid.
+  upgradePlanId  String?       @map("upgrade_plan_id") @db.Uuid
   paidAt         DateTime?     @map("paid_at")
   /// Free text ("bank", "esewa", "gateway") — the method is undecided, so not an enum.
   paymentMethod  String?       @map("payment_method")

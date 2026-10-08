@@ -29,19 +29,19 @@ export class EntitlementService {
     return subscription ? resolveEntitlements(subscription, now) : grandfatheredEntitlements(now);
   }
 
-  /** Blocks creating one more branch or staff seat once the plan (plus purchased add-ons) is full. Existing ones keep working. */
+  /** Blocks a restricted subscription, and creating (or reactivating) a branch or seat once the plan's limit plus purchased extras is used up. */
   async assertCanCreate(kind: EntitlementKind, restaurantId: string): Promise<void> {
     const entitlements = await this.getEntitlements(restaurantId);
     this.assertNotRestrictedFor(entitlements);
 
     const limit = kind === "branch" ? entitlements.limits.branches : entitlements.limits.staffSeats;
     if (limit === undefined) return;
-
-    const used = await (kind === "branch"
-      ? this.usageRepository.countActiveBranches(restaurantId)
-      : this.usageRepository.countActiveSeats(restaurantId));
+    const used =
+      kind === "branch"
+        ? await this.usageRepository.countActiveBranches(restaurantId)
+        : await this.usageRepository.countActiveSeats(restaurantId);
     if (used >= limit) {
-      throw new ForbiddenException({ ...BILLING_ERROR_MESSAGES.PLAN_LIMIT_REACHED, detail: { kind, limit, used } });
+      throw new ForbiddenException({ ...BILLING_ERROR_MESSAGES.PLAN_LIMIT_REACHED, detail: { kind, used, limit } });
     }
   }
 

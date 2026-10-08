@@ -11,5 +11,6 @@ export const BILLING_SUCCESS_MESSAGES = {
   PLAN_ASSIGNED: { key: "PLAN_ASSIGNED", message: "Plan assigned successfully" },
   INVOICES_GENERATED: { key: "INVOICES_GENERATED", message: "Invoices generated successfully" },
   INVOICE_PAID: { key: "INVOICE_PAID", message: "Invoice marked as paid" },
+  ESEWA_STARTED: { key: "ESEWA_STARTED", message: "eSewa checkout ready" },
   LIFECYCLE_RUN: { key: "BILLING_LIFECYCLE_RUN", message: "Subscription lifecycle processed" },
 };

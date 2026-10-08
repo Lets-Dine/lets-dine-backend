@@ -5,4 +5,8 @@ export const RESTAURANT_ERROR_MESSAGES = {
     key: "RESTAURANT_OWNER_EMAIL_ALREADY_EXISTS",
     message: "An account with this email already exists",
   },
+  OWNER_ALREADY_REGISTERED: {
+    key: "RESTAURANT_OWNER_ALREADY_REGISTERED",
+    message: "This person already has an account. Sign in instead.",
+  },
 };
