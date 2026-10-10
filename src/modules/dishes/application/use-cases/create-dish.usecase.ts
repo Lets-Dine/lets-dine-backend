@@ -28,7 +28,10 @@ export class CreateDishUsecase {
     const clash = await this.dishRepository.findBySlug(authEntity.branchId, slug);
     if (clash) throw new ConflictException(DISH_ERROR_MESSAGES.SLUG_ALREADY_EXISTS);
 
-    const dish = await this.dishRepository.create({ ...dto, slug, restaurantId: authEntity.restaurantId, branchId: authEntity.branchId }, { actorId: authEntity.sub });
+    const dish = await this.dishRepository.create(
+      { ...dto, slug, restaurantId: authEntity.restaurantId, branchId: authEntity.branchId },
+      { actorId: authEntity.sub }
+    );
 
     await this.auditLogService.record({ action: AuditAction.dish_created, subject: dish.name, detail: `In ${category.name}` }, authEntity);
 

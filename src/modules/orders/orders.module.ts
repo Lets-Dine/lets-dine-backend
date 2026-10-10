@@ -6,6 +6,7 @@ import { CustomersModule } from "../customers/customers.module";
 import { DiningSessionsModule } from "../dining-sessions/dining-sessions.module";
 import { DishesModule } from "../dishes/dishes.module";
 import { DishVariantsModule } from "../dish-variants/dish-variants.module";
+import { InventoryModule } from "../inventory/inventory.module";
 import { RestaurantsModule } from "../restaurants/restaurants.module";
 import { TablesModule } from "../tables/tables.module";
 import { AddOrderItemUsecase } from "./application/use-cases/add-order-item.usecase";
@@ -43,6 +44,7 @@ import { BillingModule } from "../billing/billing.module";
     AddOnsModule,
     DishVariantsModule,
     CustomersModule,
+    InventoryModule,
   ],
   controllers: [OrderController, RestaurantOrderController],
   providers: [

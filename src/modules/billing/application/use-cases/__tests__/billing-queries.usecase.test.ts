@@ -1,5 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { NotFoundException } from "../../../../../common/exceptions";
+import { PrismaService } from "../../../../../common/prisma";
 import { buildAuthEntity } from "../../../../../common/testing";
 import { InvoiceRepository } from "../../../domain/repositories/invoice.repository";
 import { PlanRepository } from "../../../domain/repositories/plan.repository";
@@ -34,6 +35,7 @@ describe("billing read use cases", () => {
         { provide: SubscriptionRepository, useValue: { findDetailByRestaurantId: jest.fn() } },
         { provide: PlanRepository, useValue: { findSelfServe: jest.fn() } },
         { provide: EntitlementService, useValue: { getUsage: jest.fn() } },
+        { provide: PrismaService, useValue: { restaurant: { findUnique: jest.fn().mockResolvedValue({ slug: "newa-kitchen" }) } } },
       ],
     }).compile();
 
@@ -90,6 +92,7 @@ describe("billing read use cases", () => {
       expect(view.plan).not.toHaveProperty("id");
       expect(view.pendingPlan?.key).toBe("starter");
       expect(view).not.toHaveProperty("pendingPlanId");
+      expect(view.referralCode).toBe("newa-kitchen");
     });
 
     it("should show an owner what the plan costs", async () => {

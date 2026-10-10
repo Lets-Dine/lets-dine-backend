@@ -9,11 +9,15 @@ export const completePaymentSchema = z.object({
    * never fast-forwards whatever else is open on the same session (see `CompletePaymentUsecase`).
    */
   orderId: z.string().uuid().optional(),
-  /** What the cashier is actually charging for — read fresh off the dish, never a client-sent price. */
+  /** What the cashier is actually charging for. Which dish, variant and add-ons — never a client-sent price: each is priced fresh on the server. */
   items: z
     .array(
       z.object({
         dishId: z.string().uuid(),
+        /** The size/style that was ordered, if the dish has variants. Its own price replaces the dish's. */
+        variantId: z.string().uuid().nullish(),
+        /** The extras that were ordered. Each adds its own price on top. */
+        addOnIds: z.array(z.string().uuid()).max(20).default([]),
         quantity: z.number().int().min(1).max(50),
       })
     )

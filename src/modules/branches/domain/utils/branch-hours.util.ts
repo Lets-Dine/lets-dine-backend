@@ -4,7 +4,13 @@ type HoursRow = Pick<IBranchHours, "dayOfWeek" | "opensAt" | "closesAt" | "isClo
 
 /** The wall-clock day and minute-of-day in a timezone — what "open now" has to be judged against. */
 export function localClock(now: Date, timeZone: string): { dayOfWeek: number; minutes: number } {
-  const parts = new Intl.DateTimeFormat("en-US", { timeZone, weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(now);
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(now);
   const get = (type: string) => parts.find(part => part.type === type)?.value ?? "";
   const dayOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(get("weekday"));
   return { dayOfWeek, minutes: Number(get("hour")) * 60 + Number(get("minute")) };
@@ -24,7 +30,9 @@ export function isBranchOpen(hours: HoursRow[], timeZone: string, now: Date = ne
   if (hours.length === 0) return true;
 
   const { dayOfWeek, minutes } = localClock(now, timeZone);
-  return hours.some(row => row.dayOfWeek === dayOfWeek && !row.isClosed && toMinutes(row.opensAt) <= minutes && minutes < toMinutes(row.closesAt));
+  return hours.some(
+    row => row.dayOfWeek === dayOfWeek && !row.isClosed && toMinutes(row.opensAt) <= minutes && minutes < toMinutes(row.closesAt)
+  );
 }
 
 /** What an anonymous diner may learn about a branch: where it is, when it opens, whether it is open now. */

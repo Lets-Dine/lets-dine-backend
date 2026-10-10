@@ -29,13 +29,17 @@ describe("FonepayService", () => {
   });
 
   it("rejects when the restaurant has no config", async () => {
-    const svc = new FonepayService({ restaurantFonepayConfig: { findUnique: jest.fn().mockResolvedValue(null) } } as unknown as PrismaService);
+    const svc = new FonepayService({
+      restaurantFonepayConfig: { findUnique: jest.fn().mockResolvedValue(null) },
+    } as unknown as PrismaService);
     await expect(svc.generateDynamicQr({ restaurantId: "r2", prn: "p", amount: 1 })).rejects.toBeDefined();
   });
 
   it("refuses to make a QR while switched off", async () => {
     const row = { enabled: false, merchantCode: "M1", username: "u", secretKey: seal("s"), password: seal("p") };
-    const svc = new FonepayService({ restaurantFonepayConfig: { findUnique: jest.fn().mockResolvedValue(row) } } as unknown as PrismaService);
+    const svc = new FonepayService({
+      restaurantFonepayConfig: { findUnique: jest.fn().mockResolvedValue(row) },
+    } as unknown as PrismaService);
     await expect(svc.generateDynamicQr({ restaurantId: "r3", prn: "p", amount: 1 })).rejects.toBeDefined();
   });
 

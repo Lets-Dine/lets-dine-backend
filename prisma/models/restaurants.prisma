@@ -1,45 +1,52 @@
 /// §15. The restaurant itself, including the fee configuration order totals are
 /// built from — never hardcode tax or service charge in domain logic (§41).
 model Restaurant {
-  id                String   @id @default(uuid()) @map("id") @db.Uuid
-  name              String   @map("name")
-  slug              String   @unique @map("slug")
-  tagline           String   @default("") @map("tagline")
-  description       String   @default("") @map("description")
-  coverImageUrl     String?  @map("cover_image_url")
-  logoUrl           String?  @map("logo_url")
-  currency          String   @default("NPR") @map("currency")
-  timezone          String   @default("Asia/Kathmandu") @map("timezone")
+  id                     String    @id @default(uuid()) @map("id") @db.Uuid
+  name                   String    @map("name")
+  slug                   String    @unique @map("slug")
+  tagline                String    @default("") @map("tagline")
+  description            String    @default("") @map("description")
+  coverImageUrl          String?   @map("cover_image_url")
+  logoUrl                String?   @map("logo_url")
+  currency               String    @default("NPR") @map("currency")
+  timezone               String    @default("Asia/Kathmandu") @map("timezone")
   /// Ratios, not money — money itself is always integer minor units.
-  serviceChargeRate Float    @default(0) @map("service_charge_rate")
-  taxRate           Float    @default(0) @map("tax_rate")
+  serviceChargeRate      Float     @default(0) @map("service_charge_rate")
+  taxRate                Float     @default(0) @map("tax_rate")
   /// Flat minor-unit delivery charge; null/0 = no fee. Owner-editable
   /// alongside `serviceChargeRate`/`taxRate`.
-  deliveryFeeAmount Int?     @map("delivery_fee_amount")
+  deliveryFeeAmount      Int?      @map("delivery_fee_amount")
   /// VAT/PAN registration number printed on receipts; null = not registered/not shown.
-  vatPanNumber      String?  @map("vat_pan_number")
-  isActive          Boolean  @default(true) @map("is_active")
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
-  createdBy         String?  @map("created_by") @db.Uuid
-  updatedBy         String?  @map("updated_by") @db.Uuid
+  vatPanNumber           String?   @map("vat_pan_number")
+  isActive               Boolean   @default(true) @map("is_active")
+  /// Whether starting a dish takes its recipe off stock. A branch or a dish can override it.
+  autoConsumeStock       Boolean   @default(true) @map("auto_consume_stock")
+  /// Set when this restaurant joined through another restaurant's invite link.
+  referredByRestaurantId String?   @map("referred_by_restaurant_id") @db.Uuid
+  /// Set once, when that inviter has been given the extra month for this restaurant's first payment.
+  referralRewardedAt     DateTime? @map("referral_rewarded_at")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+  createdBy              String?   @map("created_by") @db.Uuid
+  updatedBy              String?   @map("updated_by") @db.Uuid
 
-  members    RestaurantMember[]
-  tables     DiningTable[]
-  floors     Floor[]
-  sessions   DiningSession[]
-  categories MenuCategory[]
-  dishes     Dish[]
-  addOns     AddOn[]
-  orders     Order[]
-  reviews    DishReview[]
-  auditLogs  AuditLog[]
-  payments   Payment[]
-  expenses   Expense[]
-  cashCloses CashClose[]
-  feedback   Feedback[]
-  customers  CustomerRestaurant[]
-  branches   Branch[]
+  members     RestaurantMember[]
+  tables      DiningTable[]
+  floors      Floor[]
+  sessions    DiningSession[]
+  categories  MenuCategory[]
+  dishes      Dish[]
+  addOns      AddOn[]
+  ingredients Ingredient[]
+  orders      Order[]
+  reviews     DishReview[]
+  auditLogs   AuditLog[]
+  payments    Payment[]
+  expenses    Expense[]
+  cashCloses  CashClose[]
+  feedback    Feedback[]
+  customers   CustomerRestaurant[]
+  branches    Branch[]
 
   fonepayConfig RestaurantFonepayConfig?
 
@@ -47,6 +54,10 @@ model Restaurant {
   invoices      Invoice[]
   usageCounters UsageCounter[]
 
+  referredBy Restaurant?  @relation("RestaurantReferral", fields: [referredByRestaurantId], references: [id], onDelete: SetNull)
+  referrals  Restaurant[] @relation("RestaurantReferral")
+
+  @@index([referredByRestaurantId])
   @@map("restaurants")
   @@schema("public")
 }

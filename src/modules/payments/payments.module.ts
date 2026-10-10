@@ -1,8 +1,10 @@
 import { Module } from "@nestjs/common";
+import { AddOnsModule } from "../add-ons/add-ons.module";
 import { AuditLogsModule } from "../audit-logs/audit-logs.module";
 import { BranchesModule } from "../branches/branches.module";
 import { DiningSessionsModule } from "../dining-sessions/dining-sessions.module";
 import { DishesModule } from "../dishes/dishes.module";
+import { DishVariantsModule } from "../dish-variants/dish-variants.module";
 import { OrdersModule } from "../orders/orders.module";
 import { RestaurantsModule } from "../restaurants/restaurants.module";
 import { CompletePaymentUsecase } from "./application/use-cases/complete-payment.usecase";
@@ -17,7 +19,16 @@ import { PaymentController } from "./interfaces/http/payment.controller";
 import { PublicPaymentController } from "./interfaces/http/public-payment.controller";
 
 @Module({
-  imports: [BranchesModule, DiningSessionsModule, DishesModule, OrdersModule, RestaurantsModule, AuditLogsModule],
+  imports: [
+    AddOnsModule,
+    BranchesModule,
+    DiningSessionsModule,
+    DishesModule,
+    DishVariantsModule,
+    OrdersModule,
+    RestaurantsModule,
+    AuditLogsModule,
+  ],
   controllers: [FonepayController, PaymentController, PublicPaymentController],
   providers: [
     CompletePaymentUsecase,

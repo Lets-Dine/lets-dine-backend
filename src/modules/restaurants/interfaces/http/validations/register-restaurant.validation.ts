@@ -23,12 +23,21 @@ export const registerRestaurantSchema = z.object({
   slug: slugSchema,
   tagline: z.string().max(160).optional(),
   description: z.string().max(2000).optional(),
-  coverImageUrl: z.string().url().max(500).nullish().default("https://static.vecteezy.com/system/resources/thumbnails/054/611/336/small_2x/wide-angle-foodgraphy-for-restaurant-with-copy-space-photo.jpg"),
+  coverImageUrl: z
+    .string()
+    .url()
+    .max(500)
+    .nullish()
+    .default(
+      "https://static.vecteezy.com/system/resources/thumbnails/054/611/336/small_2x/wide-angle-foodgraphy-for-restaurant-with-copy-space-photo.jpg"
+    ),
   currency: z.string().length(3).toUpperCase().optional(),
   timezone: z.string().min(1).max(60).optional(),
   serviceChargeRate: z.number().min(0).max(1).optional(),
   taxRate: z.number().min(0).max(1).optional(),
   owner: ownerSchema.extend({ phone: phoneSchema.optional() }),
+  /** Another restaurant's slug, from an invite link. An unknown code is ignored. */
+  referralCode: z.string().trim().max(80).optional(),
 });
 
 /** Self sign-up: the same, but the owner must leave a phone number, which is what stops repeat trials. */

@@ -37,9 +37,12 @@ describe("CreateAddOnUsecase", () => {
 
       // Assert
       expect(result.id).toBe("addon-1");
-      expect(addOnRepository.create).toHaveBeenCalledWith(expect.objectContaining({ ...dto, restaurantId: authUser.restaurantId, branchId: authUser.branchId }), {
-        actorId: authUser.sub,
-      });
+      expect(addOnRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ ...dto, restaurantId: authUser.restaurantId, branchId: authUser.branchId }),
+        {
+          actorId: authUser.sub,
+        }
+      );
       expect(auditLogService.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: AuditAction.addon_created, subject: dto.name }),
         authUser

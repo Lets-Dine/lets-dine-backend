@@ -23,6 +23,8 @@ export interface IBranch {
   serviceChargeRate: number | null;
   taxRate: number | null;
   deliveryFeeAmount: number | null;
+  /** Null = inherit from the restaurant. */
+  autoConsumeStock: boolean | null;
   isDefault: boolean;
   isActive: boolean;
   createdAt: Date;

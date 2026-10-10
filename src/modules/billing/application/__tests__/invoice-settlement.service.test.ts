@@ -4,6 +4,7 @@ import { PrismaTransaction } from "../../../../common/prisma";
 import { InvoiceRepository } from "../../domain/repositories/invoice.repository";
 import { SubscriptionRepository } from "../../domain/repositories/subscription.repository";
 import { InvoiceSettlementService } from "../invoice-settlement.service";
+import { ReferralRewardService } from "../referral-reward.service";
 import { buildInvoice, buildSubscription } from "./billing.fixtures";
 
 const NOW = new Date("2026-03-28T00:00:00.000Z");
@@ -14,6 +15,7 @@ describe("InvoiceSettlementService", () => {
   let service: InvoiceSettlementService;
   let invoiceRepository: jest.Mocked<InvoiceRepository>;
   let subscriptionRepository: jest.Mocked<SubscriptionRepository>;
+  let referralRewardService: jest.Mocked<ReferralRewardService>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -33,12 +35,14 @@ describe("InvoiceSettlementService", () => {
           provide: SubscriptionRepository,
           useValue: { $transaction: inTransaction, findDetailById: jest.fn().mockResolvedValue(buildSubscription()), update: jest.fn() },
         },
+        { provide: ReferralRewardService, useValue: { grant: jest.fn() } },
       ],
     }).compile();
 
     service = module.get(InvoiceSettlementService);
     invoiceRepository = module.get(InvoiceRepository);
     subscriptionRepository = module.get(SubscriptionRepository);
+    referralRewardService = module.get(ReferralRewardService);
   });
 
   describe("settle", () => {
@@ -72,9 +76,11 @@ describe("InvoiceSettlementService", () => {
 
       // Assert
       expect(invoiceRepository.recordAsExpense).toHaveBeenCalledTimes(1);
+      expect(referralRewardService.grant).toHaveBeenCalledWith("restaurant-1", NOW, tx);
 
       // Arrange — a zero invoice
       invoiceRepository.recordAsExpense.mockClear();
+      referralRewardService.grant.mockClear();
       invoiceRepository.findById.mockResolvedValue(buildInvoice({ amount: 0 }));
 
       // Act
@@ -82,6 +88,7 @@ describe("InvoiceSettlementService", () => {
 
       // Assert
       expect(invoiceRepository.recordAsExpense).not.toHaveBeenCalled();
+      expect(referralRewardService.grant).not.toHaveBeenCalled();
     });
 
     it("should switch the plan, not the paid window, when an upgrade invoice is paid", async () => {

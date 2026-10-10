@@ -24,6 +24,8 @@ export type Permission =
   | "ledger:view"
   | "ledger:manage"
   | "ledger:reopen"
+  | "inventory:view"
+  | "inventory:manage"
   | "billing:view"
   | "billing:manage";
 
@@ -44,6 +46,9 @@ const MANAGER: Permission[] = [
   // Expenses and cash-up: the money side of the shift. A manager keeps the books, staff only ring up bills.
   "ledger:view",
   "ledger:manage",
+  // Stock is bought and counted by whoever keeps the books, so it follows the ledger: a manager.
+  "inventory:view",
+  "inventory:manage",
   // Status and usage, so a manager knows what the restaurant is on and when it needs attention. No money.
   "billing:view",
 ];

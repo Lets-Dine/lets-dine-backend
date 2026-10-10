@@ -24,7 +24,10 @@ export interface AuthEntity {
  * lookups use it in place of the bare `restaurantId` comparison; callers 404 on false so another
  * branch's data is indistinguishable from nonexistent.
  */
-export function isInActiveBranch(authEntity: Pick<AuthEntity, "restaurantId" | "branchId">, row: { restaurantId: string; branchId: string | null }): boolean {
+export function isInActiveBranch(
+  authEntity: Pick<AuthEntity, "restaurantId" | "branchId">,
+  row: { restaurantId: string; branchId: string | null }
+): boolean {
   return row.restaurantId === authEntity.restaurantId && row.branchId === authEntity.branchId;
 }
 

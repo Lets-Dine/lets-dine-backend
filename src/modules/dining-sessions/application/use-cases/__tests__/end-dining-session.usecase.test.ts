@@ -38,7 +38,12 @@ describe("EndDiningSessionUsecase", () => {
   describe("execute", () => {
     it("should hand the open session off to the shared end-session service", async () => {
       // Arrange
-      diningTableRepository.findById.mockResolvedValue({ id: "table-1", restaurantId: authUser.restaurantId, branchId: authUser.branchId, name: "T1" } as any);
+      diningTableRepository.findById.mockResolvedValue({
+        id: "table-1",
+        restaurantId: authUser.restaurantId,
+        branchId: authUser.branchId,
+        name: "T1",
+      } as any);
       const session = { id: "session-1", tableId: "table-1", endedAt: null };
       diningSessionRepository.findOpenByTableId.mockResolvedValue(session as any);
       const updatedTable = { id: "table-1", currentSessionId: null };
@@ -65,7 +70,12 @@ describe("EndDiningSessionUsecase", () => {
 
     it("should throw NotFoundException when the table has no open session", async () => {
       // Arrange
-      diningTableRepository.findById.mockResolvedValue({ id: "table-1", restaurantId: authUser.restaurantId, branchId: authUser.branchId, name: "T1" } as any);
+      diningTableRepository.findById.mockResolvedValue({
+        id: "table-1",
+        restaurantId: authUser.restaurantId,
+        branchId: authUser.branchId,
+        name: "T1",
+      } as any);
       diningSessionRepository.findOpenByTableId.mockResolvedValue(null);
 
       // Act & Assert

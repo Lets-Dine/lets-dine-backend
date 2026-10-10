@@ -12,7 +12,18 @@ import { FetchAllDishesUsecase } from "../fetch-all-dishes.usecase";
 import { UpdateDishUsecase } from "../update-dish.usecase";
 
 const manager = buildAuthEntity({ role: StaffRole.MANAGER, branchId: "branch-a", branchIds: ["branch-a"] });
-const dishOn = (branchId: string) => ({ id: "dish-1", restaurantId: manager.restaurantId, branchId, categoryId: "cat-1", name: "Momo", slug: "momo", price: 100, isAvailable: true, isArchived: false }) as any;
+const dishOn = (branchId: string) =>
+  ({
+    id: "dish-1",
+    restaurantId: manager.restaurantId,
+    branchId,
+    categoryId: "cat-1",
+    name: "Momo",
+    slug: "momo",
+    price: 100,
+    isAvailable: true,
+    isArchived: false,
+  }) as any;
 
 describe("menu — every branch owns its own", () => {
   let create: CreateDishUsecase;
@@ -29,7 +40,10 @@ describe("menu — every branch owns its own", () => {
         UpdateDishUsecase,
         ArchiveDishUsecase,
         FetchAllDishesUsecase,
-        { provide: DishRepository, useValue: { findById: jest.fn(), findBySlug: jest.fn(), create: jest.fn(), update: jest.fn(), fetchAll: jest.fn() } },
+        {
+          provide: DishRepository,
+          useValue: { findById: jest.fn(), findBySlug: jest.fn(), create: jest.fn(), update: jest.fn(), fetchAll: jest.fn() },
+        },
         { provide: MenuCategoryRepository, useValue: { findById: jest.fn() } },
         { provide: AuditLogService, useValue: { record: jest.fn() } },
         { provide: DishStatsService, useValue: { attach: jest.fn().mockResolvedValue([]) } },
@@ -51,19 +65,27 @@ describe("menu — every branch owns its own", () => {
     await create.execute({ categoryId: "cat-1", name: "Momo", price: 100 } as any, manager);
 
     expect(dishes.findBySlug).toHaveBeenCalledWith("branch-a", "momo");
-    expect(dishes.create).toHaveBeenCalledWith(expect.objectContaining({ restaurantId: manager.restaurantId, branchId: "branch-a" }), expect.anything());
+    expect(dishes.create).toHaveBeenCalledWith(
+      expect.objectContaining({ restaurantId: manager.restaurantId, branchId: "branch-a" }),
+      expect.anything()
+    );
   });
 
   it("will not put a dish in a section that belongs to another branch's menu", async () => {
     categories.findById.mockResolvedValue({ id: "cat-1", restaurantId: manager.restaurantId, branchId: "branch-b" } as any);
-    await expect(create.execute({ categoryId: "cat-1", name: "Momo", price: 100 } as any, manager)).rejects.toBeInstanceOf(NotFoundException);
+    await expect(create.execute({ categoryId: "cat-1", name: "Momo", price: 100 } as any, manager)).rejects.toBeInstanceOf(
+      NotFoundException
+    );
     expect(dishes.create).not.toHaveBeenCalled();
   });
 
   it("lists only the active branch's dishes", async () => {
     dishes.fetchAll.mockResolvedValue({ rows: [], count: 0 });
     await fetchAll.execute({} as any, manager);
-    expect(dishes.fetchAll).toHaveBeenCalledWith(expect.objectContaining({ restaurantId: manager.restaurantId, branchId: "branch-a" }), expect.anything());
+    expect(dishes.fetchAll).toHaveBeenCalledWith(
+      expect.objectContaining({ restaurantId: manager.restaurantId, branchId: "branch-a" }),
+      expect.anything()
+    );
   });
 
   it("404s editing or archiving a dish on another branch's menu", async () => {

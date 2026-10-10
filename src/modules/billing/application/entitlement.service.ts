@@ -47,7 +47,14 @@ export class EntitlementService {
 
   async hasFeature(restaurantId: string, feature: FeatureKey): Promise<boolean> {
     const { features } = await this.getEntitlements(restaurantId);
-    return feature === "exports" ? features.exports : features.analyticsTier === "full";
+    switch (feature) {
+      case "exports":
+        return features.exports;
+      case "autoStockConsumption":
+        return features.autoStockConsumption;
+      default:
+        return features.analyticsTier === "full";
+    }
   }
 
   async assertFeature(restaurantId: string, feature: FeatureKey): Promise<void> {

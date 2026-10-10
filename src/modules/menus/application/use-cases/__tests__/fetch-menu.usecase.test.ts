@@ -62,7 +62,11 @@ describe("FetchMenuUsecase", () => {
       // Assert
       expect(publicBranchService.resolveOrDefault).toHaveBeenCalledWith("restaurant-1", { branchSlug: "lazimpat" });
       expect(menuCategoryRepository.fetchAll).toHaveBeenCalledWith({ restaurantId: "restaurant-1", branchId: "branch-2" });
-      expect(dishRepository.findAllWithStats).toHaveBeenCalledWith({ restaurantId: "restaurant-1", branchId: "branch-2", isArchived: false });
+      expect(dishRepository.findAllWithStats).toHaveBeenCalledWith({
+        restaurantId: "restaurant-1",
+        branchId: "branch-2",
+        isArchived: false,
+      });
       expect(addOnRepository.fetchAll).toHaveBeenCalledWith({ restaurantId: "restaurant-1", branchId: "branch-2", isArchived: false });
     });
 
@@ -98,7 +102,11 @@ describe("FetchMenuUsecase", () => {
       expect(result.categories).toHaveLength(1);
       expect(result.dishes).toEqual([{ id: "dish-1", stats: {}, badges: [], addOnIds: ["addon-1"], variants: [] }]);
       expect(result.addOns).toEqual([{ id: "addon-1" }]);
-      expect(dishRepository.findAllWithStats).toHaveBeenCalledWith({ restaurantId: "restaurant-1", branchId: "branch-1", isArchived: false });
+      expect(dishRepository.findAllWithStats).toHaveBeenCalledWith({
+        restaurantId: "restaurant-1",
+        branchId: "branch-1",
+        isArchived: false,
+      });
       expect(addOnRepository.fetchAll).toHaveBeenCalledWith({ restaurantId: "restaurant-1", branchId: "branch-1", isArchived: false });
     });
 

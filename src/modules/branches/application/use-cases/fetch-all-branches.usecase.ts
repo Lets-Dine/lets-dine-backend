@@ -10,11 +10,14 @@ export class FetchAllBranchesUsecase {
 
   async execute(query: FetchBranchesQuery, authEntity: AuthEntity): Promise<PaginatedResponse<IBranch>> {
     const { keyword, isActive, ...pagination } = query;
-    return this.branchRepository.fetchAll({
+    return this.branchRepository.fetchAll(
+      {
         restaurantId: authEntity.restaurantId,
         branchIds: authEntity.branchIds === "all" ? undefined : authEntity.branchIds,
         keyword,
         isActive,
-      }, pagination);
+      },
+      pagination
+    );
   }
 }

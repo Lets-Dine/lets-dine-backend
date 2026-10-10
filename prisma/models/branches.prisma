@@ -18,6 +18,8 @@ model Branch {
   taxRate           Float?   @map("tax_rate")
   /// Flat minor-unit delivery charge; null = inherit from `Restaurant`.
   deliveryFeeAmount Int?     @map("delivery_fee_amount")
+  /// Null = inherit from `Restaurant`.
+  autoConsumeStock  Boolean? @map("auto_consume_stock")
   isDefault         Boolean  @default(false) @map("is_default")
   isActive          Boolean  @default(true) @map("is_active")
   createdAt         DateTime @default(now()) @map("created_at")
@@ -25,20 +27,21 @@ model Branch {
   createdBy         String?  @map("created_by") @db.Uuid
   updatedBy         String?  @map("updated_by") @db.Uuid
 
-  restaurant Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  hours      BranchHours[]
-  categories MenuCategory[]
-  dishes     Dish[]
-  addOns     AddOn[]
-  members    BranchMember[]
-  tables     DiningTable[]
-  floors     Floor[]
-  sessions   DiningSession[]
-  orders     Order[]
-  payments   Payment[]
-  expenses   Expense[]
-  cashCloses CashClose[]
-  auditLogs  AuditLog[]
+  restaurant  Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  hours       BranchHours[]
+  categories  MenuCategory[]
+  dishes      Dish[]
+  addOns      AddOn[]
+  ingredients Ingredient[]
+  members     BranchMember[]
+  tables      DiningTable[]
+  floors      Floor[]
+  sessions    DiningSession[]
+  orders      Order[]
+  payments    Payment[]
+  expenses    Expense[]
+  cashCloses  CashClose[]
+  auditLogs   AuditLog[]
 
   @@unique([restaurantId, slug])
   @@index([restaurantId])

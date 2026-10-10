@@ -13,6 +13,8 @@ export interface IDish {
   /** Integer minor units (paisa) — §34, never a float. */
   price: number;
   isAvailable: boolean;
+  /** Null = inherit from the branch, then the restaurant. */
+  autoConsumeStock: boolean | null;
   isArchived: boolean;
   isFeatured: boolean;
   sortOrder: number;

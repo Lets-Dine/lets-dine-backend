@@ -31,7 +31,7 @@ export interface IEntitlements {
 
 export type EntitlementKind = "branch" | "seat";
 
-export type FeatureKey = "exports" | "analyticsFull";
+export type FeatureKey = "exports" | "analyticsFull" | "autoStockConsumption";
 
 /** ok below 80% of the limit, warn from 80%, over once the limit is reached. */
 export type UsageLevel = "ok" | "warn" | "over";
@@ -114,6 +114,21 @@ export interface ISubscriptionDetail {
 export interface ISubscriptionView extends Omit<ISubscriptionDetail, "plan" | "pendingPlan" | "pendingPlanId"> {
   plan: IPlanView;
   pendingPlan: IPlanView | null;
+  /** This restaurant's slug, the code on its invite link. */
+  referralCode?: string;
+}
+
+/** A restaurant this one invited, and whether their first payment has added a month. */
+export interface IReferral {
+  id: string;
+  name: string;
+  joinedAt: Date;
+  rewardedAt: Date | null;
+}
+
+export interface IReferrals {
+  code: string;
+  referrals: IReferral[];
 }
 
 /** Just what the lifecycle sweep needs to decide a subscription's next stage. */

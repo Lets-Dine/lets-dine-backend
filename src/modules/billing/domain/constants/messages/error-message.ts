@@ -11,11 +11,11 @@ export const BILLING_ERROR_MESSAGES = {
   FEATURE_LOCKED: { key: "FEATURE_LOCKED", message: "This feature is not included in your current plan" },
   SUBSCRIPTION_RESTRICTED: {
     key: "SUBSCRIPTION_RESTRICTED",
-    message: "Your subscription needs attention. Settle the outstanding invoice to make changes.",
+    message: "Your subscription needs attention. Renew the plan to make changes.",
   },
   SUBSCRIPTION_SUSPENDED: {
     key: "SUBSCRIPTION_SUSPENDED",
-    message: "This restaurant's subscription is suspended. The owner needs to settle the outstanding invoice to restore access.",
+    message: "This restaurant's subscription is suspended. The owner needs to renew the plan to restore access.",
   },
   INVALID_PLAN_CONFIG: { key: "BILLING_INVALID_PLAN_CONFIG", message: "The plan's limits or features are misconfigured" },
   SUBSCRIPTION_NOT_FOUND: { key: "SUBSCRIPTION_NOT_FOUND", message: "Subscription not found" },
@@ -31,10 +31,17 @@ export const BILLING_ERROR_MESSAGES = {
   INVOICE_ALREADY_OPEN: { key: "INVOICE_ALREADY_OPEN", message: "This restaurant already has an open invoice" },
   SUBSCRIPTION_CANCELLED: {
     key: "SUBSCRIPTION_CANCELLED",
-    message: "This restaurant's subscription is cancelled, so it can't be invoiced",
+    message: "This restaurant's subscription is cancelled, so it can't be renewed",
   },
-  ESEWA_NOT_CONFIGURED: { key: "ESEWA_NOT_CONFIGURED", message: "Online payment isn't available yet. Contact us to settle this invoice." },
-  ESEWA_NPR_ONLY: { key: "ESEWA_NPR_ONLY", message: "eSewa can only pay invoices in NPR" },
+  RENEWAL_NOT_DUE: {
+    key: "RENEWAL_NOT_DUE",
+    message: "This plan is not due for renewal yet",
+  },
+  ESEWA_NOT_CONFIGURED: {
+    key: "ESEWA_NOT_CONFIGURED",
+    message: "Online payment isn't available yet. Contact us and we will record the renewal.",
+  },
+  ESEWA_NPR_ONLY: { key: "ESEWA_NPR_ONLY", message: "eSewa can only take payment in NPR" },
   ESEWA_PAYMENT_INVALID: {
     key: "ESEWA_PAYMENT_INVALID",
     message: "We couldn't confirm this eSewa payment. If you were charged, contact us.",

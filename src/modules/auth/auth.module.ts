@@ -12,12 +12,7 @@ import { BranchScopeService } from "./application/branch-scope.service";
 import { AuthController } from "./interfaces/http/auth.controller";
 
 @Module({
-  imports: [
-    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 10 }]),
-    UsersModule,
-    BranchesModule,
-    RestaurantsModule,
-  ],
+  imports: [ThrottlerModule.forRoot([{ ttl: 60_000, limit: 10 }]), UsersModule, BranchesModule, RestaurantsModule],
   controllers: [AuthController],
   providers: [AuthTokenService, BranchScopeService, SignInStaffUsecase, SignUpUsecase, SwitchBranchUsecase, FetchAuthProfileUsecase],
   exports: [AuthTokenService],

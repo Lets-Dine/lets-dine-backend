@@ -25,7 +25,15 @@ import { RestaurantDiningSessionController } from "./interfaces/http/restaurant-
   // `EndDiningSessionService` needs `OrderRepository` to close out a session's orders, and
   // `OrdersModule` needs `DiningSessionRepository` for order creation — a genuine cycle between
   // the two domains, broken with `forwardRef` on both sides (see `OrdersModule`'s own imports).
-  imports: [BranchesModule, RestaurantsModule, TablesModule, FloorsModule, AuditLogsModule, CustomersModule, forwardRef(() => OrdersModule)],
+  imports: [
+    BranchesModule,
+    RestaurantsModule,
+    TablesModule,
+    FloorsModule,
+    AuditLogsModule,
+    CustomersModule,
+    forwardRef(() => OrdersModule),
+  ],
   controllers: [DiningSessionController, RestaurantDiningSessionController],
   providers: [
     DiningSessionService,

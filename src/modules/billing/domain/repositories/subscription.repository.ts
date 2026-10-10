@@ -34,7 +34,7 @@ export abstract class SubscriptionRepository {
   abstract findStatusByRestaurantId(restaurantId: string): Promise<SubscriptionStatus | null>;
   abstract findDetailByRestaurantId(restaurantId: string, options?: ISubscriptionOptions): Promise<ISubscriptionDetail | null>;
   abstract findDetailById(id: string, options?: ISubscriptionOptions): Promise<ISubscriptionDetail | null>;
-  /** Live subscriptions whose paid window ends by `periodEndBy` and that have no open invoice yet. */
+  /** Live subscriptions whose paid window ends by `periodEndBy` and that have no open renewal charge yet. */
   abstract findDueForInvoicing(periodEndBy: Date): Promise<ISubscriptionDetail[]>;
   /** Every subscription the lifecycle sweep still has to watch (anything not cancelled). */
   abstract findAllLive(): Promise<ILifecycleSubscription[]>;

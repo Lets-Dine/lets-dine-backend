@@ -14,6 +14,7 @@ export interface IDishCreate {
   imageUrl?: string | null;
   price: number;
   isAvailable?: boolean;
+  autoConsumeStock?: boolean | null;
   isFeatured?: boolean;
   sortOrder?: number;
   spiceLevel?: number;

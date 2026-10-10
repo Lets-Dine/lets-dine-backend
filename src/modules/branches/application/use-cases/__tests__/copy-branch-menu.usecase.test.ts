@@ -23,7 +23,10 @@ describe("CopyBranchMenuUsecase", () => {
       providers: [
         CopyBranchMenuUsecase,
         { provide: BranchRepository, useValue: { findById: jest.fn() } },
-        { provide: BranchMenuRepository, useValue: { isMenuEmpty: jest.fn().mockResolvedValue(true), copyMenu: jest.fn().mockResolvedValue(copied) } },
+        {
+          provide: BranchMenuRepository,
+          useValue: { isMenuEmpty: jest.fn().mockResolvedValue(true), copyMenu: jest.fn().mockResolvedValue(copied) },
+        },
         { provide: AuditLogService, useValue: { record: jest.fn() } },
       ],
     }).compile();
@@ -38,7 +41,11 @@ describe("CopyBranchMenuUsecase", () => {
     await expect(usecase.execute("to", "from", owner)).resolves.toEqual(copied);
     expect(menus.copyMenu).toHaveBeenCalledWith("from", "to", owner.sub);
     expect(audit.record).toHaveBeenCalledWith(
-      expect.objectContaining({ action: AuditAction.branch_updated, subject: "Lazimpat", detail: expect.stringContaining("copied from Main") }),
+      expect.objectContaining({
+        action: AuditAction.branch_updated,
+        subject: "Lazimpat",
+        detail: expect.stringContaining("copied from Main"),
+      }),
       owner
     );
   });

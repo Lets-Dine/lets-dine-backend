@@ -41,10 +41,13 @@ describe("FetchTopSellingDishesUsecase", () => {
       await usecase.execute({}, authUser);
 
       // Assert
-      expect(analyticsRepository.fetchTopSellingDishes).toHaveBeenCalledWith({ restaurantId: authUser.restaurantId }, {
-        from: new Date(0),
-        to: new Date("2026-01-20T12:00:00.000Z"),
-      });
+      expect(analyticsRepository.fetchTopSellingDishes).toHaveBeenCalledWith(
+        { restaurantId: authUser.restaurantId },
+        {
+          from: new Date(0),
+          to: new Date("2026-01-20T12:00:00.000Z"),
+        }
+      );
     });
 
     it("scopes to that one calendar day when only startDate is given", async () => {
@@ -55,10 +58,13 @@ describe("FetchTopSellingDishesUsecase", () => {
       await usecase.execute({ startDate: new Date("2026-01-15T10:00:00.000Z") }, authUser);
 
       // Assert — Kathmandu's Jan 15 runs from 18:15 UTC Jan 14 through 18:15 UTC Jan 15
-      expect(analyticsRepository.fetchTopSellingDishes).toHaveBeenCalledWith({ restaurantId: authUser.restaurantId }, {
-        from: new Date("2026-01-14T18:15:00.000Z"),
-        to: new Date("2026-01-15T18:15:00.000Z"),
-      });
+      expect(analyticsRepository.fetchTopSellingDishes).toHaveBeenCalledWith(
+        { restaurantId: authUser.restaurantId },
+        {
+          from: new Date("2026-01-14T18:15:00.000Z"),
+          to: new Date("2026-01-15T18:15:00.000Z"),
+        }
+      );
     });
 
     it("scopes to the inclusive range when both dates are given", async () => {
@@ -66,10 +72,13 @@ describe("FetchTopSellingDishesUsecase", () => {
       await usecase.execute({ startDate: new Date("2026-01-10T00:00:00.000Z"), endDate: new Date("2026-01-12T00:00:00.000Z") }, authUser);
 
       // Assert — through the END of Jan 12, not its start
-      expect(analyticsRepository.fetchTopSellingDishes).toHaveBeenCalledWith({ restaurantId: authUser.restaurantId }, {
-        from: new Date("2026-01-10T00:00:00.000Z"),
-        to: new Date("2026-01-13T00:00:00.000Z"),
-      });
+      expect(analyticsRepository.fetchTopSellingDishes).toHaveBeenCalledWith(
+        { restaurantId: authUser.restaurantId },
+        {
+          from: new Date("2026-01-10T00:00:00.000Z"),
+          to: new Date("2026-01-13T00:00:00.000Z"),
+        }
+      );
     });
 
     it("rejects an endDate given without a startDate", async () => {

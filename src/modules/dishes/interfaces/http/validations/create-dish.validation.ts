@@ -9,6 +9,8 @@ export const createDishSchema = z.object({
   /** Integer minor units — a price is never sent as 4.20. */
   price: z.number().int().min(0),
   isAvailable: z.boolean().optional(),
+  /** Null = follow the branch. */
+  autoConsumeStock: z.boolean().nullish(),
   isFeatured: z.boolean().optional(),
   sortOrder: z.number().int().min(0).optional(),
   spiceLevel: z.number().int().min(0).max(3).optional(),

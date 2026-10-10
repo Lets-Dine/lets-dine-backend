@@ -1,5 +1,6 @@
 export const BILLING_SUCCESS_MESSAGES = {
   SUBSCRIPTION_FETCHED: { key: "SUBSCRIPTION_FETCHED", message: "Subscription fetched successfully" },
+  REFERRALS_FETCHED: { key: "REFERRALS_FETCHED", message: "Referrals fetched successfully" },
   USAGE_FETCHED: { key: "USAGE_FETCHED", message: "Usage fetched successfully" },
   PLANS_FETCHED: { key: "PLANS_FETCHED", message: "Plans fetched successfully" },
   PLATFORM_PLANS_FETCHED: { key: "PLATFORM_PLANS_FETCHED", message: "Plans fetched successfully" },
@@ -10,6 +11,9 @@ export const BILLING_SUCCESS_MESSAGES = {
   PLAN_CHANGED: { key: "PLAN_CHANGED", message: "Plan updated successfully" },
   PLAN_ASSIGNED: { key: "PLAN_ASSIGNED", message: "Plan assigned successfully" },
   INVOICES_GENERATED: { key: "INVOICES_GENERATED", message: "Invoices generated successfully" },
+  COMPLIMENTARY_ROLLED: { key: "COMPLIMENTARY_ROLLED", message: "Complimentary periods rolled forward" },
+  RENEWAL_RECORDED: { key: "RENEWAL_RECORDED", message: "Renewal recorded" },
+  RENEWAL_STARTED: { key: "RENEWAL_STARTED", message: "Renewal ready" },
   INVOICE_PAID: { key: "INVOICE_PAID", message: "Invoice marked as paid" },
   ESEWA_STARTED: { key: "ESEWA_STARTED", message: "eSewa checkout ready" },
   LIFECYCLE_RUN: { key: "BILLING_LIFECYCLE_RUN", message: "Subscription lifecycle processed" },

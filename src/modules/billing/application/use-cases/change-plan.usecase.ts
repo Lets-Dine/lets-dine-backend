@@ -104,7 +104,14 @@ export class ChangePlanUsecase {
           subscriptionId: subscription.id,
           restaurantId: subscription.restaurantId,
           number: buildInvoiceNumber(now),
-          lines: [{ description: `Upgrade ${subscription.plan.name} → ${plan.name}, ${daysLeft} days left in this period`, quantity: 1, unitAmount: amount, amount }],
+          lines: [
+            {
+              description: `Upgrade ${subscription.plan.name} → ${plan.name}, ${daysLeft} days left in this period`,
+              quantity: 1,
+              unitAmount: amount,
+              amount,
+            },
+          ],
           amount,
           currency: plan.currency,
           periodStart: now,
@@ -138,8 +145,10 @@ export class ChangePlanUsecase {
     const blockers: { kind: "branches" | "seats"; used: number; limit: number; remove: number }[] = [];
     const branchLimit = cap(limits.branches, subscription.extraBranches, plan.extraBranchPrice);
     const seatLimit = cap(limits.staffSeats, subscription.extraSeats, plan.extraSeatPrice);
-    if (branchLimit !== undefined && branches > branchLimit) blockers.push({ kind: "branches", used: branches, limit: branchLimit, remove: branches - branchLimit });
-    if (seatLimit !== undefined && seats > seatLimit) blockers.push({ kind: "seats", used: seats, limit: seatLimit, remove: seats - seatLimit });
+    if (branchLimit !== undefined && branches > branchLimit)
+      blockers.push({ kind: "branches", used: branches, limit: branchLimit, remove: branches - branchLimit });
+    if (seatLimit !== undefined && seats > seatLimit)
+      blockers.push({ kind: "seats", used: seats, limit: seatLimit, remove: seats - seatLimit });
     if (blockers.length === 0) return;
 
     const what = blockers.map(b => `${b.used} active ${b.kind} (${plan.name} allows ${b.limit}) — remove ${b.remove}`).join("; ");

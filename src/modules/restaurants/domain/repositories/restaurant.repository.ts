@@ -14,10 +14,12 @@ export interface IRestaurantCreate {
   serviceChargeRate?: number;
   taxRate?: number;
   deliveryFeeAmount?: number | null;
+  autoConsumeStock?: boolean;
   vatPanNumber?: string | null;
+  referredByRestaurantId?: string;
 }
 
-export type IRestaurantUpdate = Partial<Omit<IRestaurantCreate, "slug">> & { isActive?: boolean };
+export type IRestaurantUpdate = Partial<Omit<IRestaurantCreate, "slug" | "referredByRestaurantId">> & { isActive?: boolean };
 
 export interface RestaurantFetchOptions {
   tx?: PrismaTransaction;

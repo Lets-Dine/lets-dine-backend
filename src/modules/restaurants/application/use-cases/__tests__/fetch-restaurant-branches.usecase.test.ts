@@ -5,8 +5,20 @@ import { RestaurantRepository } from "../../../domain/repositories/restaurant.re
 import { FetchRestaurantBranchesUsecase } from "../fetch-restaurant-branches.usecase";
 
 const branch = {
-  id: "b1", name: "Main", slug: "main", address: "Thamel", phone: null, latitude: null, longitude: null,
-  timezone: "Asia/Kathmandu", isDefault: true, isActive: true, taxRate: 0.9, serviceChargeRate: 0.9, deliveryFeeAmount: 500, hours: [],
+  id: "b1",
+  name: "Main",
+  slug: "main",
+  address: "Thamel",
+  phone: null,
+  latitude: null,
+  longitude: null,
+  timezone: "Asia/Kathmandu",
+  isDefault: true,
+  isActive: true,
+  taxRate: 0.9,
+  serviceChargeRate: 0.9,
+  deliveryFeeAmount: 500,
+  hours: [],
 } as any;
 
 describe("FetchRestaurantBranchesUsecase", () => {

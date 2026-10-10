@@ -53,5 +53,8 @@ export abstract class InvoiceRepository {
    */
   abstract recordAsExpense(invoice: IInvoice, options?: IInvoiceOptions): Promise<void>;
   /** Voids every open invoice of a subscription (or just one `kind`), optionally sparing one. Returns how many were voided. */
-  abstract voidOpenForSubscription(subscriptionId: string, options?: IInvoiceOptions & { exceptId?: string; kind?: InvoiceKind }): Promise<number>;
+  abstract voidOpenForSubscription(
+    subscriptionId: string,
+    options?: IInvoiceOptions & { exceptId?: string; kind?: InvoiceKind }
+  ): Promise<number>;
 }

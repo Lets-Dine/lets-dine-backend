@@ -15,23 +15,25 @@ import { AssignPlanUsecase } from "../../application/use-cases/assign-plan.useca
 import { FetchPlatformPlansUsecase } from "../../application/use-cases/fetch-platform-plans.usecase";
 import { UpdatePlatformPlansUsecase } from "../../application/use-cases/update-platform-plans.usecase";
 import { FetchPlatformInvoicesUsecase } from "../../application/use-cases/fetch-platform-invoices.usecase";
-import { GenerateInvoicesUsecase, IGenerateInvoicesResult } from "../../application/use-cases/generate-invoices.usecase";
+import { IRollComplimentaryResult, RollComplimentaryPeriodsUsecase } from "../../application/use-cases/roll-complimentary-periods.usecase";
+import { RecordRenewalPaymentUsecase } from "../../application/use-cases/record-renewal-payment.usecase";
 import { MarkInvoicePaidUsecase } from "../../application/use-cases/mark-invoice-paid.usecase";
 import { IRunLifecycleResult, RunLifecycleUsecase } from "../../application/use-cases/run-lifecycle.usecase";
-import { BILLING_SUCCESS_MESSAGES } from "../../domain/constants";
+import { BILLING_SUCCESS_MESSAGES, INVOICE_LEAD_DAYS } from "../../domain/constants";
 import { IInvoice, IPlatformPlans, ISubscriptionView, ITenantListItem, ITenantViewCounts } from "../../domain/interfaces/billing.interface";
 
 /**
- * Operator-side billing, behind the platform key like restaurant onboarding. With
- * no scheduler yet, generating invoices and running the lifecycle are triggered
- * here — they are idempotent, so a scheduler can later call the same use cases.
+ * Operator-side billing, behind the platform key like restaurant onboarding.
+ * Complimentary roll-forward and the lifecycle sweep are the same use cases the
+ * daily job runs, so an operator can still trigger either by hand.
  */
 @Controller("platform/billing")
 @UseGuards(PlatformGuard)
 export class PlatformBillingController {
   constructor(
     private readonly fetchPlatformInvoicesUsecase: FetchPlatformInvoicesUsecase,
-    private readonly generateInvoicesUsecase: GenerateInvoicesUsecase,
+    private readonly rollComplimentaryPeriodsUsecase: RollComplimentaryPeriodsUsecase,
+    private readonly recordRenewalPaymentUsecase: RecordRenewalPaymentUsecase,
     private readonly markInvoicePaidUsecase: MarkInvoicePaidUsecase,
     private readonly runLifecycleUsecase: RunLifecycleUsecase,
     private readonly assignPlanUsecase: AssignPlanUsecase,
@@ -73,15 +75,18 @@ export class PlatformBillingController {
 
   @Post("invoices/generate")
   @HttpCode(HttpStatus.OK)
-  async generateInvoices(@Body() dto: GenerateInvoicesDto): Promise<IHttpResponse<IGenerateInvoicesResult>> {
-    const result = await this.generateInvoicesUsecase.execute(dto);
-    return buildHttpResponse(result, BILLING_SUCCESS_MESSAGES.INVOICES_GENERATED);
+  async rollComplimentary(@Body() dto: GenerateInvoicesDto): Promise<IHttpResponse<IRollComplimentaryResult>> {
+    const result = await this.rollComplimentaryPeriodsUsecase.execute(new Date(), dto.leadDays ?? INVOICE_LEAD_DAYS);
+    return buildHttpResponse(result, BILLING_SUCCESS_MESSAGES.COMPLIMENTARY_ROLLED);
   }
 
-  @Post("restaurants/:restaurantId/invoices")
-  async generateInvoiceForRestaurant(@Param("restaurantId", ParseUuidPipe) restaurantId: string): Promise<IHttpResponse<IInvoice>> {
-    const invoice = await this.generateInvoicesUsecase.executeForRestaurant(restaurantId);
-    return buildHttpResponse(invoice, BILLING_SUCCESS_MESSAGES.INVOICES_GENERATED);
+  @Post("restaurants/:restaurantId/renewal")
+  async recordRenewal(
+    @Param("restaurantId", ParseUuidPipe) restaurantId: string,
+    @Body() dto: MarkInvoicePaidDto
+  ): Promise<IHttpResponse<ISubscriptionView>> {
+    const subscription = await this.recordRenewalPaymentUsecase.execute(restaurantId, dto);
+    return buildHttpResponse(subscription, BILLING_SUCCESS_MESSAGES.RENEWAL_RECORDED);
   }
 
   @Post("invoices/:id/mark-paid")

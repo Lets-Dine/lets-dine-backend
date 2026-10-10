@@ -15,6 +15,7 @@ export interface IBranchCreate {
   serviceChargeRate?: number | null;
   taxRate?: number | null;
   deliveryFeeAmount?: number | null;
+  autoConsumeStock?: boolean | null;
   isDefault?: boolean;
 }
 

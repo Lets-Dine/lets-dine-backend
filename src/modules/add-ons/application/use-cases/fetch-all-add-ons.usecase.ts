@@ -12,6 +12,9 @@ export class FetchAllAddOnsUsecase {
   async execute(query: FetchAddOnsQuery, authEntity: AuthEntity): Promise<PaginatedResponse<IAddOn>> {
     const { keyword, isAvailable, isArchived, ...pagination } = query;
 
-    return this.addOnRepository.fetchAll({ restaurantId: authEntity.restaurantId, branchId: authEntity.branchId, keyword, isAvailable, isArchived }, pagination);
+    return this.addOnRepository.fetchAll(
+      { restaurantId: authEntity.restaurantId, branchId: authEntity.branchId, keyword, isAvailable, isArchived },
+      pagination
+    );
   }
 }

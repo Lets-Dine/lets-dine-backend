@@ -15,10 +15,15 @@ import { UpdatePlatformPlansUsecase } from "./application/use-cases/update-platf
 import { FetchPlansUsecase } from "./application/use-cases/fetch-plans.usecase";
 import { FetchPublicPlansUsecase } from "./application/use-cases/fetch-public-plans.usecase";
 import { FetchPlatformInvoicesUsecase } from "./application/use-cases/fetch-platform-invoices.usecase";
+import { FetchReferralsUsecase } from "./application/use-cases/fetch-referrals.usecase";
 import { FetchSubscriptionUsecase } from "./application/use-cases/fetch-subscription.usecase";
 import { FetchUsageUsecase } from "./application/use-cases/fetch-usage.usecase";
-import { GenerateInvoicesUsecase } from "./application/use-cases/generate-invoices.usecase";
+import { RecordRenewalPaymentUsecase } from "./application/use-cases/record-renewal-payment.usecase";
+import { RenewSubscriptionUsecase } from "./application/use-cases/renew-subscription.usecase";
+import { RollComplimentaryPeriodsUsecase } from "./application/use-cases/roll-complimentary-periods.usecase";
 import { MarkInvoicePaidUsecase } from "./application/use-cases/mark-invoice-paid.usecase";
+import { ReferralRewardService } from "./application/referral-reward.service";
+import { RenewalChargeService } from "./application/renewal-charge.service";
 import { RunLifecycleUsecase } from "./application/use-cases/run-lifecycle.usecase";
 import { InvoiceRepository } from "./domain/repositories/invoice.repository";
 import { PlanRepository } from "./domain/repositories/plan.repository";
@@ -52,10 +57,13 @@ import { PlatformBillingController } from "./interfaces/http/platform-billing.co
     EntitlementService,
     SubscriptionService,
     InvoiceSettlementService,
+    ReferralRewardService,
+    RenewalChargeService,
     EsewaCheckoutService,
     { provide: StaffAccessPolicy, useClass: SubscriptionStaffAccessPolicy },
     SubscriptionActiveGuard,
     FetchSubscriptionUsecase,
+    FetchReferralsUsecase,
     FetchUsageUsecase,
     FetchPlansUsecase,
     FetchPublicPlansUsecase,
@@ -66,7 +74,9 @@ import { PlatformBillingController } from "./interfaces/http/platform-billing.co
     FetchInvoicesUsecase,
     ChangePlanUsecase,
     FetchPlatformInvoicesUsecase,
-    GenerateInvoicesUsecase,
+    RollComplimentaryPeriodsUsecase,
+    RenewSubscriptionUsecase,
+    RecordRenewalPaymentUsecase,
     MarkInvoicePaidUsecase,
     RunLifecycleUsecase,
     AssignPlanUsecase,

@@ -14,20 +14,29 @@ export class FonepayController {
   @Get()
   @CheckPolicies(checkPermissionRules([["settings:view"]]))
   async get(@AuthUser() auth: AuthEntity) {
-    return buildHttpResponse(await this.fonepay.getConfigSummary(auth.restaurantId), { key: "FONEPAY_SETTINGS", message: "Fonepay settings" });
+    return buildHttpResponse(await this.fonepay.getConfigSummary(auth.restaurantId), {
+      key: "FONEPAY_SETTINGS",
+      message: "Fonepay settings",
+    });
   }
 
   @Put()
   @CheckPolicies(checkPermissionRules([["settings:edit"]]))
   async save(@Body() dto: SaveFonepayConfigDto, @AuthUser() auth: AuthEntity) {
     await this.fonepay.saveConfig(auth.restaurantId, dto);
-    return buildHttpResponse(await this.fonepay.getConfigSummary(auth.restaurantId), { key: "FONEPAY_SETTINGS_SAVED", message: "Fonepay settings saved" });
+    return buildHttpResponse(await this.fonepay.getConfigSummary(auth.restaurantId), {
+      key: "FONEPAY_SETTINGS_SAVED",
+      message: "Fonepay settings saved",
+    });
   }
 
   @Patch()
   @CheckPolicies(checkPermissionRules([["settings:edit"]]))
   async setEnabled(@Body() dto: SetFonepayEnabledDto, @AuthUser() auth: AuthEntity) {
     await this.fonepay.setEnabled(auth.restaurantId, dto.enabled);
-    return buildHttpResponse(await this.fonepay.getConfigSummary(auth.restaurantId), { key: "FONEPAY_SETTINGS_SAVED", message: "Fonepay settings saved" });
+    return buildHttpResponse(await this.fonepay.getConfigSummary(auth.restaurantId), {
+      key: "FONEPAY_SETTINGS_SAVED",
+      message: "Fonepay settings saved",
+    });
   }
 }

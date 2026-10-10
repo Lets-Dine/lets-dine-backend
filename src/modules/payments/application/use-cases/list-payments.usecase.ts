@@ -11,6 +11,9 @@ export class ListPaymentsUsecase {
   async execute(query: FetchPaymentsQuery, authEntity: AuthEntity): Promise<PaginatedResponse<IPaymentWithItems>> {
     const { tableId, from, to, ...pagination } = query;
 
-    return this.paymentRepository.fetchAll({ restaurantId: authEntity.restaurantId, branchId: authEntity.branchId, tableId, from, to }, pagination);
+    return this.paymentRepository.fetchAll(
+      { restaurantId: authEntity.restaurantId, branchId: authEntity.branchId, tableId, from, to },
+      pagination
+    );
   }
 }

@@ -45,8 +45,17 @@ describe("ChangePlanUsecase", () => {
           },
         },
         { provide: PlanRepository, useValue: { findByKey: jest.fn().mockResolvedValue(starter) } },
-        { provide: InvoiceRepository, useValue: { voidOpenForSubscription: jest.fn(), create: jest.fn().mockImplementation(async data => ({ id: "invoice-up", ...data })) } },
-        { provide: UsageRepository, useValue: { countActiveBranches: jest.fn().mockResolvedValue(1), countActiveSeats: jest.fn().mockResolvedValue(1) } },
+        {
+          provide: InvoiceRepository,
+          useValue: {
+            voidOpenForSubscription: jest.fn(),
+            create: jest.fn().mockImplementation(async data => ({ id: "invoice-up", ...data })),
+          },
+        },
+        {
+          provide: UsageRepository,
+          useValue: { countActiveBranches: jest.fn().mockResolvedValue(1), countActiveSeats: jest.fn().mockResolvedValue(1) },
+        },
       ],
     }).compile();
 
@@ -99,7 +108,11 @@ describe("ChangePlanUsecase", () => {
       // Assert
       expect(result.effective).toBe("on_payment");
       expect(result.invoice).toMatchObject({ amount: 125000, kind: "UPGRADE", upgradePlanId: "plan-growth" });
-      expect(subscriptionRepository.update).not.toHaveBeenCalledWith("sub-1", expect.objectContaining({ planId: expect.anything() }), expect.anything());
+      expect(subscriptionRepository.update).not.toHaveBeenCalledWith(
+        "sub-1",
+        expect.objectContaining({ planId: expect.anything() }),
+        expect.anything()
+      );
     });
 
     it("should queue a downgrade for the end of the paid period instead of applying it", async () => {

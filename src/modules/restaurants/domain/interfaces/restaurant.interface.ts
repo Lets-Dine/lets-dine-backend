@@ -13,6 +13,8 @@ export interface IRestaurant {
   taxRate: number;
   /** Flat minor-unit delivery charge; null/0 = no fee. */
   deliveryFeeAmount: number | null;
+  /** Whether starting a dish takes its recipe off stock; a branch or dish may override it. */
+  autoConsumeStock: boolean;
   /** VAT/PAN registration number printed on receipts. */
   vatPanNumber: string | null;
   isActive: boolean;

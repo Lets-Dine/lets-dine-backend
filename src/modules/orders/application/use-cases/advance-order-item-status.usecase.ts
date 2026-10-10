@@ -1,9 +1,10 @@
 import { Injectable } from "@nestjs/common";
-import { AuditAction, OrderStatus } from "@prisma/client";
+import { AuditAction, OrderItemStatus, OrderStatus } from "@prisma/client";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { BadRequestException, NotFoundException } from "../../../../common/exceptions";
 import { AuthEntity, isInActiveBranch } from "../../../../common/interfaces";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
+import { InventoryService } from "../../../inventory/application/inventory.service";
 import { ORDER_ERROR_MESSAGES } from "../../domain/constants";
 import { OrderItemEntity } from "../../domain/entity/order-item.entity";
 import { IOrderWithItems } from "../../domain/interfaces/order.interface";
@@ -21,6 +22,7 @@ export class AdvanceOrderItemStatusUsecase {
   constructor(
     private readonly orderRepository: OrderRepository,
     private readonly auditLogService: AuditLogService,
+    private readonly inventoryService: InventoryService,
     private readonly eventEmitter: EventEmitter2
   ) {}
 
@@ -43,6 +45,23 @@ export class AdvanceOrderItemStatusUsecase {
       }
 
       const afterItemUpdate = await this.orderRepository.updateItemStatus(itemId, dto.status, { tx });
+
+      // Stock comes off when the kitchen starts the line. Only PENDING can move to PREPARING, and a
+      // line is cancellable only while PENDING — so nothing is ever deducted for a cancelled line.
+      if (dto.status === OrderItemStatus.PREPARING) {
+        await this.inventoryService.consumeForItem(
+          {
+            id: item.id,
+            dishId: item.dishId,
+            variantId: item.variantId,
+            addOnIds: item.addOns.map(addOn => addOn.addOnId),
+            quantity: item.quantity,
+          },
+          order.branchId,
+          authEntity.sub,
+          tx
+        );
+      }
       const status = deriveOrderStatus(afterItemUpdate.items, order.cancelledAt, order.orderType, {
         isFloorOrder: Boolean(order.floorId),
         paidAt: order.paidAt,

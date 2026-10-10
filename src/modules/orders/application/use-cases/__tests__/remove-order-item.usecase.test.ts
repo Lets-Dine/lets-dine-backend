@@ -115,7 +115,12 @@ describe("RemoveOrderItemUsecase", () => {
 
     it("should throw NotFoundException when the item is no longer on the order", async () => {
       // Arrange
-      orderRepository.findById.mockResolvedValue({ id: "order-1", restaurantId: authUser.restaurantId, branchId: authUser.branchId, items: [] } as any);
+      orderRepository.findById.mockResolvedValue({
+        id: "order-1",
+        restaurantId: authUser.restaurantId,
+        branchId: authUser.branchId,
+        items: [],
+      } as any);
 
       // Act & Assert
       await expect(usecase.execute("order-1", "item-1", authUser)).rejects.toThrow(

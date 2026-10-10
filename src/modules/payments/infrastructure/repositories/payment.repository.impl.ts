@@ -14,7 +14,10 @@ import {
 const WITH_CUSTOMER = { items: true, customer: { select: { name: true } } } satisfies Prisma.PaymentInclude;
 
 /** Flattens the joined customer to `customerName`, so the receipt needs no nested object. */
-function withCustomerName<T extends { customer: { name: string } | null }>({ customer, ...payment }: T): Omit<T, "customer"> & { customerName: string | null } {
+function withCustomerName<T extends { customer: { name: string } | null }>({
+  customer,
+  ...payment
+}: T): Omit<T, "customer"> & { customerName: string | null } {
   return { ...payment, customerName: customer?.name ?? null };
 }
 

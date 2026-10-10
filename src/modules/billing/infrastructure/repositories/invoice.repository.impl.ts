@@ -78,10 +78,18 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
     });
   }
 
-  async voidOpenForSubscription(subscriptionId: string, options?: IInvoiceOptions & { exceptId?: string; kind?: InvoiceKind }): Promise<number> {
+  async voidOpenForSubscription(
+    subscriptionId: string,
+    options?: IInvoiceOptions & { exceptId?: string; kind?: InvoiceKind }
+  ): Promise<number> {
     const prisma = options?.tx ?? this.prisma;
     const { count } = await prisma.invoice.updateMany({
-      where: { subscriptionId, status: "OPEN", ...(options?.kind && { kind: options.kind }), ...(options?.exceptId && { id: { not: options.exceptId } }) },
+      where: {
+        subscriptionId,
+        status: "OPEN",
+        ...(options?.kind && { kind: options.kind }),
+        ...(options?.exceptId && { id: { not: options.exceptId } }),
+      },
       data: { status: "VOID" },
     });
     return count;

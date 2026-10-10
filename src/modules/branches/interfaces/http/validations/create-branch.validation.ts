@@ -12,6 +12,8 @@ export const createBranchSchema = z.object({
   serviceChargeRate: rate.nullable().optional(),
   taxRate: rate.nullable().optional(),
   deliveryFeeAmount: z.number().int().min(0).nullable().optional(),
+  /** Null = follow the restaurant. */
+  autoConsumeStock: z.boolean().nullable().optional(),
   /** Start this branch's menu as a copy of another branch's. Without it the new branch has an empty menu. */
   copyMenuFrom: z.string().uuid().optional(),
 });

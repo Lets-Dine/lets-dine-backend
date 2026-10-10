@@ -38,7 +38,11 @@ describe("FetchAnalyticsOverviewUsecase", () => {
       // Assert
       const spanDays = (result.range.to.getTime() - result.range.from.getTime()) / (24 * 60 * 60 * 1000);
       expect(Math.round(spanDays)).toBe(30);
-      expect(analyticsRepository.fetchOrderSummary).toHaveBeenCalledWith({ restaurantId: authUser.restaurantId }, result.range, expect.anything());
+      expect(analyticsRepository.fetchOrderSummary).toHaveBeenCalledWith(
+        { restaurantId: authUser.restaurantId },
+        result.range,
+        expect.anything()
+      );
       expect(result.orders).toEqual({ total: 12 });
     });
 

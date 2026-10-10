@@ -9,6 +9,8 @@ export const updateDishSchema = z
     imageUrl: z.string().url().max(500).nullish(),
     price: z.number().int().min(0).optional(),
     isAvailable: z.boolean().optional(),
+    /** Null = follow the branch. */
+    autoConsumeStock: z.boolean().nullish(),
     isFeatured: z.boolean().optional(),
     sortOrder: z.number().int().min(0).optional(),
     spiceLevel: z.number().int().min(0).max(3).optional(),

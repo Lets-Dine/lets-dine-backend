@@ -15,7 +15,15 @@ const tx = {} as any;
 const restaurant = { id: authUser.restaurantId, serviceChargeRate: 0.1, taxRate: 0.13, currency: "NPR" };
 
 function buildOrder(status: OrderStatus, items: { id?: string; unitPrice?: number; quantity?: number; status: OrderItemStatus }[] = []) {
-  return { id: "order-1", reference: "#1001", restaurantId: authUser.restaurantId, branchId: authUser.branchId, status, discount: 0, items } as any;
+  return {
+    id: "order-1",
+    reference: "#1001",
+    restaurantId: authUser.restaurantId,
+    branchId: authUser.branchId,
+    status,
+    discount: 0,
+    items,
+  } as any;
 }
 
 describe("CancelOrderUsecase", () => {

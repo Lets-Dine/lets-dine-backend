@@ -10,7 +10,15 @@ import { UpdateFloorUsecase } from "../update-floor.usecase";
 
 const authUser = buildAuthEntity();
 const floor = (overrides = {}) =>
-  ({ id: "floor-1", restaurantId: authUser.restaurantId, branchId: authUser.branchId, name: "Ground", qrToken: "t", isActive: true, ...overrides }) as any;
+  ({
+    id: "floor-1",
+    restaurantId: authUser.restaurantId,
+    branchId: authUser.branchId,
+    name: "Ground",
+    qrToken: "t",
+    isActive: true,
+    ...overrides,
+  }) as any;
 
 describe("floor use cases — branch scoping", () => {
   let create: CreateFloorUsecase;
@@ -26,7 +34,10 @@ describe("floor use cases — branch scoping", () => {
         UpdateFloorUsecase,
         RegenerateFloorQrUsecase,
         FetchAllFloorsUsecase,
-        { provide: FloorRepository, useValue: { findById: jest.fn(), findByName: jest.fn(), create: jest.fn(), update: jest.fn(), fetchAll: jest.fn() } },
+        {
+          provide: FloorRepository,
+          useValue: { findById: jest.fn(), findByName: jest.fn(), create: jest.fn(), update: jest.fn(), fetchAll: jest.fn() },
+        },
         { provide: AuditLogService, useValue: { record: jest.fn() } },
       ],
     }).compile();

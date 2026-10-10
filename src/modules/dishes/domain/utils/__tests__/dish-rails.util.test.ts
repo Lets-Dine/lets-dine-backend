@@ -14,6 +14,7 @@ function buildDish(id: string, price: number, stats: Partial<IDishStats>, overri
     imageUrl: null,
     price,
     isAvailable: true,
+    autoConsumeStock: null,
     isArchived: false,
     isFeatured: false,
     sortOrder: 0,

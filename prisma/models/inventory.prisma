@@ -1,0 +1,131 @@
+enum StockMovementReason {
+  /// Stock received from a supplier.
+  DELIVERY
+  /// Used up when the kitchen starts an order line (item status PREPARING).
+  ORDER
+  /// A manual correction — a recount, spoilage, a spill.
+  ADJUSTMENT
+  /// Taken off by hand: for a dish when stock is not consumed automatically, or waste, a staff meal.
+  MANUAL_USE
+  /// Sent to another branch / received from one.
+  TRANSFER_OUT
+  TRANSFER_IN
+
+  @@schema("public")
+}
+
+/// Something the kitchen buys and uses up. Quantity is an integer count of the base `unit`
+/// (grams, millilitres, pieces) — never a float, so repeated deductions never drift. The UI
+/// converts kg/litres on the way in and out. May go negative: the kitchen never waits on a count.
+model Ingredient {
+  id           String   @id @default(uuid()) @map("id") @db.Uuid
+  restaurantId String   @map("restaurant_id") @db.Uuid
+  branchId     String   @map("branch_id") @db.Uuid
+  name         String   @map("name")
+  /// Display label for the base unit: "g", "ml", "pcs".
+  unit         String   @map("unit")
+  quantity     Int      @default(0) @map("quantity")
+  /// Low-stock warning line, in base units. 0 turns the warning off.
+  parLevel     Int      @default(0) @map("par_level")
+  /// Archived, never hard-deleted — recipes and movements keep pointing at it.
+  isArchived   Boolean  @default(false) @map("is_archived")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  restaurant  Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  branch      Branch          @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  recipeLines RecipeLine[]
+  movements   StockMovement[]
+  lots        StockLot[]
+
+  @@unique([branchId, name])
+  @@index([restaurantId])
+  @@map("ingredients")
+  @@schema("public")
+}
+
+/// How much of an ingredient one unit of a dish uses. A line with neither `variantId` nor
+/// `addOnId` is the dish's base recipe; a line with one is extra, used only when that variant or
+/// add-on is picked. Both are plain ids (no FK): variants and add-ons are archived, never deleted.
+model RecipeLine {
+  id           String  @id @default(uuid()) @map("id") @db.Uuid
+  dishId       String  @map("dish_id") @db.Uuid
+  ingredientId String  @map("ingredient_id") @db.Uuid
+  variantId    String? @map("variant_id") @db.Uuid
+  addOnId      String? @map("add_on_id") @db.Uuid
+  quantity     Int     @map("quantity")
+
+  dish       Dish       @relation(fields: [dishId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@index([dishId])
+  @@index([ingredientId])
+  @@map("recipe_lines")
+  @@schema("public")
+}
+
+/// Every change to an ingredient's quantity, signed. The quantity on `Ingredient` is the running
+/// total; this is why it moved.
+model StockMovement {
+  id           String              @id @default(uuid()) @map("id") @db.Uuid
+  ingredientId String              @map("ingredient_id") @db.Uuid
+  delta        Int                 @map("delta")
+  reason       StockMovementReason @map("reason")
+  /// DELIVERY only.
+  supplier     String?             @map("supplier")
+  /// DELIVERY only: what was paid, integer minor units. Also written to `Expense`.
+  cost         Int?                @map("cost")
+  /// ORDER only.
+  orderItemId  String?             @map("order_item_id") @db.Uuid
+  /// MANUAL_USE only: the dish it was used for, if any. A plain id, so a dish can still be archived.
+  dishId       String?             @map("dish_id") @db.Uuid
+  note         String              @default("") @map("note")
+  createdAt    DateTime            @default(now()) @map("created_at")
+  createdBy    String?             @map("created_by") @db.Uuid
+
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@index([ingredientId, createdAt])
+  @@index([orderItemId])
+  @@map("stock_movements")
+  @@schema("public")
+}
+
+/// One batch of an ingredient: a delivery, or the opening stock. `remaining` is what is left of it —
+/// the kitchen uses the oldest lot first, so each lot knows which orders it went into.
+model StockLot {
+  id           String   @id @default(uuid()) @map("id") @db.Uuid
+  ingredientId String   @map("ingredient_id") @db.Uuid
+  /// Null for opening stock, or a delivery with no supplier named.
+  supplier     String?  @map("supplier")
+  /// What was paid for the whole lot, integer minor units.
+  cost         Int?     @map("cost")
+  quantity     Int      @map("quantity")
+  remaining    Int      @map("remaining")
+  receivedAt   DateTime @default(now()) @map("received_at")
+  createdBy    String?  @map("created_by") @db.Uuid
+
+  ingredient   Ingredient       @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  consumptions LotConsumption[]
+
+  @@index([ingredientId, receivedAt])
+  @@map("stock_lots")
+  @@schema("public")
+}
+
+/// How much of a lot one order line used. This is the join that lets a review find its ingredients:
+/// review → order + dish → order line → lots.
+model LotConsumption {
+  id          String   @id @default(uuid()) @map("id") @db.Uuid
+  lotId       String   @map("lot_id") @db.Uuid
+  orderItemId String   @map("order_item_id") @db.Uuid
+  quantity    Int      @map("quantity")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  lot StockLot @relation(fields: [lotId], references: [id], onDelete: Cascade)
+
+  @@index([lotId])
+  @@index([orderItemId])
+  @@map("lot_consumptions")
+  @@schema("public")
+}

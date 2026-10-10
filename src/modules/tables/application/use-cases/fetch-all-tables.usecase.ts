@@ -10,6 +10,9 @@ export class FetchAllTablesUsecase {
 
   async execute(query: FetchTablesQuery, authEntity: AuthEntity): Promise<PaginatedResponse<IDiningTable>> {
     const { keyword, isActive, ...pagination } = query;
-    return this.diningTableRepository.fetchAll({ restaurantId: authEntity.restaurantId, branchId: authEntity.branchId, keyword, isActive }, pagination);
+    return this.diningTableRepository.fetchAll(
+      { restaurantId: authEntity.restaurantId, branchId: authEntity.branchId, keyword, isActive },
+      pagination
+    );
   }
 }

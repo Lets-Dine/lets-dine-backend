@@ -13,8 +13,15 @@ export const updateRestaurantSchema = z.object({
   taxRate: z.number().min(0).max(1).optional(),
   /** Flat minor-unit delivery charge; null clears it back to "no fee". */
   deliveryFeeAmount: z.number().int().min(0).nullish(),
+  /** Whether starting a dish takes its recipe off stock. */
+  autoConsumeStock: z.boolean().optional(),
   /** VAT/PAN registration number for receipts; null/empty clears it. */
-  vatPanNumber: z.string().trim().max(30).nullish().transform(v => (v === undefined ? undefined : v || null)),
+  vatPanNumber: z
+    .string()
+    .trim()
+    .max(30)
+    .nullish()
+    .transform(v => (v === undefined ? undefined : v || null)),
   isActive: z.boolean().optional(),
 });
 

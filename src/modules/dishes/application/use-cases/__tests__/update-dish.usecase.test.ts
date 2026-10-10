@@ -24,6 +24,7 @@ function buildDish(overrides: Partial<IDish> = {}): IDish {
     imageUrl: null,
     price: 45000,
     isAvailable: true,
+    autoConsumeStock: null,
     isArchived: false,
     isFeatured: false,
     sortOrder: 0,

@@ -11,7 +11,10 @@ describe("PublicBranchService", () => {
 
   beforeEach(async () => {
     const module = await Test.createTestingModule({
-      providers: [PublicBranchService, { provide: BranchRepository, useValue: { findById: jest.fn(), findBySlug: jest.fn(), findDefault: jest.fn() } }],
+      providers: [
+        PublicBranchService,
+        { provide: BranchRepository, useValue: { findById: jest.fn(), findBySlug: jest.fn(), findDefault: jest.fn() } },
+      ],
     }).compile();
     service = module.get(PublicBranchService);
     repo = module.get(BranchRepository);

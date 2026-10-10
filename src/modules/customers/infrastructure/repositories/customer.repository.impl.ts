@@ -6,7 +6,12 @@ import type { PrismaTransaction } from "../../../../common/prisma";
 import { normalizePhone } from "../../../../common/utils";
 import { LAPSED_AFTER_DAYS, NEW_WITHIN_DAYS, REGULAR_MIN_VISITS, RHYTHM_WEEKS } from "../../domain/constants/segments";
 import { CustomerSegment, ICustomer, ICustomerListItem } from "../../domain/interfaces/customer.interface";
-import { CustomerFetchOptions, CustomerRepository, ICustomersFetchQuery, ICustomerUpsert } from "../../domain/repositories/customer.repository";
+import {
+  CustomerFetchOptions,
+  CustomerRepository,
+  ICustomersFetchQuery,
+  ICustomerUpsert,
+} from "../../domain/repositories/customer.repository";
 
 interface CustomerRestaurantWithCustomer {
   restaurantId: string;

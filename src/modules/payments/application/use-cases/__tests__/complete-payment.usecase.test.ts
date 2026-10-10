@@ -6,6 +6,8 @@ import { buildAuthEntity } from "../../../../../common/testing";
 import { AuditLogService } from "../../../../audit-logs/application/audit-log.service";
 import { DiningSessionService } from "../../../../dining-sessions/application/dining-session.service";
 import { DiningSessionRepository } from "../../../../dining-sessions/domain/repositories/dining-session.repository";
+import { AddOnRepository } from "../../../../add-ons/domain/repositories/add-on.repository";
+import { DishVariantRepository } from "../../../../dish-variants/domain/repositories/dish-variant.repository";
 import { DishRepository } from "../../../../dishes/domain/repositories/dish.repository";
 import { OrderRepository } from "../../../../orders/domain/repositories/order.repository";
 import { RestaurantRepository } from "../../../../restaurants/domain/repositories/restaurant.repository";
@@ -18,7 +20,7 @@ const tx = {} as any;
 const session = { id: "session-1", restaurantId: authUser.restaurantId, branchId: authUser.branchId, tableId: "table-1", endedAt: null };
 const restaurant = { id: authUser.restaurantId, serviceChargeRate: 0.1, taxRate: 0.13, currency: "NPR" };
 const dish = { id: "dish-1", restaurantId: authUser.restaurantId, branchId: authUser.branchId, name: "Momo", price: 200 };
-const requestItems = [{ dishId: "dish-1", quantity: 2 }];
+const requestItems = [{ dishId: "dish-1", addOnIds: [], quantity: 2 }];
 const method = "CASH" as const;
 const floorOrder = {
   id: "order-1",
@@ -40,6 +42,8 @@ describe("CompletePaymentUsecase", () => {
   let diningSessionRepository: jest.Mocked<DiningSessionRepository>;
   let diningSessionService: jest.Mocked<DiningSessionService>;
   let dishRepository: jest.Mocked<DishRepository>;
+  let dishVariantRepository: jest.Mocked<DishVariantRepository>;
+  let addOnRepository: jest.Mocked<AddOnRepository>;
   let orderRepository: jest.Mocked<OrderRepository>;
   let restaurantRepository: jest.Mocked<RestaurantRepository>;
   let auditLogService: jest.Mocked<AuditLogService>;
@@ -53,7 +57,12 @@ describe("CompletePaymentUsecase", () => {
         { provide: DiningSessionRepository, useValue: { findById: jest.fn() } },
         { provide: DiningSessionService, useValue: { endSession: jest.fn() } },
         { provide: DishRepository, useValue: { findManyByIds: jest.fn() } },
-        { provide: OrderRepository, useValue: { findById: jest.fn(), findBySessionId: jest.fn().mockResolvedValue([]), update: jest.fn() } },
+        { provide: DishVariantRepository, useValue: { findById: jest.fn() } },
+        { provide: AddOnRepository, useValue: { findManyByIds: jest.fn() } },
+        {
+          provide: OrderRepository,
+          useValue: { findById: jest.fn(), findBySessionId: jest.fn().mockResolvedValue([]), update: jest.fn() },
+        },
         { provide: RestaurantRepository, useValue: { findByIdForBranch: jest.fn() } },
         { provide: AuditLogService, useValue: { record: jest.fn() } },
         { provide: EventEmitter2, useValue: { emit: jest.fn() } },
@@ -65,6 +74,8 @@ describe("CompletePaymentUsecase", () => {
     diningSessionRepository = module.get(DiningSessionRepository);
     diningSessionService = module.get(DiningSessionService);
     dishRepository = module.get(DishRepository);
+    dishVariantRepository = module.get(DishVariantRepository);
+    addOnRepository = module.get(AddOnRepository);
     orderRepository = module.get(OrderRepository);
     restaurantRepository = module.get(RestaurantRepository);
     auditLogService = module.get(AuditLogService);
@@ -97,6 +108,79 @@ describe("CompletePaymentUsecase", () => {
         tx
       );
       expect(diningSessionService.endSession).not.toHaveBeenCalled();
+    });
+
+    describe("variants and add-ons", () => {
+      const large = { id: "variant-large", dishId: "dish-1", name: "Large", price: 350 };
+      const cheese = { id: "addon-cheese", branchId: authUser.branchId, name: "Extra cheese", price: 40 };
+
+      beforeEach(() => {
+        paymentRepository.create.mockResolvedValue({ id: "payment-1" } as any);
+        dishVariantRepository.findById.mockResolvedValue(large as any);
+        addOnRepository.findManyByIds.mockResolvedValue([cheese] as any);
+      });
+
+      it("should charge the variant's own price instead of the dish's base price", async () => {
+        await usecase.execute(
+          { sessionId: "session-1", items: [{ dishId: "dish-1", variantId: "variant-large", addOnIds: [], quantity: 2 }], method },
+          authUser
+        );
+
+        const [createArgs] = paymentRepository.create.mock.calls[0];
+        expect(createArgs.items).toEqual([{ dishId: "dish-1", dishNameSnapshot: "Momo · Large", unitPrice: 350, quantity: 2 }]);
+        expect(createArgs.subtotal).toBe(700);
+      });
+
+      it("should add each add-on's price on top of the dish", async () => {
+        await usecase.execute(
+          { sessionId: "session-1", items: [{ dishId: "dish-1", addOnIds: ["addon-cheese"], quantity: 1 }], method },
+          authUser
+        );
+
+        const [createArgs] = paymentRepository.create.mock.calls[0];
+        expect(createArgs.items).toEqual([{ dishId: "dish-1", dishNameSnapshot: "Momo + Extra cheese", unitPrice: 240, quantity: 1 }]);
+      });
+
+      it("should stack variant and add-ons, and keep the same dish with different choices as separate lines", async () => {
+        await usecase.execute(
+          {
+            sessionId: "session-1",
+            items: [
+              { dishId: "dish-1", variantId: "variant-large", addOnIds: ["addon-cheese"], quantity: 1 },
+              { dishId: "dish-1", addOnIds: [], quantity: 1 },
+            ],
+            method,
+          },
+          authUser
+        );
+
+        const [createArgs] = paymentRepository.create.mock.calls[0];
+        expect(createArgs.items.map(item => item.unitPrice)).toEqual([390, 200]);
+        expect(createArgs.subtotal).toBe(590);
+      });
+
+      it("should refuse a variant that belongs to a different dish", async () => {
+        dishVariantRepository.findById.mockResolvedValue({ ...large, dishId: "dish-2" } as any);
+
+        await expect(
+          usecase.execute(
+            { sessionId: "session-1", items: [{ dishId: "dish-1", variantId: "variant-large", addOnIds: [], quantity: 1 }], method },
+            authUser
+          )
+        ).rejects.toBeInstanceOf(NotFoundException);
+        expect(paymentRepository.create).not.toHaveBeenCalled();
+      });
+
+      it("should refuse an add-on from another branch", async () => {
+        addOnRepository.findManyByIds.mockResolvedValue([{ ...cheese, branchId: "other-branch" }] as any);
+
+        await expect(
+          usecase.execute(
+            { sessionId: "session-1", items: [{ dishId: "dish-1", addOnIds: ["addon-cheese"], quantity: 1 }], method },
+            authUser
+          )
+        ).rejects.toBeInstanceOf(NotFoundException);
+      });
     });
 
     it("should charge a table payment to the customer its session's orders were placed under", async () => {

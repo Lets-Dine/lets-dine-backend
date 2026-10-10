@@ -1,30 +1,29 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
-import { GenerateInvoicesUsecase, IGenerateInvoicesResult } from "../../application/use-cases/generate-invoices.usecase";
+import { IRollComplimentaryResult, RollComplimentaryPeriodsUsecase } from "../../application/use-cases/roll-complimentary-periods.usecase";
 import { IRunLifecycleResult, RunLifecycleUsecase } from "../../application/use-cases/run-lifecycle.usecase";
 import { DEFAULT_BILLING_CRON, DEFAULT_BILLING_CRON_TIMEZONE } from "../../domain/constants";
 
 export interface IBillingCycleResult {
   /** Null when that step failed or the cycle was skipped. */
-  invoices: IGenerateInvoicesResult | null;
+  rolled: IRollComplimentaryResult | null;
   lifecycle: IRunLifecycleResult | null;
   /** One message per step that threw — a failing step never stops the other. */
   errors: string[];
 }
 
 /**
- * The daily billing cycle: issue renewal invoices, then move subscriptions along
- * their lifecycle. It only calls the same two idempotent use cases the platform
- * endpoints expose, so a run that is missed (server down overnight) is made up for
- * by the next one, and an operator can still trigger either by hand.
+ * The daily billing cycle: extend plans that cost nothing, then move subscriptions
+ * along their lifecycle. A paid plan is not billed here. The restaurant is reminded
+ * to renew, and the charge is created when they pay.
  *
- * Invoices go first on purpose: a free plan's renewal settles itself, and doing it
- * before the lifecycle sweep stops a period that lapsed overnight being marked
- * overdue for a payment that was never owed.
+ * Complimentary plans go first on purpose: doing it before the lifecycle sweep
+ * stops a period that lapsed overnight being marked overdue for a payment that
+ * was never owed.
  *
  * It runs inside the app process, so with several instances only one should have it
  * switched on (`BILLING_SCHEDULER_ENABLED=false` on the rest) — both steps are safe to
- * repeat, but two at once would race to invoice the same subscription.
+ * repeat, but two at once would race to extend the same subscription.
  */
 @Injectable()
 export class BillingScheduler {
@@ -32,7 +31,7 @@ export class BillingScheduler {
   private running = false;
 
   constructor(
-    private readonly generateInvoicesUsecase: GenerateInvoicesUsecase,
+    private readonly rollComplimentaryPeriodsUsecase: RollComplimentaryPeriodsUsecase,
     private readonly runLifecycleUsecase: RunLifecycleUsecase
   ) {}
 
@@ -46,7 +45,7 @@ export class BillingScheduler {
   }
 
   async runCycle(now: Date = new Date()): Promise<IBillingCycleResult> {
-    const result: IBillingCycleResult = { invoices: null, lifecycle: null, errors: [] };
+    const result: IBillingCycleResult = { rolled: null, lifecycle: null, errors: [] };
 
     if (this.running) {
       this.logger.warn("Billing cycle skipped: the previous run is still going");
@@ -56,9 +55,9 @@ export class BillingScheduler {
 
     try {
       try {
-        result.invoices = await this.generateInvoicesUsecase.execute({}, now);
+        result.rolled = await this.rollComplimentaryPeriodsUsecase.execute(now);
       } catch (error) {
-        this.recordFailure(result, "invoice generation", error);
+        this.recordFailure(result, "complimentary renewal", error);
       }
 
       try {
@@ -71,7 +70,7 @@ export class BillingScheduler {
     }
 
     this.logger.log(
-      `Billing cycle done: ${result.invoices?.generated.length ?? "failed"} invoice(s) issued, ` +
+      `Billing cycle done: ${result.rolled?.rolled ?? "failed"} complimentary period(s) extended, ` +
         `${result.lifecycle ? `${result.lifecycle.transitions.length} of ${result.lifecycle.checked} subscription(s) moved` : "lifecycle failed"}`
     );
 

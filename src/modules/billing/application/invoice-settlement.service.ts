@@ -5,6 +5,7 @@ import { IInvoice } from "../domain/interfaces/billing.interface";
 import { InvoiceRepository } from "../domain/repositories/invoice.repository";
 import { SubscriptionRepository } from "../domain/repositories/subscription.repository";
 import { applyInvoicePayment } from "../domain/utils/invoice-payment.util";
+import { ReferralRewardService } from "./referral-reward.service";
 
 export interface ISettlement {
   paymentMethod: string;
@@ -21,7 +22,8 @@ export interface ISettlement {
 export class InvoiceSettlementService {
   constructor(
     private readonly invoiceRepository: InvoiceRepository,
-    private readonly subscriptionRepository: SubscriptionRepository
+    private readonly subscriptionRepository: SubscriptionRepository,
+    private readonly referralRewardService: ReferralRewardService
   ) {}
 
   async settle(invoiceId: string, settlement: ISettlement, now: Date = new Date()): Promise<IInvoice> {
@@ -56,8 +58,12 @@ export class InvoiceSettlementService {
       await this.subscriptionRepository.update(subscription.id, update, { tx });
 
       const paid = (await this.invoiceRepository.findById(invoice.id, { tx })) as IInvoice;
-      // What the restaurant paid us is its expense too; a free invoice has nothing to book.
-      if (paid.amount > 0) await this.invoiceRepository.recordAsExpense(paid, { tx });
+      // What the restaurant paid us is its expense too; a free invoice has nothing to book
+      // and does not count as paying for the plan, so it earns the inviter nothing.
+      if (paid.amount > 0) {
+        await this.invoiceRepository.recordAsExpense(paid, { tx });
+        await this.referralRewardService.grant(paid.restaurantId, now, tx);
+      }
       return paid;
     });
   }

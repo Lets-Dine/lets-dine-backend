@@ -131,6 +131,7 @@ class DishRepositoryImpl implements DishRepository {
         d.image_url      AS "imageUrl",
         d.price,
         d.is_available   AS "isAvailable",
+        d.auto_consume_stock AS "autoConsumeStock",
         d.is_archived    AS "isArchived",
         d.is_featured    AS "isFeatured",
         d.sort_order     AS "sortOrder",

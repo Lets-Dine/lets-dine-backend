@@ -14,7 +14,10 @@ export class CreateAddOnUsecase {
   ) {}
 
   async execute(dto: CreateAddOnInput, authEntity: AuthEntity): Promise<IAddOn> {
-    const addOn = await this.addOnRepository.create({ ...dto, restaurantId: authEntity.restaurantId, branchId: authEntity.branchId }, { actorId: authEntity.sub });
+    const addOn = await this.addOnRepository.create(
+      { ...dto, restaurantId: authEntity.restaurantId, branchId: authEntity.branchId },
+      { actorId: authEntity.sub }
+    );
 
     await this.auditLogService.record({ action: AuditAction.addon_created, subject: addOn.name }, authEntity);
 

@@ -62,7 +62,22 @@ describe("isTakingOrders / toPublicBranch", () => {
   });
 
   it("exposes only diner-facing fields", () => {
-    const full: any = { id: "b", name: "Main", slug: "main", address: "A", phone: null, latitude: 1, longitude: 2, timezone: KTM, isDefault: true, isActive: true, taxRate: 0.5, deliveryFeeAmount: 99, createdBy: "x", hours: [{ id: "h", branchId: "b", ...day(1, "10:00", "22:00") }] };
+    const full: any = {
+      id: "b",
+      name: "Main",
+      slug: "main",
+      address: "A",
+      phone: null,
+      latitude: 1,
+      longitude: 2,
+      timezone: KTM,
+      isDefault: true,
+      isActive: true,
+      taxRate: 0.5,
+      deliveryFeeAmount: 99,
+      createdBy: "x",
+      hours: [{ id: "h", branchId: "b", ...day(1, "10:00", "22:00") }],
+    };
     const result = toPublicBranch(full, monday1145);
     expect(result.isOpenNow).toBe(true);
     expect(result).not.toHaveProperty("taxRate");

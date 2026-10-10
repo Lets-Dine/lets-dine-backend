@@ -10,6 +10,9 @@ export class FetchAllMenuCategoriesUsecase {
 
   async execute(query: FetchMenuCategoriesQuery, authEntity: AuthEntity): Promise<PaginatedResponse<IMenuCategory>> {
     const { keyword, ...pagination } = query;
-    return this.menuCategoryRepository.fetchAll({ restaurantId: authEntity.restaurantId, branchId: authEntity.branchId, keyword }, pagination);
+    return this.menuCategoryRepository.fetchAll(
+      { restaurantId: authEntity.restaurantId, branchId: authEntity.branchId, keyword },
+      pagination
+    );
   }
 }

@@ -22,7 +22,7 @@ describe(UpdatePlatformPlansUsecase.name, () => {
     extraBranchPrice: null,
     extraSeatPrice: null,
     limits: { branches: 5 },
-    features: { analyticsTier: "full" as const, exports: true },
+    features: { analyticsTier: "full" as const, exports: true, autoStockConsumption: true },
   };
 
   beforeEach(async () => {

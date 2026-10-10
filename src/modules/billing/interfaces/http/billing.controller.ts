@@ -7,12 +7,14 @@ import { ChangePlanDto } from "../../application/dto/change-plan.dto";
 import { ConfirmEsewaDto } from "../../application/dto/confirm-esewa.dto";
 import { FetchInvoicesDto } from "../../application/dto/fetch-invoices.dto";
 import { ChangePlanUsecase, IChangePlanResult } from "../../application/use-cases/change-plan.usecase";
+import { IRenewResult, RenewSubscriptionUsecase } from "../../application/use-cases/renew-subscription.usecase";
 import { FetchInvoicesUsecase } from "../../application/use-cases/fetch-invoices.usecase";
 import { FetchPlansUsecase } from "../../application/use-cases/fetch-plans.usecase";
+import { FetchReferralsUsecase } from "../../application/use-cases/fetch-referrals.usecase";
 import { FetchSubscriptionUsecase } from "../../application/use-cases/fetch-subscription.usecase";
 import { FetchUsageUsecase } from "../../application/use-cases/fetch-usage.usecase";
 import { BILLING_SUCCESS_MESSAGES } from "../../domain/constants";
-import { IInvoice, IPlanView, ISubscriptionView, IUsage } from "../../domain/interfaces/billing.interface";
+import { IInvoice, IPlanView, IReferrals, ISubscriptionView, IUsage } from "../../domain/interfaces/billing.interface";
 
 /**
  * A restaurant's view of its own plan. Status and usage (`billing:view`) are open to managers
@@ -27,10 +29,12 @@ import { IInvoice, IPlanView, ISubscriptionView, IUsage } from "../../domain/int
 export class BillingController {
   constructor(
     private readonly fetchSubscriptionUsecase: FetchSubscriptionUsecase,
+    private readonly fetchReferralsUsecase: FetchReferralsUsecase,
     private readonly fetchUsageUsecase: FetchUsageUsecase,
     private readonly fetchPlansUsecase: FetchPlansUsecase,
     private readonly fetchInvoicesUsecase: FetchInvoicesUsecase,
     private readonly changePlanUsecase: ChangePlanUsecase,
+    private readonly renewSubscriptionUsecase: RenewSubscriptionUsecase,
     private readonly esewaCheckoutService: EsewaCheckoutService
   ) {}
 
@@ -40,6 +44,14 @@ export class BillingController {
   async fetchSubscription(@AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<ISubscriptionView>> {
     const subscription = await this.fetchSubscriptionUsecase.execute(authEntity);
     return buildHttpResponse(subscription, BILLING_SUCCESS_MESSAGES.SUBSCRIPTION_FETCHED);
+  }
+
+  @Get("referrals")
+  @UseGuards(AuthGuard, AbilityGuard)
+  @CheckPolicies(checkPermissionRules([["billing:manage"]]))
+  async fetchReferrals(@AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IReferrals>> {
+    const referrals = await this.fetchReferralsUsecase.execute(authEntity);
+    return buildHttpResponse(referrals, BILLING_SUCCESS_MESSAGES.REFERRALS_FETCHED);
   }
 
   @Get("usage")
@@ -67,6 +79,14 @@ export class BillingController {
   ): Promise<IHttpResponse<PaginatedResponse<IInvoice>>> {
     const invoices = await this.fetchInvoicesUsecase.execute(query, authEntity);
     return buildHttpResponse(invoices, BILLING_SUCCESS_MESSAGES.INVOICES_FETCHED);
+  }
+
+  @Post("renew")
+  @UseGuards(AuthGuard, AbilityGuard)
+  @CheckPolicies(checkPermissionRules([["billing:manage"]]))
+  async renew(@AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IRenewResult>> {
+    const result = await this.renewSubscriptionUsecase.execute(authEntity);
+    return buildHttpResponse(result, BILLING_SUCCESS_MESSAGES.RENEWAL_STARTED);
   }
 
   @Post("change-plan")

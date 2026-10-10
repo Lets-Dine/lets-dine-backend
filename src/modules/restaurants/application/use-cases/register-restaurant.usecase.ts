@@ -46,11 +46,15 @@ export class RegisterRestaurantUsecase {
     const sameOwner = (await this.userRepository.findByEmailKey(key)) ?? (phone ? await this.userRepository.findByPhone(phone) : null);
     if (sameOwner) throw new ConflictException(RESTAURANT_ERROR_MESSAGES.OWNER_ALREADY_REGISTERED);
 
-    const { owner, ...restaurantData } = dto;
+    const { owner, referralCode, ...restaurantData } = dto;
     const pinHash = await hashPin(owner.pin);
+    const referredByRestaurantId = await this.resolveInviter(referralCode, dto.slug);
 
     return this.restaurantRepository.$transaction(async tx => {
-      const restaurant = await this.restaurantRepository.create(restaurantData, { tx });
+      const restaurant = await this.restaurantRepository.create(
+        { ...restaurantData, ...(referredByRestaurantId && { referredByRestaurantId }) },
+        { tx }
+      );
       const user = await this.userRepository.create({ email: owner.email, name: owner.name, pinHash, emailKey: key, phone }, { tx });
       const member = await this.restaurantMemberRepository.create(
         { userId: user.id, restaurantId: restaurant.id, role: StaffRole.OWNER },
@@ -66,5 +70,14 @@ export class RegisterRestaurantUsecase {
 
       return { restaurant, owner: member };
     });
+  }
+
+  /** An invite code is another restaurant's slug. A missing or malformed code does not block sign-up. */
+  private async resolveInviter(referralCode: string | undefined, slug: string): Promise<string | undefined> {
+    const code = referralCode?.trim().toLowerCase();
+    if (!code || code === slug || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(code)) return undefined;
+
+    const inviter = await this.restaurantRepository.findBySlug(code);
+    return inviter?.id;
   }
 }

@@ -7,6 +7,8 @@ import { AuthEntity, isInActiveBranch } from "../../../../common/interfaces";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
 import { DiningSessionService } from "../../../dining-sessions/application/dining-session.service";
 import { DiningSessionRepository } from "../../../dining-sessions/domain/repositories/dining-session.repository";
+import { AddOnRepository } from "../../../add-ons/domain/repositories/add-on.repository";
+import { DishVariantRepository } from "../../../dish-variants/domain/repositories/dish-variant.repository";
 import { DishRepository } from "../../../dishes/domain/repositories/dish.repository";
 import { OrderRepository } from "../../../orders/domain/repositories/order.repository";
 import { calculateOrderTotals } from "../../../orders/domain/utils/money.util";
@@ -25,6 +27,8 @@ export class CompletePaymentUsecase {
     private readonly diningSessionRepository: DiningSessionRepository,
     private readonly diningSessionService: DiningSessionService,
     private readonly dishRepository: DishRepository,
+    private readonly dishVariantRepository: DishVariantRepository,
+    private readonly addOnRepository: AddOnRepository,
     private readonly orderRepository: OrderRepository,
     private readonly restaurantRepository: RestaurantRepository,
     private readonly auditLogService: AuditLogService,
@@ -60,12 +64,47 @@ export class CompletePaymentUsecase {
         { tx }
       );
 
+      // A line is a dish plus the variant and add-ons that were ordered with it. Looked up by id even if
+      // archived since: the diner already has the food, and a dish going off the menu mid-meal must not
+      // stop the bill being settled.
+      const variantIds = [...new Set(dto.items.flatMap(line => (line.variantId ? [line.variantId] : [])))];
+      const addOnIds = [...new Set(dto.items.flatMap(line => line.addOnIds ?? []))];
+      const [variants, addOns] = await Promise.all([
+        Promise.all(variantIds.map(id => this.dishVariantRepository.findById(id, { tx }))),
+        addOnIds.length ? this.addOnRepository.findManyByIds(addOnIds, { tx }) : Promise.resolve([]),
+      ]);
+
       const items: IPaymentItemCreate[] = dto.items.map(line => {
         const dish = dishes.find(candidate => candidate.id === line.dishId);
         if (!dish || dish.branchId !== session.branchId) {
           throw new NotFoundException({ ...PAYMENT_ERROR_MESSAGES.DISH_NOT_FOUND, detail: { dishId: line.dishId } });
         }
-        return { dishId: dish.id, dishNameSnapshot: dish.name, unitPrice: dish.price, quantity: line.quantity };
+
+        // §36 — the variant must be this dish's own; a variant id is never taken to price a different dish.
+        const variant = line.variantId ? variants.find(candidate => candidate?.id === line.variantId) : undefined;
+        if (line.variantId && (!variant || variant.dishId !== dish.id)) {
+          throw new NotFoundException({
+            ...PAYMENT_ERROR_MESSAGES.VARIANT_NOT_FOUND,
+            detail: { variantId: line.variantId, dishId: dish.id },
+          });
+        }
+
+        const lineAddOns = (line.addOnIds ?? []).map(id => {
+          const addOn = addOns.find(candidate => candidate.id === id);
+          if (!addOn || addOn.branchId !== session.branchId) {
+            throw new NotFoundException({ ...PAYMENT_ERROR_MESSAGES.ADD_ON_NOT_FOUND, detail: { addOnId: id, dishId: dish.id } });
+          }
+          return addOn;
+        });
+
+        // Same rule an order is priced by: the variant's own price replaces the dish's, add-ons stack on top.
+        const unitPrice = (variant ? variant.price : dish.price) + lineAddOns.reduce((sum, addOn) => sum + addOn.price, 0);
+        const name = [
+          dish.name,
+          variant ? ` · ${variant.name}` : "",
+          lineAddOns.length ? ` + ${lineAddOns.map(addOn => addOn.name).join(", ")}` : "",
+        ].join("");
+        return { dishId: dish.id, dishNameSnapshot: name, unitPrice, quantity: line.quantity };
       });
 
       const totals = calculateOrderTotals(items, restaurant, discount);

@@ -55,23 +55,31 @@ class BranchMenuRepositoryImpl implements BranchMenuRepository {
       const dishIds = new Map(dishes.map(dish => [dish.id, randomUUID()]));
       // A dish can only sit in a section of its own branch, so its category is always in the map.
       await tx.dish.createMany({
-        data: dishes.map(({ id, categoryId, variants: _v, addOnLinks: _l, branchId: _b, restaurantId: _r, createdAt: _c, updatedAt: _u, ...rest }) => ({
-          ...rest,
-          id: dishIds.get(id) as string,
-          categoryId: categoryIds.get(categoryId) as string,
-          restaurantId: to.restaurantId,
-          branchId: toBranchId,
-          ...audit,
-        })),
+        data: dishes.map(
+          ({ id, categoryId, variants: _v, addOnLinks: _l, branchId: _b, restaurantId: _r, createdAt: _c, updatedAt: _u, ...rest }) => ({
+            ...rest,
+            id: dishIds.get(id) as string,
+            categoryId: categoryIds.get(categoryId) as string,
+            restaurantId: to.restaurantId,
+            branchId: toBranchId,
+            ...audit,
+          })
+        ),
       });
 
       const variants = dishes.flatMap(dish =>
-        dish.variants.map(({ id: _id, dishId, createdAt: _c, updatedAt: _u, ...rest }) => ({ ...rest, dishId: dishIds.get(dishId) as string, ...audit }))
+        dish.variants.map(({ id: _id, dishId, createdAt: _c, updatedAt: _u, ...rest }) => ({
+          ...rest,
+          dishId: dishIds.get(dishId) as string,
+          ...audit,
+        }))
       );
       await tx.dishVariant.createMany({ data: variants });
 
       const links = dishes.flatMap(dish =>
-        dish.addOnLinks.filter(link => addOnIds.has(link.addOnId)).map(link => ({ dishId: dishIds.get(dish.id) as string, addOnId: addOnIds.get(link.addOnId) as string }))
+        dish.addOnLinks
+          .filter(link => addOnIds.has(link.addOnId))
+          .map(link => ({ dishId: dishIds.get(dish.id) as string, addOnId: addOnIds.get(link.addOnId) as string }))
       );
       await tx.dishAddOn.createMany({ data: links });
 

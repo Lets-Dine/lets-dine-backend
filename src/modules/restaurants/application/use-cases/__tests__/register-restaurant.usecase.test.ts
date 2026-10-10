@@ -38,7 +38,15 @@ describe("RegisterRestaurantUsecase", () => {
             create: jest.fn(),
           },
         },
-        { provide: UserRepository, useValue: { findByEmail: jest.fn(), findByEmailKey: jest.fn().mockResolvedValue(null), findByPhone: jest.fn().mockResolvedValue(null), create: jest.fn() } },
+        {
+          provide: UserRepository,
+          useValue: {
+            findByEmail: jest.fn(),
+            findByEmailKey: jest.fn().mockResolvedValue(null),
+            findByPhone: jest.fn().mockResolvedValue(null),
+            create: jest.fn(),
+          },
+        },
         { provide: RestaurantMemberRepository, useValue: { create: jest.fn() } },
         { provide: BranchRepository, useValue: { create: jest.fn() } },
         { provide: SubscriptionService, useValue: { startTrial: jest.fn().mockResolvedValue(undefined) } },
@@ -97,6 +105,46 @@ describe("RegisterRestaurantUsecase", () => {
 
       // Assert
       expect(subscriptionService.startTrial).toHaveBeenCalledWith(restaurant.id, expect.objectContaining({ tx: expect.anything() }));
+    });
+
+    it("should remember which restaurant invited this one", async () => {
+      // Arrange
+      const restaurant = { id: "restaurant-1", name: dto.name, timezone: "Asia/Kathmandu" } as any;
+      restaurantRepository.findBySlug.mockImplementation(async (slug: string) =>
+        slug === "momo-ghar" ? ({ id: "inviter-1", slug } as any) : null
+      );
+      userRepository.findByEmail.mockResolvedValue(null);
+      restaurantRepository.create.mockResolvedValue(restaurant);
+      userRepository.create.mockResolvedValue({ id: "user-1" } as any);
+      restaurantMemberRepository.create.mockResolvedValue({ id: "member-1", role: StaffRole.OWNER } as any);
+
+      // Act
+      await usecase.execute({ ...dto, referralCode: "Momo-Ghar" });
+
+      // Assert
+      expect(restaurantRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ referredByRestaurantId: "inviter-1" }),
+        expect.anything()
+      );
+    });
+
+    it("should still create the restaurant when the invite code does not match anyone", async () => {
+      // Arrange
+      const restaurant = { id: "restaurant-1", name: dto.name, timezone: "Asia/Kathmandu" } as any;
+      restaurantRepository.findBySlug.mockResolvedValue(null);
+      userRepository.findByEmail.mockResolvedValue(null);
+      restaurantRepository.create.mockResolvedValue(restaurant);
+      userRepository.create.mockResolvedValue({ id: "user-1" } as any);
+      restaurantMemberRepository.create.mockResolvedValue({ id: "member-1", role: StaffRole.OWNER } as any);
+
+      // Act
+      await usecase.execute({ ...dto, referralCode: "not-a-place" });
+
+      // Assert
+      expect(restaurantRepository.create).toHaveBeenCalledWith(
+        { name: dto.name, slug: dto.slug, coverImageUrl: dto.coverImageUrl },
+        expect.anything()
+      );
     });
 
     it("should throw ConflictException when the slug is taken", async () => {

@@ -20,6 +20,7 @@ function buildDish(id: string, stats: Partial<IDishStats>): IDishWithStats {
     imageUrl: null,
     price: 40000,
     isAvailable: true,
+    autoConsumeStock: null,
     isArchived: false,
     isFeatured: false,
     sortOrder: 0,
@@ -69,7 +70,11 @@ describe("FetchMenuHighlightsUsecase", () => {
       // Assert
       expect(rails.map(rail => rail.key)).toEqual(expect.arrayContaining(["loved", "gem"]));
       expect(rails.find(rail => rail.key === "loved")?.title).toBe("Most loved here");
-      expect(dishRepository.findAllWithStats).toHaveBeenCalledWith({ restaurantId: "restaurant-1", branchId: "branch-1", isArchived: false });
+      expect(dishRepository.findAllWithStats).toHaveBeenCalledWith({
+        restaurantId: "restaurant-1",
+        branchId: "branch-1",
+        isArchived: false,
+      });
     });
 
     it("should return only the sections asked for", async () => {

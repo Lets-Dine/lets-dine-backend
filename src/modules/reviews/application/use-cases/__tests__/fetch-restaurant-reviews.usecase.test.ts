@@ -28,7 +28,10 @@ describe("FetchRestaurantReviewsUsecase — branch scoping", () => {
   });
 
   it("narrows to one branch the caller can reach", async () => {
-    await usecase.execute({ branchId: "branch-a" } as any, buildAuthEntity({ role: "MANAGER" as any, branchIds: ["branch-a", "branch-b"] }));
+    await usecase.execute(
+      { branchId: "branch-a" } as any,
+      buildAuthEntity({ role: "MANAGER" as any, branchIds: ["branch-a", "branch-b"] })
+    );
     expect(repo.fetchAll.mock.calls[0][0].branchIds).toEqual(["branch-a"]);
   });
 
