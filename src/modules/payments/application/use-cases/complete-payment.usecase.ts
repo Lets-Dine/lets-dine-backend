@@ -5,6 +5,7 @@ import { can } from "../../../../common/auth";
 import { ConflictException, ForbiddenException, NotFoundException } from "../../../../common/exceptions";
 import { AuthEntity, isInActiveBranch } from "../../../../common/interfaces";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
+import { LoyaltyService } from "../../../loyalty/application/loyalty.service";
 import { DiningSessionService } from "../../../dining-sessions/application/dining-session.service";
 import { DiningSessionRepository } from "../../../dining-sessions/domain/repositories/dining-session.repository";
 import { AddOnRepository } from "../../../add-ons/domain/repositories/add-on.repository";
@@ -32,7 +33,8 @@ export class CompletePaymentUsecase {
     private readonly orderRepository: OrderRepository,
     private readonly restaurantRepository: RestaurantRepository,
     private readonly auditLogService: AuditLogService,
-    private readonly eventEmitter: EventEmitter2
+    private readonly eventEmitter: EventEmitter2,
+    private readonly loyaltyService: LoyaltyService
   ) {}
 
   async execute(dto: CompletePaymentInput, authEntity: AuthEntity): Promise<IPaymentWithItems> {
@@ -107,7 +109,20 @@ export class CompletePaymentUsecase {
         return { dishId: dish.id, dishNameSnapshot: name, unitPrice, quantity: line.quantity };
       });
 
-      const totals = calculateOrderTotals(items, restaurant, discount);
+      const customerId = await this.resolveCustomerId(session, order, authEntity.restaurantId);
+
+      // Points are a customer's entitlement, not the cashier's discretion, so they are kept apart from the
+      // manual `discount` (and its permission) and the server turns them into money at the restaurant's rate.
+      let loyaltyDiscount = 0;
+      if (dto.redeemPoints) {
+        const { subtotal } = calculateOrderTotals(items, restaurant, 0);
+        loyaltyDiscount = await this.loyaltyService.planRedemption(
+          { restaurantId: authEntity.restaurantId, customerId, points: dto.redeemPoints, discountableBase: subtotal - discount },
+          tx
+        );
+      }
+
+      const totals = calculateOrderTotals(items, restaurant, discount + loyaltyDiscount);
       if (totals.total < 0) throw new ConflictException(PAYMENT_ERROR_MESSAGES.DISCOUNT_EXCEEDS_TOTAL);
 
       const payment = await this.paymentRepository.create(
@@ -117,11 +132,12 @@ export class CompletePaymentUsecase {
           sessionId: session.id,
           tableId: session.tableId,
           floorId: session.floorId,
-          customerId: await this.resolveCustomerId(session, order, authEntity.restaurantId),
+          customerId,
           subtotal: totals.subtotal,
           serviceCharge: totals.serviceCharge,
           tax: totals.tax,
           discount: totals.discount,
+          loyaltyDiscount,
           total: totals.total,
           method: dto.method,
           currency: restaurant.currency,
@@ -136,11 +152,27 @@ export class CompletePaymentUsecase {
         {
           action: AuditAction.payment_completed,
           subject: order ? `Order ${order.reference}` : `Session ${session.id}`,
-          detail: `Charged ${payment.total} ${payment.currency} via ${payment.method}${discount > 0 ? ` (${discount} discount)` : ""}`,
+          detail: `Charged ${payment.total} ${payment.currency} via ${payment.method}${discount > 0 ? ` (${discount} discount)` : ""}${dto.redeemPoints ? ` (${dto.redeemPoints} points redeemed, ${loyaltyDiscount} off)` : ""}`,
         },
         authEntity,
         tx
       );
+
+      if (dto.redeemPoints && customerId) {
+        await this.loyaltyService.recordRedemption(
+          {
+            paymentId: payment.id,
+            restaurantId: authEntity.restaurantId,
+            customerId,
+            points: dto.redeemPoints,
+            createdBy: authEntity.sub,
+            createdByName: authEntity.name,
+          },
+          tx
+        );
+      }
+      // Points commit with the bill they were earned on; points spent come off the bill but not off what it earns.
+      await this.loyaltyService.earnForPayment({ ...payment, loyaltyDiscount, orderId: order?.id ?? null }, tx);
 
       if (order) {
         // Marks exactly this order paid and re-derives its own status — never the session-wide

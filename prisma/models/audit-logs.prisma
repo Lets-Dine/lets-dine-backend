@@ -26,6 +26,8 @@ model AuditLog {
 }
 
 enum AuditAction {
+  loyalty_adjusted
+  loyalty_program_updated
   price_changed
   availability_changed
   dish_created
@@ -78,6 +80,9 @@ enum AuditAction {
   ledger_reopened
   stock_taken
   stock_transferred
+  courier_saved
+  delivery_dispatched
+  delivery_settled
 
   @@schema("public")
 }

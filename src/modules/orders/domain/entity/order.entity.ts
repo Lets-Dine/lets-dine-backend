@@ -10,16 +10,19 @@ import { IOrder, IOrderItem } from "../interfaces/order.interface";
  * `→ CANCELLED` (whole-order cancel, gated further by `isCancellable` below).
  * `PREPARING`/`READY`/`COMPLETED` are reached by `deriveOrderStatus`, not by a
  * direct transition through this table — except for a delivery order, where
- * `OUT_FOR_DELIVERY` and the `COMPLETED` that follows it are two more manual
- * moves (gated to `orderType === DELIVERY` in `UpdateOrderStatusUsecase`),
- * since dispatch/hand-over isn't something any item's own status can tell you.
+ * `OUT_FOR_DELIVERY` (`UpdateOrderStatusUsecase`), `SETTLE` (`DeliverOrderUsecase`) and
+ * the `COMPLETED` that follows (`SettleDeliveryOrderUsecase`, which also takes the
+ * payment) are manual moves, since dispatch, hand-over and settling the courier's
+ * money aren't something any item's own status can tell you.
  */
 const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   [OrderStatus.PENDING]: [OrderStatus.ACCEPTED, OrderStatus.CANCELLED],
   [OrderStatus.ACCEPTED]: [OrderStatus.PREPARING, OrderStatus.CANCELLED],
   [OrderStatus.PREPARING]: [OrderStatus.READY, OrderStatus.CANCELLED],
   [OrderStatus.READY]: [OrderStatus.OUT_FOR_DELIVERY, OrderStatus.COMPLETED],
-  [OrderStatus.OUT_FOR_DELIVERY]: [OrderStatus.COMPLETED],
+  // Delivery only: handed over (`SETTLE`), then settled with the courier, which is what creates the payment.
+  [OrderStatus.OUT_FOR_DELIVERY]: [OrderStatus.SETTLE],
+  [OrderStatus.SETTLE]: [OrderStatus.COMPLETED],
   // Floor orders only (§16b) — reached by `deriveOrderStatus`, not through this table; the one
   // way out is `CompletePaymentUsecase` setting `paidAt` for that order, same as COMPLETED above.
   [OrderStatus.UNPAID]: [OrderStatus.COMPLETED],

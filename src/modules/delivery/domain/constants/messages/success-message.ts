@@ -1,0 +1,15 @@
+export const DELIVERY_SUCCESS_MESSAGES = {
+  BOOK_FETCHED: { key: "DELIVERY_BOOK_FETCHED", message: "Delivery records fetched" },
+  COURIER_FETCHED: { key: "DELIVERY_COURIER_FETCHED", message: "Courier fetched" },
+  STATEMENT_FETCHED: { key: "DELIVERY_STATEMENT_FETCHED", message: "Statement fetched" },
+  COURIERS_FETCHED: { key: "DELIVERY_COURIERS_FETCHED", message: "Couriers fetched" },
+  PARTNER_CREATED: { key: "DELIVERY_PARTNER_CREATED", message: "Delivery partner added" },
+  PARTNER_UPDATED: { key: "DELIVERY_PARTNER_UPDATED", message: "Delivery partner saved" },
+  RIDER_CREATED: { key: "DELIVERY_RIDER_CREATED", message: "Rider added" },
+  RIDER_UPDATED: { key: "DELIVERY_RIDER_UPDATED", message: "Rider saved" },
+  ASSIGNMENT_FETCHED: { key: "DELIVERY_ASSIGNMENT_FETCHED", message: "Delivery run fetched" },
+  ASSIGNED: { key: "DELIVERY_ASSIGNED", message: "Order handed to a courier" },
+  COMPLETED: { key: "DELIVERY_COMPLETED", message: "Delivery recorded" },
+  ORDER_SETTLED: { key: "DELIVERY_ORDER_SETTLED", message: "Order settled" },
+  SETTLED: { key: "DELIVERY_SETTLED", message: "Settlement recorded" },
+};

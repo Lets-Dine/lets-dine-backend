@@ -30,7 +30,7 @@ export class OrderItemEntity {
   /**
    * A delivery order has no server to hand a plated dish to — the driver
    * takes the whole order at once, so no single line goes SERVED on its own.
-   * `SettleDeliveryOrderUsecase` moves every READY line to SERVED together
+   * `DeliverOrderUsecase` moves every READY line to SERVED together
    * the moment the order itself is marked delivered.
    */
   nextStatuses(): OrderItemStatus[] {

@@ -12,6 +12,9 @@ export class DeleteExpenseUsecase {
     const expense = await this.ledgerRepository.findExpense(id);
     if (!expense || !isInActiveBranch(authEntity, expense)) throw new NotFoundException(LEDGER_ERROR_MESSAGES.EXPENSE_NOT_FOUND);
 
+    // A courier settlement posted this row and the settlement owns it: removing it here would leave the delivery books disagreeing with the cash book.
+    if (expense.deliverySettlementId) throw new ConflictException(LEDGER_ERROR_MESSAGES.EXPENSE_FROM_DELIVERY);
+
     // A closed period's totals are frozen; deleting from it would leave them disagreeing with the rows.
     const last = await this.ledgerRepository.findLastClose({ restaurantId: authEntity.restaurantId, branchId: authEntity.branchId });
     if (last && expense.createdAt <= last.closedAt) throw new ConflictException(LEDGER_ERROR_MESSAGES.EXPENSE_ALREADY_CLOSED);

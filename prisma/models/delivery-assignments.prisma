@@ -1,0 +1,59 @@
+enum DeliveryAssignmentStatus {
+  ASSIGNED
+  DELIVERED
+
+  @@schema("public")
+}
+
+/// Whose books a run or a settlement belongs to: the partner's when there is one, else the rider's.
+enum DeliveryAccountKind {
+  PARTNER
+  RIDER
+
+  @@schema("public")
+}
+
+/// One dispatch of one delivery order. Amounts and names are snapshotted so a later rate change or
+/// rename never rewrites history. Reassigning replaces the open run; a delivered run is permanent.
+model DeliveryAssignment {
+  id            String                   @id @default(uuid()) @map("id") @db.Uuid
+  restaurantId  String                   @map("restaurant_id") @db.Uuid
+  branchId      String                   @map("branch_id") @db.Uuid
+  orderId       String                   @map("order_id") @db.Uuid
+  orderRef      String                   @map("order_ref")
+  customerName  String                   @map("customer_name")
+  orderTotal    Int                      @map("order_total")
+  riderId       String?                  @map("rider_id") @db.Uuid
+  partnerId     String?                  @map("partner_id") @db.Uuid
+  riderName     String?                  @map("rider_name")
+  partnerName   String?                  @map("partner_name")
+  accountKind   DeliveryAccountKind      @map("account_kind")
+  /// A partner id or a rider id depending on `accountKind` — not a foreign key, since it points at two tables.
+  accountId     String                   @map("account_id") @db.Uuid
+  status        DeliveryAssignmentStatus @default(ASSIGNED) @map("status")
+  assignedAt    DateTime                 @default(now()) @map("assigned_at")
+  deliveredAt   DateTime?                @map("delivered_at")
+  /// What the branch owes the courier for this run.
+  courierFee    Int                      @default(0) @map("courier_fee")
+  /// Cash the courier was meant to take at the door. 0 = already paid, or the courier does not collect.
+  cashToCollect Int                      @default(0) @map("cash_to_collect")
+  /// What actually came back. Null until delivered; short cash is recorded, never refused.
+  cashCollected Int?                     @map("cash_collected")
+  createdAt     DateTime                 @default(now()) @map("created_at")
+  updatedAt     DateTime                 @updatedAt @map("updated_at")
+  createdBy     String?                  @map("created_by") @db.Uuid
+  updatedBy     String?                  @map("updated_by") @db.Uuid
+
+  restaurant Restaurant       @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  branch     Branch           @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  order      Order            @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  rider      DeliveryRider?   @relation(fields: [riderId], references: [id], onDelete: SetNull)
+  partner    DeliveryPartner? @relation(fields: [partnerId], references: [id], onDelete: SetNull)
+
+  @@index([branchId, status])
+  @@index([orderId])
+  @@index([accountKind, accountId, status])
+  @@index([riderId, status])
+  @@map("delivery_assignments")
+  @@schema("public")
+}

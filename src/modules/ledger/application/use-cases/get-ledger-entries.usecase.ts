@@ -59,6 +59,7 @@ export class GetLedgerEntriesUsecase {
           bankDelta: transfer ? (toBank ? expense.amount : -expense.amount) : onCash ? 0 : sign * expense.amount,
           label: transfer ? (toBank ? "Drawer → Bank" : "Bank → Drawer") : expense.category,
           detail: [expense.kind === "INCOME" ? "Income" : "", expense.note, expense.createdByName].filter(Boolean).join(" · "),
+          locked: expense.deliverySettlementId !== null,
         };
       }),
     ];

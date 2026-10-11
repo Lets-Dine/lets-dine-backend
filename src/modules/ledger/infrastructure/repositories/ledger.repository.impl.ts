@@ -101,8 +101,8 @@ class LedgerRepositoryImpl implements LedgerRepository {
     return { rows, count };
   }
 
-  async createExpense(data: IExpenseCreate): Promise<IExpense> {
-    return this.prisma.expense.create({ data });
+  async createExpense(data: IExpenseCreate, options?: { tx?: PrismaTransaction }): Promise<IExpense> {
+    return (options?.tx ?? this.prisma).expense.create({ data });
   }
 
   async fetchExpenses(scope: ILedgerScope, since: Date | null, options?: IPaginationOptions): Promise<PaginatedResponse<IExpense>> {

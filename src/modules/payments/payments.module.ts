@@ -5,6 +5,7 @@ import { BranchesModule } from "../branches/branches.module";
 import { DiningSessionsModule } from "../dining-sessions/dining-sessions.module";
 import { DishesModule } from "../dishes/dishes.module";
 import { DishVariantsModule } from "../dish-variants/dish-variants.module";
+import { LoyaltyModule } from "../loyalty/loyalty.module";
 import { OrdersModule } from "../orders/orders.module";
 import { RestaurantsModule } from "../restaurants/restaurants.module";
 import { CompletePaymentUsecase } from "./application/use-cases/complete-payment.usecase";
@@ -25,6 +26,7 @@ import { PublicPaymentController } from "./interfaces/http/public-payment.contro
     DiningSessionsModule,
     DishesModule,
     DishVariantsModule,
+    LoyaltyModule,
     OrdersModule,
     RestaurantsModule,
     AuditLogsModule,

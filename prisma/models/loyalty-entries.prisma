@@ -1,0 +1,43 @@
+enum LoyaltyEntryType {
+  EARN
+  REDEEM
+  REVIEW_BONUS
+  ADJUST
+  EXPIRE
+  REVERSAL
+
+  @@schema("public")
+}
+
+/// One line of a customer's points ledger at one restaurant. Append-only: a balance is the sum of
+/// `points`, and a correction is a new line, never an edit. `points` is signed.
+model LoyaltyEntry {
+  id            String           @id @default(uuid()) @map("id") @db.Uuid
+  restaurantId  String           @map("restaurant_id") @db.Uuid
+  customerId    String           @map("customer_id") @db.Uuid
+  type          LoyaltyEntryType @map("type")
+  points        Int              @map("points")
+  /// The settled bill this line came from. A table's bill covers many orders, so the payment, not an
+  /// order, is what makes an earn idempotent.
+  paymentId     String?          @map("payment_id") @db.Uuid
+  /// The order this line is about, where it is about one: a floor or delivery order's own bill, or the order a
+  /// review bonus was granted for. Null for a table's bill (it spans orders) and for hand adjustments. Not unique:
+  /// a repeated settlement must not turn into an error here.
+  orderId       String?          @map("order_id") @db.Uuid
+  note          String           @default("") @map("note")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  createdBy     String?          @map("created_by") @db.Uuid
+  createdByName String?          @map("created_by_name")
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  customer   Customer   @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  payment    Payment?   @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  order      Order?     @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  /// One earn per bill, however often the settlement is retried. Null payments (adjustments) never collide.
+  @@unique([paymentId, type])
+  @@index([restaurantId, customerId, createdAt])
+  @@index([orderId])
+  @@map("loyalty_entries")
+  @@schema("public")
+}

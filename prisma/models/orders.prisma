@@ -57,14 +57,17 @@ model Order {
   createdBy            String?     @map("created_by") @db.Uuid
   updatedBy            String?     @map("updated_by") @db.Uuid
 
-  restaurant Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  branch     Branch        @relation(fields: [branchId], references: [id], onDelete: Restrict)
-  table      DiningTable?  @relation(fields: [tableId], references: [id], onDelete: Restrict)
-  session    DiningSession @relation(fields: [sessionId], references: [id], onDelete: Restrict)
-  customer   Customer?     @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  floor      Floor?        @relation(fields: [floorId], references: [id], onDelete: Restrict)
-  items      OrderItem[]
-  reviews    DishReview[]
+  restaurant          Restaurant           @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  branch              Branch               @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  table               DiningTable?         @relation(fields: [tableId], references: [id], onDelete: Restrict)
+  session             DiningSession        @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+  customer            Customer?            @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  loyaltyEntries      LoyaltyEntry[]
+  floor               Floor?               @relation(fields: [floorId], references: [id], onDelete: Restrict)
+  items               OrderItem[]
+  deliveryAssignments DeliveryAssignment[]
+  deliverySettlements DeliverySettlement[]
+  reviews             DishReview[]
 
   @@unique([branchId, reference])
   @@index([restaurantId, status])
@@ -92,6 +95,8 @@ enum OrderStatus {
   PREPARING
   READY
   OUT_FOR_DELIVERY
+  /// Delivery only: handed over, the money not yet settled with the courier. Settling creates the payment.
+  SETTLE
   /// Floor orders only (§16b) — every item is SERVED but `paidAt` isn't set yet.
   UNPAID
   COMPLETED

@@ -121,17 +121,15 @@ describe("UpdateOrderStatusUsecase", () => {
       expect(patch).toEqual({ status: OrderStatus.OUT_FOR_DELIVERY });
     });
 
-    it("should let a delivery order manually advance OUT_FOR_DELIVERY → COMPLETED and stamp completedAt", async () => {
+    it("should refuse to complete a delivery order through the status endpoint, since settling takes the payment", async () => {
       // Arrange
       orderRepository.findById.mockResolvedValue(buildOrder(OrderStatus.OUT_FOR_DELIVERY, OrderType.DELIVERY));
-      orderRepository.update.mockResolvedValue(buildOrder(OrderStatus.COMPLETED, OrderType.DELIVERY));
 
-      // Act
-      await usecase.execute("order-1", { status: OrderStatus.COMPLETED }, authUser);
-
-      // Assert
-      const [, patch] = orderRepository.update.mock.calls[0];
-      expect(patch.completedAt).toBeInstanceOf(Date);
+      // Act & Assert
+      await expect(usecase.execute("order-1", { status: OrderStatus.COMPLETED }, authUser)).rejects.toThrow(
+        new BadRequestException(ORDER_ERROR_MESSAGES.STATUS_FOLLOWS_ITEMS)
+      );
+      expect(orderRepository.update).not.toHaveBeenCalled();
     });
 
     it("should refuse OUT_FOR_DELIVERY on a dine-in order even at READY", async () => {

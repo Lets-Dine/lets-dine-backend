@@ -9,6 +9,7 @@ import { DiningSessionRepository } from "../../../../dining-sessions/domain/repo
 import { AddOnRepository } from "../../../../add-ons/domain/repositories/add-on.repository";
 import { DishVariantRepository } from "../../../../dish-variants/domain/repositories/dish-variant.repository";
 import { DishRepository } from "../../../../dishes/domain/repositories/dish.repository";
+import { LoyaltyService } from "../../../../loyalty/application/loyalty.service";
 import { OrderRepository } from "../../../../orders/domain/repositories/order.repository";
 import { RestaurantRepository } from "../../../../restaurants/domain/repositories/restaurant.repository";
 import { PAYMENT_ERROR_MESSAGES } from "../../../domain/constants";
@@ -48,6 +49,7 @@ describe("CompletePaymentUsecase", () => {
   let restaurantRepository: jest.Mocked<RestaurantRepository>;
   let auditLogService: jest.Mocked<AuditLogService>;
   let eventEmitter: jest.Mocked<EventEmitter2>;
+  let loyaltyService: jest.Mocked<LoyaltyService>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -66,6 +68,7 @@ describe("CompletePaymentUsecase", () => {
         { provide: RestaurantRepository, useValue: { findByIdForBranch: jest.fn() } },
         { provide: AuditLogService, useValue: { record: jest.fn() } },
         { provide: EventEmitter2, useValue: { emit: jest.fn() } },
+        { provide: LoyaltyService, useValue: { earnForPayment: jest.fn(), planRedemption: jest.fn(), recordRedemption: jest.fn() } },
       ],
     }).compile();
 
@@ -80,6 +83,7 @@ describe("CompletePaymentUsecase", () => {
     restaurantRepository = module.get(RestaurantRepository);
     auditLogService = module.get(AuditLogService);
     eventEmitter = module.get(EventEmitter2);
+    loyaltyService = module.get(LoyaltyService);
 
     diningSessionRepository.findById.mockResolvedValue(session as any);
     restaurantRepository.findByIdForBranch.mockResolvedValue(restaurant as any);
@@ -108,6 +112,18 @@ describe("CompletePaymentUsecase", () => {
         tx
       );
       expect(diningSessionService.endSession).not.toHaveBeenCalled();
+    });
+
+    it("should earn loyalty points on the new payment inside the same transaction", async () => {
+      // Arrange
+      const payment = { id: "payment-1", total: 452, currency: "NPR" };
+      paymentRepository.create.mockResolvedValue(payment as any);
+
+      // Act
+      await usecase.execute({ sessionId: "session-1", items: requestItems, method }, authUser);
+
+      // Assert
+      expect(loyaltyService.earnForPayment).toHaveBeenCalledWith({ ...payment, loyaltyDiscount: 0, orderId: null }, tx);
     });
 
     describe("variants and add-ons", () => {
@@ -273,6 +289,79 @@ describe("CompletePaymentUsecase", () => {
       );
     });
 
+    describe("redeeming loyalty points (redeemPoints)", () => {
+      const CUSTOMER_ID = "customer-1";
+
+      beforeEach(() => {
+        paymentRepository.create.mockResolvedValue({ id: "payment-1" } as any);
+        orderRepository.findBySessionId.mockResolvedValue([{ customerId: CUSTOMER_ID }] as any);
+        loyaltyService.planRedemption.mockResolvedValue(100);
+      });
+
+      it("should let plain staff redeem: points are not a manual discount, so payments:discount is not needed", async () => {
+        // Arrange
+        const staffUser = buildAuthEntity({ role: StaffRole.STAFF });
+
+        // Act
+        await usecase.execute({ sessionId: "session-1", items: requestItems, method, redeemPoints: 200 }, staffUser);
+
+        // Assert
+        expect(loyaltyService.planRedemption).toHaveBeenCalledWith(
+          { restaurantId: staffUser.restaurantId, customerId: CUSTOMER_ID, points: 200, discountableBase: 400 },
+          tx
+        );
+      });
+
+      it("should take the points' value off the bill, snapshot it and record the spend after the payment exists", async () => {
+        // Act
+        await usecase.execute({ sessionId: "session-1", items: requestItems, method, redeemPoints: 200 }, authUser);
+
+        // Assert — 400 subtotal less 100 from points = 300, then service (30) and tax (42.9 → 43).
+        const [createArgs] = paymentRepository.create.mock.calls[0];
+        expect(createArgs.discount).toBe(100);
+        expect(createArgs.loyaltyDiscount).toBe(100);
+        expect(createArgs.customerId).toBe(CUSTOMER_ID);
+        expect(loyaltyService.recordRedemption).toHaveBeenCalledWith(
+          expect.objectContaining({ paymentId: "payment-1", customerId: CUSTOMER_ID, points: 200 }),
+          tx
+        );
+        expect(loyaltyService.earnForPayment).toHaveBeenCalledWith(expect.objectContaining({ loyaltyDiscount: 100 }), tx);
+      });
+
+      it("should add points to a manual discount and cap against the subtotal left after that discount", async () => {
+        // Act
+        await usecase.execute({ sessionId: "session-1", items: requestItems, method, discount: 50, redeemPoints: 200 }, authUser);
+
+        // Assert
+        expect(loyaltyService.planRedemption).toHaveBeenCalledWith(expect.objectContaining({ discountableBase: 350 }), tx);
+        const [createArgs] = paymentRepository.create.mock.calls[0];
+        expect(createArgs.discount).toBe(150);
+        expect(createArgs.loyaltyDiscount).toBe(100);
+      });
+
+      it("should not redeem or record anything when no points are sent", async () => {
+        // Act
+        await usecase.execute({ sessionId: "session-1", items: requestItems, method }, authUser);
+
+        // Assert
+        expect(loyaltyService.planRedemption).not.toHaveBeenCalled();
+        expect(loyaltyService.recordRedemption).not.toHaveBeenCalled();
+        expect(paymentRepository.create.mock.calls[0][0].loyaltyDiscount).toBe(0);
+      });
+
+      it("should charge nothing when the service refuses the redemption", async () => {
+        // Arrange
+        loyaltyService.planRedemption.mockRejectedValue(new ConflictException({ key: "X", message: "over the cap" }));
+
+        // Act & Assert
+        await expect(
+          usecase.execute({ sessionId: "session-1", items: requestItems, method, redeemPoints: 9999 }, authUser)
+        ).rejects.toThrow(ConflictException);
+        expect(paymentRepository.create).not.toHaveBeenCalled();
+        expect(loyaltyService.recordRedemption).not.toHaveBeenCalled();
+      });
+    });
+
     describe("a floor order's own bill (orderId)", () => {
       beforeEach(() => {
         orderRepository.findById.mockResolvedValue(floorOrder as any);
@@ -292,6 +381,17 @@ describe("CompletePaymentUsecase", () => {
         expect(patch).toEqual(expect.objectContaining({ status: "COMPLETED", paidAt: expect.any(Date), completedAt: expect.any(Date) }));
         expect(eventEmitter.emit).toHaveBeenCalledWith("order.updated", expect.objectContaining({ status: "COMPLETED" }));
         expect(diningSessionService.endSession).not.toHaveBeenCalled();
+      });
+
+      it("should tell loyalty which order the bill was for, so the diner can be shown what it earned", async () => {
+        // Arrange
+        orderRepository.update.mockResolvedValue({ ...floorOrder, status: "COMPLETED", paidAt: new Date() } as any);
+
+        // Act
+        await usecase.execute({ sessionId: "session-1", orderId: "order-1", items: requestItems, method }, authUser);
+
+        // Assert
+        expect(loyaltyService.earnForPayment).toHaveBeenCalledWith(expect.objectContaining({ id: "payment-1", orderId: "order-1" }), tx);
       });
 
       it("should charge a floor payment to that order's own customer", async () => {

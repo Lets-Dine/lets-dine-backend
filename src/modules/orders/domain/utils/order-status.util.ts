@@ -8,6 +8,7 @@ export const OPEN_ORDER_STATUSES: OrderStatus[] = [
   OrderStatus.PREPARING,
   OrderStatus.READY,
   OrderStatus.OUT_FOR_DELIVERY,
+  OrderStatus.SETTLE,
   OrderStatus.UNPAID,
 ];
 
@@ -35,9 +36,9 @@ export interface DeriveOrderStatusContext {
  * delivery order has no such gap.
  *
  * A delivery order caps at READY instead: dispatch and hand-over aren't
- * things any one item's status can tell you, so `OUT_FOR_DELIVERY` and
- * `COMPLETED` are reached only by the manual overrides in
- * `UpdateOrderStatusUsecase`/`SettleDeliveryOrderUsecase` — never derived here.
+ * things any one item's status can tell you, so `OUT_FOR_DELIVERY`, `SETTLE` and
+ * `COMPLETED` are reached only by the manual steps in `UpdateOrderStatusUsecase`,
+ * `DeliverOrderUsecase` and `SettleDeliveryOrderUsecase` — never derived here.
  */
 export function deriveOrderStatus(
   items: Pick<{ status: OrderItemStatus }, "status">[],

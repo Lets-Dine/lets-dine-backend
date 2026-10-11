@@ -27,21 +27,25 @@ model Branch {
   createdBy         String?  @map("created_by") @db.Uuid
   updatedBy         String?  @map("updated_by") @db.Uuid
 
-  restaurant  Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  hours       BranchHours[]
-  categories  MenuCategory[]
-  dishes      Dish[]
-  addOns      AddOn[]
-  ingredients Ingredient[]
-  members     BranchMember[]
-  tables      DiningTable[]
-  floors      Floor[]
-  sessions    DiningSession[]
-  orders      Order[]
-  payments    Payment[]
-  expenses    Expense[]
-  cashCloses  CashClose[]
-  auditLogs   AuditLog[]
+  restaurant          Restaurant           @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  hours               BranchHours[]
+  categories          MenuCategory[]
+  dishes              Dish[]
+  addOns              AddOn[]
+  ingredients         Ingredient[]
+  members             BranchMember[]
+  tables              DiningTable[]
+  floors              Floor[]
+  sessions            DiningSession[]
+  orders              Order[]
+  payments            Payment[]
+  expenses            Expense[]
+  cashCloses          CashClose[]
+  deliveryPartners    DeliveryPartner[]
+  deliveryRiders      DeliveryRider[]
+  deliveryAssignments DeliveryAssignment[]
+  deliverySettlements DeliverySettlement[]
+  auditLogs           AuditLog[]
 
   @@unique([restaurantId, slug])
   @@index([restaurantId])

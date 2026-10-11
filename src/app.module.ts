@@ -11,6 +11,7 @@ import { AddOnsModule } from "./modules/add-ons/add-ons.module";
 import { AnalyticsModule } from "./modules/analytics/analytics.module";
 import { AuditLogsModule } from "./modules/audit-logs/audit-logs.module";
 import { AuthModule } from "./modules/auth/auth.module";
+import { DeliveryModule } from "./modules/delivery/delivery.module";
 import { DiningSessionsModule } from "./modules/dining-sessions/dining-sessions.module";
 import { DishPhotosModule } from "./modules/dish-photos/dish-photos.module";
 import { DishesModule } from "./modules/dishes/dishes.module";
@@ -24,6 +25,7 @@ import { LedgerModule } from "./modules/ledger/ledger.module";
 import { MenuCategoriesModule } from "./modules/menu-categories/menu-categories.module";
 import { MenusModule } from "./modules/menus/menus.module";
 import { OrdersModule } from "./modules/orders/orders.module";
+import { LoyaltyModule } from "./modules/loyalty/loyalty.module";
 import { PaymentsModule } from "./modules/payments/payments.module";
 import { RestaurantsModule } from "./modules/restaurants/restaurants.module";
 import { ReviewsModule } from "./modules/reviews/reviews.module";
@@ -58,7 +60,9 @@ import { AppController } from "./app.controller";
     DiningSessionsModule,
     OrdersModule,
     PaymentsModule,
+    LoyaltyModule,
     LedgerModule,
+    DeliveryModule,
     InventoryModule,
     FeedbackModule,
     ReviewsModule,

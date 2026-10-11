@@ -1,6 +1,7 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { BadRequestException, ConflictException, NotFoundException } from "../../../../common/exceptions";
 import { IDiningSession } from "../../../dining-sessions/domain/interfaces/dining-session.interface";
+import { LoyaltyService } from "../../../loyalty/application/loyalty.service";
 import { Order } from "../../../orders/domain/entity/order.entity";
 import { OrderRepository } from "../../../orders/domain/repositories/order.repository";
 import { DISH_REVIEW_ERROR_MESSAGES } from "../../domain/constants";
@@ -20,8 +21,11 @@ export class CreateDishReviewUsecase {
   constructor(
     private readonly dishReviewRepository: DishReviewRepository,
     private readonly dishTagRepository: DishTagRepository,
-    private readonly orderRepository: OrderRepository
+    private readonly orderRepository: OrderRepository,
+    private readonly loyaltyService: LoyaltyService
   ) {}
+
+  private readonly logger = new Logger(CreateDishReviewUsecase.name);
 
   async execute(dto: CreateDishReviewInput, session: IDiningSession): Promise<IDishReview> {
     const order = await this.orderRepository.findById(dto.orderId);
@@ -45,7 +49,7 @@ export class CreateDishReviewUsecase {
 
     const tagIds = await this.resolveTagIds(dto.tags);
 
-    return this.dishReviewRepository.create({
+    const review = await this.dishReviewRepository.create({
       restaurantId: order.restaurantId,
       dishId: dto.dishId,
       orderId: order.id,
@@ -58,6 +62,16 @@ export class CreateDishReviewUsecase {
       comment: dto.comment,
       tagIds,
     });
+
+    // A thank-you in points, once per order. The review is already saved and must never wait on, or fail
+    // because of, the ledger: it is started here and its outcome only logged.
+    void this.loyaltyService
+      .grantReviewBonus({ id: order.id, restaurantId: order.restaurantId, customerId: order.customerId ?? session.customerId })
+      .catch(error =>
+        this.logger.warn(`Review bonus not granted for order ${order.id}: ${error instanceof Error ? error.message : error}`)
+      );
+
+    return review;
   }
 
   /** §9 — tags come from a fixed vocabulary; anything else is a typo or an attack. */

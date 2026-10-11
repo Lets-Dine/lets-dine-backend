@@ -27,5 +27,7 @@ import { LedgerController } from "./interfaces/http/ledger.controller";
     LedgerRepositoryImpl,
     { provide: LedgerRepository, useExisting: LedgerRepositoryImpl },
   ],
+  // Delivery settlements post their rows through the same repository, in their own transaction.
+  exports: [LedgerRepository],
 })
 export class LedgerModule {}

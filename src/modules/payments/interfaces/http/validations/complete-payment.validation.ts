@@ -25,6 +25,11 @@ export const completePaymentSchema = z.object({
   method: z.nativeEnum(PaymentMethod),
   /** A flat minor-unit reduction off the computed total — `payments:discount` only, checked in the use case. */
   discount: z.number().int().min(0).optional(),
+  /**
+   * Loyalty points the customer spends on this bill. Points, never money: the server turns them into a
+   * discount at the restaurant's own rate. Needs only the route's own permission, not `payments:discount`.
+   */
+  redeemPoints: z.number().int().min(1).max(1_000_000).optional(),
   /** Also ends the visit — every order still on the session gets marked completed in the same motion. */
   endSession: z.boolean().optional(),
 });

@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { DiningSessionsModule } from "../dining-sessions/dining-sessions.module";
+import { LoyaltyModule } from "../loyalty/loyalty.module";
 import { OrdersModule } from "../orders/orders.module";
 import { CreateDishReviewUsecase } from "./application/use-cases/create-dish-review.usecase";
 import { FetchDishReviewsUsecase } from "./application/use-cases/fetch-dish-reviews.usecase";
@@ -13,7 +14,7 @@ import { PublicReviewController } from "./interfaces/http/public-review.controll
 import { RestaurantReviewController } from "./interfaces/http/restaurant-review.controller";
 
 @Module({
-  imports: [DiningSessionsModule, OrdersModule],
+  imports: [DiningSessionsModule, LoyaltyModule, OrdersModule],
   controllers: [PublicReviewController, RestaurantReviewController],
   providers: [
     CreateDishReviewUsecase,

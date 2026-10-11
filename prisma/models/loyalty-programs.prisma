@@ -1,0 +1,23 @@
+/// Per-restaurant loyalty rules, shared by all its branches. Off until the owner turns it on: no row,
+/// or `enabled = false`, means nothing is ever earned.
+model LoyaltyProgram {
+  id            String   @id @default(uuid()) @map("id") @db.Uuid
+  restaurantId  String   @unique @map("restaurant_id") @db.Uuid
+  enabled       Boolean  @default(false) @map("enabled")
+  /// Minor units of subtotal (less the cashier's own discount, not points spent) that earn one point; the remainder earns nothing.
+  spendPerPoint Int      @default(1000) @map("spend_per_point")
+  /// Minor units one redeemed point takes off a bill.
+  redeemValue   Int      @default(50) @map("redeem_value")
+  /// The most of a bill's discounted subtotal points may pay for, in percent.
+  maxRedeemPct  Int      @default(50) @map("max_redeem_pct")
+  /// Points granted once per order when its diner rates a dish. 0 means no bonus.
+  reviewBonus   Int      @default(0) @map("review_bonus")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  updatedBy     String?  @map("updated_by") @db.Uuid
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@map("loyalty_programs")
+  @@schema("public")
+}

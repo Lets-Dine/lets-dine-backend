@@ -12,6 +12,8 @@ export interface IExpense {
   createdAt: Date;
   createdBy: string | null;
   createdByName: string | null;
+  /** Set when a courier settlement posted this row; the cash book cannot delete it. */
+  deliverySettlementId: string | null;
 }
 
 export interface ICashClose {
@@ -84,6 +86,8 @@ export interface ILedgerEntry {
   label: string;
   /** Where or why: the table, delivery, the expense note and who entered it. */
   detail: string;
+  /** Posted by a delivery settlement: it can only change there, so the tape offers no Remove. */
+  locked?: boolean;
 }
 
 /** A settled payment reduced to what the tape shows. */

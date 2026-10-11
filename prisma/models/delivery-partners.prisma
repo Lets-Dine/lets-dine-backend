@@ -1,0 +1,38 @@
+enum DeliveryFeeModel {
+  FLAT
+  PERCENT
+  NONE
+
+  @@schema("public")
+}
+
+/// A delivery company a branch hands orders to. It may bring its own riders (`DeliveryRider.partnerId`)
+/// and settles with the branch in bulk: the fees it has earned against the cash it collected at the door.
+model DeliveryPartner {
+  id            String           @id @default(uuid()) @map("id") @db.Uuid
+  restaurantId  String           @map("restaurant_id") @db.Uuid
+  branchId      String           @map("branch_id") @db.Uuid
+  name          String           @map("name")
+  phone         String           @default("") @map("phone")
+  contactPerson String           @default("") @map("contact_person")
+  note          String           @default("") @map("note")
+  feeModel      DeliveryFeeModel @default(FLAT) @map("fee_model")
+  /// Minor units for FLAT; basis points for PERCENT (1200 = 12%). Unused for NONE.
+  feeValue      Int              @default(0) @map("fee_value")
+  /// Whether it takes cash from the customer and remits it to the branch.
+  collectsCash  Boolean          @default(true) @map("collects_cash")
+  isActive      Boolean          @default(true) @map("is_active")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+  createdBy     String?          @map("created_by") @db.Uuid
+  updatedBy     String?          @map("updated_by") @db.Uuid
+
+  restaurant  Restaurant           @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  branch      Branch               @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  riders      DeliveryRider[]
+  assignments DeliveryAssignment[]
+
+  @@index([branchId, isActive])
+  @@map("delivery_partners")
+  @@schema("public")
+}

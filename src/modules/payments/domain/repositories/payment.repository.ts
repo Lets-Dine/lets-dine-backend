@@ -21,6 +21,8 @@ export interface IPaymentCreate {
   serviceCharge: number;
   tax: number;
   discount: number;
+  /** The part of `discount` that redeemed points paid for. */
+  loyaltyDiscount?: number;
   total: number;
   method: PaymentMethod;
   currency: string;

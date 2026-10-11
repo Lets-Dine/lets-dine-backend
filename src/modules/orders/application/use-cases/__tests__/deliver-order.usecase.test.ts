@@ -6,7 +6,7 @@ import { buildAuthEntity } from "../../../../../common/testing";
 import { AuditLogService } from "../../../../audit-logs/application/audit-log.service";
 import { ORDER_ERROR_MESSAGES } from "../../../domain/constants";
 import { OrderRepository } from "../../../domain/repositories/order.repository";
-import { SettleDeliveryOrderUsecase } from "../settle-delivery-order.usecase";
+import { DeliverOrderUsecase } from "../deliver-order.usecase";
 
 const authUser = buildAuthEntity();
 
@@ -23,8 +23,8 @@ function buildOrder(status: OrderStatus, orderType: OrderType = OrderType.DELIVE
   } as any;
 }
 
-describe("SettleDeliveryOrderUsecase", () => {
-  let usecase: SettleDeliveryOrderUsecase;
+describe("DeliverOrderUsecase", () => {
+  let usecase: DeliverOrderUsecase;
   let orderRepository: jest.Mocked<OrderRepository>;
   let auditLogService: jest.Mocked<AuditLogService>;
   let eventEmitter: jest.Mocked<EventEmitter2>;
@@ -32,7 +32,7 @@ describe("SettleDeliveryOrderUsecase", () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        SettleDeliveryOrderUsecase,
+        DeliverOrderUsecase,
         {
           provide: OrderRepository,
           useValue: {
@@ -47,26 +47,27 @@ describe("SettleDeliveryOrderUsecase", () => {
       ],
     }).compile();
 
-    usecase = module.get(SettleDeliveryOrderUsecase);
+    usecase = module.get(DeliverOrderUsecase);
     orderRepository = module.get(OrderRepository);
     auditLogService = module.get(AuditLogService);
     eventEmitter = module.get(EventEmitter2);
   });
 
   describe("execute", () => {
-    it("should settle an out-for-delivery order to COMPLETED, serve every ready item and record it", async () => {
+    it("should move an out-for-delivery order to SETTLE, serve every ready item and record it", async () => {
       // Arrange
       orderRepository.findById.mockResolvedValue(buildOrder(OrderStatus.OUT_FOR_DELIVERY));
-      orderRepository.update.mockResolvedValue(buildOrder(OrderStatus.COMPLETED));
+      orderRepository.update.mockResolvedValue(buildOrder(OrderStatus.SETTLE));
 
       // Act
       const result = await usecase.execute("order-1", authUser);
 
       // Assert
-      expect(result.status).toBe(OrderStatus.COMPLETED);
+      expect(result.status).toBe(OrderStatus.SETTLE);
       expect(orderRepository.markReadyItemsServed).toHaveBeenCalledWith("order-1", { tx: undefined });
       const [, patch] = orderRepository.update.mock.calls[0];
-      expect(patch.completedAt).toBeInstanceOf(Date);
+      expect(patch.status).toBe(OrderStatus.SETTLE);
+      expect(patch.completedAt).toBeUndefined();
       expect(auditLogService.record).toHaveBeenCalledWith(expect.objectContaining({ action: AuditAction.order_status_changed }), authUser);
       expect(eventEmitter.emit).toHaveBeenCalledWith("order.updated", result);
     });
@@ -88,7 +89,7 @@ describe("SettleDeliveryOrderUsecase", () => {
       expect(orderRepository.update).not.toHaveBeenCalled();
     });
 
-    it("should refuse settling a delivery order that hasn't been dispatched yet", async () => {
+    it("should refuse delivering a delivery order that hasn't been dispatched yet", async () => {
       // Arrange
       orderRepository.findById.mockResolvedValue(buildOrder(OrderStatus.READY));
 

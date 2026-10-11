@@ -2,13 +2,14 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { OrderItemStatus, OrderStatus } from "@prisma/client";
 import { BadRequestException, ConflictException, NotFoundException } from "../../../../../common/exceptions";
 import { IDiningSession } from "../../../../dining-sessions/domain/interfaces/dining-session.interface";
+import { LoyaltyService } from "../../../../loyalty/application/loyalty.service";
 import { OrderRepository } from "../../../../orders/domain/repositories/order.repository";
 import { DISH_REVIEW_ERROR_MESSAGES } from "../../../domain/constants";
 import { DishReviewRepository } from "../../../domain/repositories/dish-review.repository";
 import { DishTagRepository } from "../../../domain/repositories/dish-tag.repository";
 import { CreateDishReviewUsecase } from "../create-dish-review.usecase";
 
-const session = { id: "session-1" } as IDiningSession;
+const session = { id: "session-1", customerId: null } as unknown as IDiningSession;
 const dto = {
   orderId: "order-1",
   dishId: "dish-1",
@@ -26,6 +27,7 @@ function buildOrder(overrides: Record<string, unknown> = {}) {
     id: "order-1",
     restaurantId: "restaurant-1",
     sessionId: "session-1",
+    customerId: "customer-1",
     status: OrderStatus.COMPLETED,
     items: [{ dishId: "dish-1", status: OrderItemStatus.SERVED }],
     ...overrides,
@@ -37,6 +39,7 @@ describe("CreateDishReviewUsecase", () => {
   let dishReviewRepository: jest.Mocked<DishReviewRepository>;
   let dishTagRepository: jest.Mocked<DishTagRepository>;
   let orderRepository: jest.Mocked<OrderRepository>;
+  let loyaltyService: jest.Mocked<LoyaltyService>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -45,6 +48,7 @@ describe("CreateDishReviewUsecase", () => {
         { provide: DishReviewRepository, useValue: { findByOrderAndDish: jest.fn(), create: jest.fn() } },
         { provide: DishTagRepository, useValue: { findByLabels: jest.fn().mockResolvedValue([]) } },
         { provide: OrderRepository, useValue: { findById: jest.fn() } },
+        { provide: LoyaltyService, useValue: { grantReviewBonus: jest.fn().mockResolvedValue(0) } },
       ],
     }).compile();
 
@@ -52,6 +56,7 @@ describe("CreateDishReviewUsecase", () => {
     dishReviewRepository = module.get(DishReviewRepository);
     dishTagRepository = module.get(DishTagRepository);
     orderRepository = module.get(OrderRepository);
+    loyaltyService = module.get(LoyaltyService);
   });
 
   describe("execute", () => {
@@ -76,6 +81,58 @@ describe("CreateDishReviewUsecase", () => {
           tagIds: ["tag-1"],
         })
       );
+    });
+
+    it("should grant the review bonus for the order after the review is saved", async () => {
+      // Arrange
+      orderRepository.findById.mockResolvedValue(buildOrder());
+      dishReviewRepository.findByOrderAndDish.mockResolvedValue(null);
+      dishReviewRepository.create.mockResolvedValue({ id: "review-1" } as any);
+
+      // Act
+      const result = await usecase.execute({ ...dto, tags: undefined }, session);
+
+      // Assert
+      expect(result).toEqual({ id: "review-1" });
+      expect(loyaltyService.grantReviewBonus).toHaveBeenCalledWith({
+        id: "order-1",
+        restaurantId: "restaurant-1",
+        customerId: "customer-1",
+      });
+    });
+
+    it("should fall back to the session's customer when the order has none", async () => {
+      // Arrange
+      orderRepository.findById.mockResolvedValue(buildOrder({ customerId: null }));
+      dishReviewRepository.findByOrderAndDish.mockResolvedValue(null);
+      dishReviewRepository.create.mockResolvedValue({ id: "review-1" } as any);
+
+      // Act
+      await usecase.execute({ ...dto, tags: undefined }, { ...session, customerId: "customer-9" } as IDiningSession);
+
+      // Assert
+      expect(loyaltyService.grantReviewBonus).toHaveBeenCalledWith(expect.objectContaining({ customerId: "customer-9" }));
+    });
+
+    it("should still return the review when granting the bonus fails", async () => {
+      // Arrange
+      orderRepository.findById.mockResolvedValue(buildOrder());
+      dishReviewRepository.findByOrderAndDish.mockResolvedValue(null);
+      dishReviewRepository.create.mockResolvedValue({ id: "review-1" } as any);
+      loyaltyService.grantReviewBonus.mockRejectedValue(new Error("ledger down"));
+
+      // Act & Assert
+      await expect(usecase.execute({ ...dto, tags: undefined }, session)).resolves.toEqual({ id: "review-1" });
+    });
+
+    it("should not grant a bonus when the review is refused", async () => {
+      // Arrange
+      orderRepository.findById.mockResolvedValue(buildOrder());
+      dishReviewRepository.findByOrderAndDish.mockResolvedValue({ id: "existing" } as any);
+
+      // Act & Assert
+      await expect(usecase.execute({ ...dto, tags: undefined }, session)).rejects.toThrow(ConflictException);
+      expect(loyaltyService.grantReviewBonus).not.toHaveBeenCalled();
     });
 
     it("should throw NotFoundException when the order is another session's", async () => {

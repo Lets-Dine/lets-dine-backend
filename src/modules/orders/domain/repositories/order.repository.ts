@@ -123,7 +123,7 @@ export abstract class OrderRepository {
   abstract settleOpenByTableId(tableId: string, restaurantId: string, options?: { tx?: PrismaTransaction }): Promise<IOrderWithItems[]>;
   /**
    * Delivery hand-over: the driver takes every plated line at once, so every
-   * item still READY moves to SERVED together — used by `SettleDeliveryOrderUsecase`.
+   * item still READY moves to SERVED together — used by `DeliverOrderUsecase`.
    */
   abstract markReadyItemsServed(orderId: string, options?: { tx?: PrismaTransaction }): Promise<void>;
 }

@@ -13,6 +13,8 @@ export interface IExpenseCreate {
   note: string;
   createdBy: string;
   createdByName: string;
+  /** Set by a courier settlement posting its rows, so they stay tied to it. */
+  deliverySettlementId?: string;
 }
 
 export type ICashCloseCreate = Omit<ICashClose, "id">;
@@ -35,7 +37,7 @@ export abstract class LedgerRepository {
   abstract fetchAllExpenses(scope: ILedgerScope, since: Date | null): Promise<IExpense[]>;
   abstract createClose(data: ICashCloseCreate, options?: { tx?: PrismaTransaction }): Promise<ICashClose>;
   abstract fetchCloses(scope: ILedgerScope, options?: IPaginationOptions): Promise<PaginatedResponse<ICashClose>>;
-  abstract createExpense(data: IExpenseCreate): Promise<IExpense>;
+  abstract createExpense(data: IExpenseCreate, options?: { tx?: PrismaTransaction }): Promise<IExpense>;
   abstract fetchExpenses(scope: ILedgerScope, since: Date | null, options?: IPaginationOptions): Promise<PaginatedResponse<IExpense>>;
   abstract findExpense(id: string): Promise<IExpense | null>;
   abstract deleteExpense(id: string): Promise<void>;

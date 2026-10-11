@@ -1,0 +1,45 @@
+enum DeliveryRiderKind {
+  STAFF
+  FREELANCE
+
+  @@schema("public")
+}
+
+enum DeliveryRiderPayModel {
+  SALARIED
+  PER_DELIVERY
+
+  @@schema("public")
+}
+
+/// Someone who carries orders out for one branch. A rider with a `partnerId` rides for that partner,
+/// so their cash and fees settle through the partner's account, never their own.
+model DeliveryRider {
+  id           String                @id @default(uuid()) @map("id") @db.Uuid
+  restaurantId String                @map("restaurant_id") @db.Uuid
+  branchId     String                @map("branch_id") @db.Uuid
+  partnerId    String?               @map("partner_id") @db.Uuid
+  name         String                @map("name")
+  phone        String                @default("") @map("phone")
+  kind         DeliveryRiderKind     @default(STAFF) @map("kind")
+  vehicle      String                @default("") @map("vehicle")
+  note         String                @default("") @map("note")
+  payModel     DeliveryRiderPayModel @default(SALARIED) @map("pay_model")
+  /// Minor units per delivery when `payModel` is PER_DELIVERY.
+  payValue     Int                   @default(0) @map("pay_value")
+  isActive     Boolean               @default(true) @map("is_active")
+  createdAt    DateTime              @default(now()) @map("created_at")
+  updatedAt    DateTime              @updatedAt @map("updated_at")
+  createdBy    String?               @map("created_by") @db.Uuid
+  updatedBy    String?               @map("updated_by") @db.Uuid
+
+  restaurant  Restaurant           @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  branch      Branch               @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  partner     DeliveryPartner?     @relation(fields: [partnerId], references: [id], onDelete: SetNull)
+  assignments DeliveryAssignment[]
+
+  @@index([branchId, isActive])
+  @@index([partnerId])
+  @@map("delivery_riders")
+  @@schema("public")
+}

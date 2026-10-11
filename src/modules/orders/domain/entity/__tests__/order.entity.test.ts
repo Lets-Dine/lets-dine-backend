@@ -24,11 +24,16 @@ describe("Order", () => {
       expect(buildOrder(OrderStatus.READY).canTransitionTo(OrderStatus.PREPARING)).toBe(false);
     });
 
-    it("should allow a delivery order's extra steps between READY and COMPLETED", () => {
+    it("should allow a delivery order's extra steps: out for delivery, then delivered to settle, then completed", () => {
       // Arrange & Act & Assert
       expect(buildOrder(OrderStatus.READY).canTransitionTo(OrderStatus.OUT_FOR_DELIVERY)).toBe(true);
-      expect(buildOrder(OrderStatus.OUT_FOR_DELIVERY).canTransitionTo(OrderStatus.COMPLETED)).toBe(true);
-      expect(buildOrder(OrderStatus.OUT_FOR_DELIVERY).nextStatuses()).toEqual([OrderStatus.COMPLETED]);
+      expect(buildOrder(OrderStatus.OUT_FOR_DELIVERY).nextStatuses()).toEqual([OrderStatus.SETTLE]);
+      expect(buildOrder(OrderStatus.SETTLE).nextStatuses()).toEqual([OrderStatus.COMPLETED]);
+    });
+
+    it("should not let a delivery order skip settling on its way out", () => {
+      // Arrange & Act & Assert
+      expect(buildOrder(OrderStatus.OUT_FOR_DELIVERY).canTransitionTo(OrderStatus.COMPLETED)).toBe(false);
     });
 
     it("should treat completed and cancelled as final", () => {

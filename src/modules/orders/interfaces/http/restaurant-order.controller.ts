@@ -15,7 +15,7 @@ import { FetchAllOrdersUsecase } from "../../application/use-cases/fetch-all-ord
 import { FetchOrderByIdUsecase } from "../../application/use-cases/fetch-order-by-id.usecase";
 import { FetchOrdersBySessionUsecase } from "../../application/use-cases/fetch-orders-by-session.usecase";
 import { RemoveOrderItemUsecase } from "../../application/use-cases/remove-order-item.usecase";
-import { SettleDeliveryOrderUsecase } from "../../application/use-cases/settle-delivery-order.usecase";
+import { DeliverOrderUsecase } from "../../application/use-cases/deliver-order.usecase";
 import { SettleTableUsecase } from "../../application/use-cases/settle-table.usecase";
 import { UpdateOrderStatusUsecase } from "../../application/use-cases/update-order-status.usecase";
 import { ORDER_SUCCESS_MESSAGES } from "../../domain/constants";
@@ -33,7 +33,7 @@ export class RestaurantOrderController {
     private readonly removeOrderItemUsecase: RemoveOrderItemUsecase,
     private readonly advanceOrderItemStatusUsecase: AdvanceOrderItemStatusUsecase,
     private readonly settleTableUsecase: SettleTableUsecase,
-    private readonly settleDeliveryOrderUsecase: SettleDeliveryOrderUsecase
+    private readonly deliverOrderUsecase: DeliverOrderUsecase
   ) {}
 
   @Get()
@@ -83,15 +83,12 @@ export class RestaurantOrderController {
     return buildHttpResponse(orders, ORDER_SUCCESS_MESSAGES.TABLE_SETTLED);
   }
 
-  /** The delivery counterpart of `/table/:tableId/settle` — one order at a time, nothing to batch. */
-  @Post("/:id/settle-delivery")
+  /** Delivery hand-over: `OUT_FOR_DELIVERY → SETTLE`. Settling the money is `POST /restaurant/delivery/orders/:id/settle`. */
+  @Post("/:id/deliver")
   @UseGuards(AuthGuard, AbilityGuard)
   @CheckPolicies(checkPermissionRules([["orders:advance"]]))
-  async settleDelivery(
-    @Param("id", ParseUuidPipe) id: string,
-    @AuthUser() authEntity: AuthEntity
-  ): Promise<IHttpResponse<IOrderWithItems>> {
-    const order = await this.settleDeliveryOrderUsecase.execute(id, authEntity);
+  async deliver(@Param("id", ParseUuidPipe) id: string, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IOrderWithItems>> {
+    const order = await this.deliverOrderUsecase.execute(id, authEntity);
     return buildHttpResponse(order, ORDER_SUCCESS_MESSAGES.DELIVERY_ORDER_SETTLED);
   }
 

@@ -1,0 +1,20 @@
+import { createZodDto } from "nestjs-zod";
+import { assignDeliverySchema } from "../../interfaces/http/validations/assign-delivery.validation";
+import { completeDeliverySchema } from "../../interfaces/http/validations/complete-delivery.validation";
+import { createPartnerSchema } from "../../interfaces/http/validations/create-partner.validation";
+import { createRiderSchema } from "../../interfaces/http/validations/create-rider.validation";
+import { recordSettlementSchema } from "../../interfaces/http/validations/record-settlement.validation";
+import { statementQuerySchema } from "../../interfaces/http/validations/statement-query.validation";
+import { settleDeliveryOrderSchema } from "../../interfaces/http/validations/settle-delivery-order.validation";
+import { updatePartnerSchema } from "../../interfaces/http/validations/update-partner.validation";
+import { updateRiderSchema } from "../../interfaces/http/validations/update-rider.validation";
+
+export class CreatePartnerDto extends createZodDto(createPartnerSchema) {}
+export class UpdatePartnerDto extends createZodDto(updatePartnerSchema) {}
+export class CreateRiderDto extends createZodDto(createRiderSchema) {}
+export class UpdateRiderDto extends createZodDto(updateRiderSchema) {}
+export class AssignDeliveryDto extends createZodDto(assignDeliverySchema) {}
+export class CompleteDeliveryDto extends createZodDto(completeDeliverySchema) {}
+export class RecordSettlementDto extends createZodDto(recordSettlementSchema) {}
+export class SettleDeliveryOrderDto extends createZodDto(settleDeliveryOrderSchema) {}
+export class StatementQueryDto extends createZodDto(statementQuerySchema) {}

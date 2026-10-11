@@ -15,13 +15,13 @@ import { UpdateOrderStatusInput } from "../../interfaces/http/validations/update
  * status mostly moves by itself. Two manual moves still go through here,
  * both explicit (from, to) overrides rather than item-derived: accepting a
  * new dine-in ticket (`PENDING → ACCEPTED`), and — for a delivery order only
- * — the two steps `deriveOrderStatus` deliberately never reaches on its own
- * (`READY → OUT_FOR_DELIVERY → COMPLETED`), since dispatch/hand-over isn't
- * something any one item's status can tell you.
+ * — the step `deriveOrderStatus` deliberately never reaches on its own
+ * (`READY → OUT_FOR_DELIVERY`), since dispatch isn't something any one item's
+ * status can tell you. Delivering and settling have their own use cases,
+ * because settling takes money.
  */
 const DELIVERY_MANUAL_TRANSITIONS: Partial<Record<OrderStatus, OrderStatus>> = {
   [OrderStatus.READY]: OrderStatus.OUT_FOR_DELIVERY,
-  [OrderStatus.OUT_FOR_DELIVERY]: OrderStatus.COMPLETED,
 };
 
 @Injectable()

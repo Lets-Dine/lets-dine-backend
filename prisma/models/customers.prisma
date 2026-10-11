@@ -11,10 +11,11 @@ model Customer {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  restaurants CustomerRestaurant[]
-  sessions    DiningSession[]
-  orders      Order[]
-  payments    Payment[]
+  restaurants    CustomerRestaurant[]
+  sessions       DiningSession[]
+  orders         Order[]
+  payments       Payment[]
+  loyaltyEntries LoyaltyEntry[]
 
   @@map("customers")
   @@schema("public")

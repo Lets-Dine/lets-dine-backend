@@ -14,24 +14,28 @@ enum ExpenseKind {
 /// are read off `Payment`. Named for its main use; INCOME rows share it because they carry the
 /// same fields and the same period rules.
 model Expense {
-  id            String        @id @default(uuid()) @map("id") @db.Uuid
-  restaurantId  String        @map("restaurant_id") @db.Uuid
-  branchId      String        @map("branch_id") @db.Uuid
-  kind          ExpenseKind   @default(EXPENSE) @map("kind")
-  amount        Int           @map("amount")
+  id                   String        @id @default(uuid()) @map("id") @db.Uuid
+  restaurantId         String        @map("restaurant_id") @db.Uuid
+  branchId             String        @map("branch_id") @db.Uuid
+  kind                 ExpenseKind   @default(EXPENSE) @map("kind")
+  amount               Int           @map("amount")
   /// CASH comes out of the drawer; CARD (anything off-cash) does not.
-  method        PaymentMethod @default(CASH) @map("method")
+  method               PaymentMethod @default(CASH) @map("method")
   /// Free text so a restaurant can use its own words: rent, stock, salaries…
-  category      String        @map("category")
-  note          String        @default("") @map("note")
-  createdAt     DateTime      @default(now()) @map("created_at")
-  createdBy     String?       @map("created_by") @db.Uuid
-  createdByName String?       @map("created_by_name")
+  category             String        @map("category")
+  note                 String        @default("") @map("note")
+  createdAt            DateTime      @default(now()) @map("created_at")
+  createdBy            String?       @map("created_by") @db.Uuid
+  createdByName        String?       @map("created_by_name")
+  /// Set when a courier settlement posted this row. Such rows belong to that settlement, so the cash book cannot delete them.
+  deliverySettlementId String?       @map("delivery_settlement_id") @db.Uuid
 
-  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  branch     Branch     @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  restaurant         Restaurant          @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  branch             Branch              @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  deliverySettlement DeliverySettlement? @relation(fields: [deliverySettlementId], references: [id], onDelete: Restrict)
 
   @@index([branchId, createdAt])
+  @@index([deliverySettlementId])
   @@map("expenses")
   @@schema("public")
 }
