@@ -4,6 +4,7 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import { can } from "../../../../common/auth";
 import { ConflictException, ForbiddenException, NotFoundException } from "../../../../common/exceptions";
 import { AuthEntity, isInActiveBranch } from "../../../../common/interfaces";
+import { CustomerRepository } from "../../../customers/domain/repositories/customer.repository";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
 import { LoyaltyService } from "../../../loyalty/application/loyalty.service";
 import { DiningSessionService } from "../../../dining-sessions/application/dining-session.service";
@@ -34,7 +35,8 @@ export class CompletePaymentUsecase {
     private readonly restaurantRepository: RestaurantRepository,
     private readonly auditLogService: AuditLogService,
     private readonly eventEmitter: EventEmitter2,
-    private readonly loyaltyService: LoyaltyService
+    private readonly loyaltyService: LoyaltyService,
+    private readonly customerRepository: CustomerRepository
   ) {}
 
   async execute(dto: CompletePaymentInput, authEntity: AuthEntity): Promise<IPaymentWithItems> {
@@ -109,7 +111,18 @@ export class CompletePaymentUsecase {
         return { dishId: dish.id, dishNameSnapshot: name, unitPrice, quantity: line.quantity };
       });
 
-      const customerId = await this.resolveCustomerId(session, order, authEntity.restaurantId);
+      const resolvedCustomerId = await this.resolveCustomerId(session, order, authEntity.restaurantId);
+      // The cashier may name someone else (or nobody). Points follow this id, so it must be one of this restaurant's own customers.
+      let customerId = resolvedCustomerId;
+      let pickedName: string | null = null;
+      if (dto.customerId !== undefined) {
+        customerId = dto.customerId;
+        if (customerId) {
+          const picked = await this.customerRepository.findById(customerId, authEntity.restaurantId, { tx });
+          if (!picked) throw new NotFoundException(PAYMENT_ERROR_MESSAGES.CUSTOMER_NOT_FOUND);
+          pickedName = picked.name;
+        }
+      }
 
       // Points are a customer's entitlement, not the cashier's discretion, so they are kept apart from the
       // manual `discount` (and its permission) and the server turns them into money at the restaurant's rate.
@@ -152,7 +165,7 @@ export class CompletePaymentUsecase {
         {
           action: AuditAction.payment_completed,
           subject: order ? `Order ${order.reference}` : `Session ${session.id}`,
-          detail: `Charged ${payment.total} ${payment.currency} via ${payment.method}${discount > 0 ? ` (${discount} discount)` : ""}${dto.redeemPoints ? ` (${dto.redeemPoints} points redeemed, ${loyaltyDiscount} off)` : ""}`,
+          detail: `Charged ${payment.total} ${payment.currency} via ${payment.method}${discount > 0 ? ` (${discount} discount)` : ""}${dto.redeemPoints ? ` (${dto.redeemPoints} points redeemed, ${loyaltyDiscount} off)` : ""}${dto.customerId !== undefined && customerId !== resolvedCustomerId ? ` (customer changed to ${pickedName ?? "none"})` : ""}`,
         },
         authEntity,
         tx

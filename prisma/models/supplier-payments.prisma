@@ -1,0 +1,21 @@
+/// Money paid to a supplier against what it is owed from credit deliveries (`StockLot.onCredit`).
+/// Each one also writes a cash-book `Expense`, so the books see the money when it leaves, not when the goods arrive.
+model SupplierPayment {
+  id           String        @id @default(uuid()) @map("id") @db.Uuid
+  restaurantId String        @map("restaurant_id") @db.Uuid
+  /// Plain id: the cash book is per branch, and so is what is owed.
+  branchId     String        @map("branch_id") @db.Uuid
+  /// The supplier's name as on its deliveries (see `Supplier`).
+  supplier     String        @map("supplier")
+  amount       Int           @map("amount")
+  method       PaymentMethod @default(CASH) @map("method")
+  note         String        @default("") @map("note")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  createdBy    String?       @map("created_by") @db.Uuid
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([branchId, supplier])
+  @@map("supplier_payments")
+  @@schema("public")
+}

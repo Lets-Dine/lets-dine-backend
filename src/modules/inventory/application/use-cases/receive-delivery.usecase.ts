@@ -17,6 +17,8 @@ export class ReceiveDeliveryUsecase {
 
   async execute(id: string, dto: ReceiveDeliveryInput, authEntity: AuthEntity): Promise<IIngredient> {
     const receivedAt = dto.receivedAt ? new Date(dto.receivedAt) : undefined;
+    // A typed name that matches a saved supplier (in any case) is stored as that supplier's name.
+    const supplier = dto.supplier ? ((await this.inventoryRepository.findSupplierName(authEntity.restaurantId, dto.supplier)) ?? dto.supplier) : "";
     return this.inventoryRepository.$transaction(async tx => {
       const existing = await this.inventoryRepository.findIngredient(id, { tx });
       if (!existing || !isInActiveBranch(authEntity, existing)) throw new NotFoundException(INVENTORY_ERROR_MESSAGES.INGREDIENT_NOT_FOUND);
@@ -26,7 +28,7 @@ export class ReceiveDeliveryUsecase {
         dto.quantity,
         {
           reason: StockMovementReason.DELIVERY,
-          supplier: dto.supplier || undefined,
+          supplier: supplier || undefined,
           cost: dto.cost || undefined,
           createdBy: authEntity.sub,
           createdAt: receivedAt,
@@ -38,16 +40,18 @@ export class ReceiveDeliveryUsecase {
         {
           ingredientId: id,
           receivedAt,
-          supplier: dto.supplier || undefined,
+          supplier: supplier || undefined,
           cost: dto.cost || undefined,
           quantity: dto.quantity,
           createdBy: authEntity.sub,
+          onCredit: dto.onCredit,
         },
         tx
       );
 
-      // The delivery is a purchase: it lands in the books too, so nobody types it twice.
-      if (dto.cost > 0) {
+      // The delivery is a purchase: it lands in the books too, so nobody types it twice. On credit it
+      // lands when it is paid (see suppliers), not now.
+      if (dto.cost > 0 && !dto.onCredit) {
         await this.inventoryRepository.createStockExpense(
           {
             restaurantId: authEntity.restaurantId,
@@ -56,7 +60,7 @@ export class ReceiveDeliveryUsecase {
             amount: dto.cost,
             method: dto.method,
             category: "stock",
-            note: [existing.name, dto.supplier].filter(Boolean).join(" — "),
+            note: [existing.name, supplier].filter(Boolean).join(" — "),
             createdBy: authEntity.sub,
             createdByName: authEntity.name,
             createdAt: receivedAt,

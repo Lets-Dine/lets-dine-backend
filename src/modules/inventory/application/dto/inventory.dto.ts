@@ -8,6 +8,7 @@ import { fetchUsageSchema } from "../../interfaces/http/validations/fetch-usage.
 import { fetchQualitySchema } from "../../interfaces/http/validations/fetch-quality.validation";
 import { receiveDeliverySchema } from "../../interfaces/http/validations/receive-delivery.validation";
 import { submitStockTakeSchema } from "../../interfaces/http/validations/submit-stock-take.validation";
+import { returnStockSchema } from "../../interfaces/http/validations/return-stock.validation";
 import { setRecipeSchema } from "../../interfaces/http/validations/set-recipe.validation";
 import { transferStockSchema } from "../../interfaces/http/validations/transfer-stock.validation";
 import { updateIngredientSchema } from "../../interfaces/http/validations/update-ingredient.validation";
@@ -24,3 +25,4 @@ export class FetchUsageDto extends createZodDto(fetchUsageSchema) {}
 export class FetchBuyListDto extends createZodDto(fetchBuyListSchema) {}
 export class SubmitStockTakeDto extends createZodDto(submitStockTakeSchema) {}
 export class TransferStockDto extends createZodDto(transferStockSchema) {}
+export class ReturnStockDto extends createZodDto(returnStockSchema) {}

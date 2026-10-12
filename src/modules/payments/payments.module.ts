@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { AddOnsModule } from "../add-ons/add-ons.module";
 import { AuditLogsModule } from "../audit-logs/audit-logs.module";
 import { BranchesModule } from "../branches/branches.module";
+import { CustomersModule } from "../customers/customers.module";
 import { DiningSessionsModule } from "../dining-sessions/dining-sessions.module";
 import { DishesModule } from "../dishes/dishes.module";
 import { DishVariantsModule } from "../dish-variants/dish-variants.module";
@@ -23,6 +24,7 @@ import { PublicPaymentController } from "./interfaces/http/public-payment.contro
   imports: [
     AddOnsModule,
     BranchesModule,
+    CustomersModule,
     DiningSessionsModule,
     DishesModule,
     DishVariantsModule,

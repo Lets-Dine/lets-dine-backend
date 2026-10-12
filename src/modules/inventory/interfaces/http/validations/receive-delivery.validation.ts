@@ -10,6 +10,12 @@ export const receiveDeliverySchema = z
     /** When it actually arrived, for a delivery entered late. Defaults to now; never in the future. */
     receivedAt: z.string().datetime().optional(),
     method: z.nativeEnum(PaymentMethod).default(PaymentMethod.CASH),
+    /** Bought on credit: nothing is booked now, the supplier is owed until a payment is recorded. */
+    onCredit: z.boolean().default(false),
+  })
+  .refine(d => !d.onCredit || (d.supplier !== "" && d.cost > 0), {
+    path: ["onCredit"],
+    message: "A credit purchase needs a supplier and a price",
   })
   .refine(d => !d.receivedAt || new Date(d.receivedAt).getTime() <= Date.now() + 60_000, {
     path: ["receivedAt"],

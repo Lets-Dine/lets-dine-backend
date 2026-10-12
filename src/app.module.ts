@@ -21,6 +21,7 @@ import { BranchesModule } from "./modules/branches/branches.module";
 import { FeedbackModule } from "./modules/feedback/feedback.module";
 import { FloorsModule } from "./modules/floors/floors.module";
 import { InventoryModule } from "./modules/inventory/inventory.module";
+import { SuppliersModule } from "./modules/suppliers/suppliers.module";
 import { LedgerModule } from "./modules/ledger/ledger.module";
 import { MenuCategoriesModule } from "./modules/menu-categories/menu-categories.module";
 import { MenusModule } from "./modules/menus/menus.module";
@@ -64,6 +65,7 @@ import { AppController } from "./app.controller";
     LedgerModule,
     DeliveryModule,
     InventoryModule,
+    SuppliersModule,
     FeedbackModule,
     ReviewsModule,
     AnalyticsModule,

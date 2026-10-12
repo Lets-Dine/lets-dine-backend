@@ -10,6 +10,8 @@ enum StockMovementReason {
   /// Sent to another branch / received from one.
   TRANSFER_OUT
   TRANSFER_IN
+  /// Sent back to the supplier.
+  RETURN
 
   @@schema("public")
 }
@@ -104,6 +106,10 @@ model StockLot {
   remaining    Int      @map("remaining")
   receivedAt   DateTime @default(now()) @map("received_at")
   createdBy    String?  @map("created_by") @db.Uuid
+  /// Stock sent from another branch: carries its supplier for traceability, but is not a delivery here.
+  fromTransfer Boolean  @default(false) @map("from_transfer")
+  /// Bought on credit: no expense was booked, the supplier is owed `cost` until it is paid.
+  onCredit     Boolean  @default(false) @map("on_credit")
 
   ingredient   Ingredient       @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
   consumptions LotConsumption[]

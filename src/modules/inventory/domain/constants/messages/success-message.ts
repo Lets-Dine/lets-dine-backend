@@ -7,6 +7,8 @@ export const INVENTORY_SUCCESS_MESSAGES = {
   RECIPE_FETCHED: { key: "INVENTORY_RECIPE_FETCHED", message: "Recipe fetched" },
   SHEET_FETCHED: { key: "INVENTORY_SHEET_FETCHED", message: "Count sheet fetched" },
   STOCK_TAKEN: { key: "INVENTORY_STOCK_TAKEN", message: "Stock take recorded" },
+  RETURNED: { key: "INVENTORY_RETURNED", message: "Stock returned" },
+  RETURNABLE_FETCHED: { key: "INVENTORY_RETURNABLE_FETCHED", message: "Returnable deliveries fetched" },
   TRANSFERRED: { key: "INVENTORY_TRANSFERRED", message: "Stock transferred" },
   MARGINS_FETCHED: { key: "INVENTORY_MARGINS_FETCHED", message: "Dish margins fetched" },
   BUY_LIST_FETCHED: { key: "INVENTORY_BUY_LIST_FETCHED", message: "Buy list fetched" },

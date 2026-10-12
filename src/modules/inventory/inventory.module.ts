@@ -15,6 +15,8 @@ import { GetCountSheetUsecase } from "./application/use-cases/get-count-sheet.us
 import { GetRecipeUsecase } from "./application/use-cases/get-recipe.usecase";
 import { ListIngredientsUsecase } from "./application/use-cases/list-ingredients.usecase";
 import { ReceiveDeliveryUsecase } from "./application/use-cases/receive-delivery.usecase";
+import { FetchReturnableLotsUsecase } from "./application/use-cases/fetch-returnable-lots.usecase";
+import { ReturnStockUsecase } from "./application/use-cases/return-stock.usecase";
 import { SetRecipeUsecase } from "./application/use-cases/set-recipe.usecase";
 import { SubmitStockTakeUsecase } from "./application/use-cases/submit-stock-take.usecase";
 import { TransferStockUsecase } from "./application/use-cases/transfer-stock.usecase";
@@ -44,6 +46,8 @@ import { InventoryController } from "./interfaces/http/inventory.controller";
     GetCountSheetUsecase,
     SubmitStockTakeUsecase,
     TransferStockUsecase,
+    ReturnStockUsecase,
+    FetchReturnableLotsUsecase,
     SetRecipeUsecase,
     InventoryRepositoryImpl,
     { provide: InventoryRepository, useExisting: InventoryRepositoryImpl },

@@ -1,0 +1,27 @@
+enum SupplierIssueKind {
+  LATE
+  SHORT
+  QUALITY
+  OTHER
+
+  @@schema("public")
+}
+
+/// A one-tap record that a supplier let the kitchen down, so "is this supplier any good?" has an answer.
+model SupplierIssue {
+  id            String            @id @default(uuid()) @map("id") @db.Uuid
+  restaurantId  String            @map("restaurant_id") @db.Uuid
+  /// The supplier's name as on its deliveries (see `Supplier`).
+  supplier      String            @map("supplier")
+  kind          SupplierIssueKind @map("kind")
+  note          String            @default("") @map("note")
+  createdAt     DateTime          @default(now()) @map("created_at")
+  createdBy     String?           @map("created_by") @db.Uuid
+  createdByName String?           @map("created_by_name")
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId, supplier])
+  @@map("supplier_issues")
+  @@schema("public")
+}

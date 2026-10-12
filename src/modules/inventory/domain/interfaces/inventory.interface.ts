@@ -117,3 +117,18 @@ export interface IStockTakeResult {
   /** Minor units the difference is worth at the latest delivery price; null when that price is unknown. */
   value: number | null;
 }
+
+/** A delivery with stock left that can be sent back: what it was, and how much is still here. */
+export interface IReturnableLot {
+  lotId: string;
+  supplier: string;
+  receivedAt: Date;
+  /** What the delivery held, and what is left of it (the most that can go back). */
+  quantity: number;
+  remaining: number;
+  /** Minor units paid for the whole delivery; null when no price was entered. */
+  cost: number | null;
+  onCredit: boolean;
+  /** Minor units already given back for returns from this delivery. */
+  refunded: number;
+}

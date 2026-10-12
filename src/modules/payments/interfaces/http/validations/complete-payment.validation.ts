@@ -30,6 +30,12 @@ export const completePaymentSchema = z.object({
    * discount at the restaurant's own rate. Needs only the route's own permission, not `payments:discount`.
    */
   redeemPoints: z.number().int().min(1).max(1_000_000).optional(),
+  /**
+   * Who the bill is for, when the cashier picks or changes it. Omitted keeps whoever the orders were placed
+   * under; a uuid names another of this restaurant's customers; `null` takes the bill off its customer.
+   * This decides who earns and spends loyalty points, so the server checks it, never the screen.
+   */
+  customerId: z.string().uuid().nullable().optional(),
   /** Also ends the visit — every order still on the session gets marked completed in the same motion. */
   endSession: z.boolean().optional(),
 });

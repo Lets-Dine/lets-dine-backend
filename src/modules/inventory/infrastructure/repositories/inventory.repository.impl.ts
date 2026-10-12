@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService, PrismaTransaction } from "../../../../common/prisma";
-import { IPurchase, IIngredientSummary, IUsagePage, IIngredient, IRecipeLine } from "../../domain/interfaces/inventory.interface";
+import { IPurchase, IIngredientSummary, IUsagePage, IIngredient, IRecipeLine, IReturnableLot } from "../../domain/interfaces/inventory.interface";
 import {
   IDishRecipe,
   IDishStock,
@@ -10,6 +10,8 @@ import {
   ILotCreate,
   ILotUse,
   IReviewScores,
+  ILotForReturn,
+  ISupplierReturnCreate,
   IMovementCreate,
   InventoryRepository,
   IStockExpenseCreate,
@@ -77,6 +79,65 @@ class InventoryRepositoryImpl implements InventoryRepository {
 
   async createStockExpense(data: IStockExpenseCreate, tx: PrismaTransaction): Promise<void> {
     await tx.expense.create({ data });
+  }
+
+  async findSupplierName(restaurantId: string, name: string): Promise<string | null> {
+    const supplier = await this.prisma.supplier.findFirst({ where: { restaurantId, name: { equals: name.replace(/[\\%_]/g, "\\$&"), mode: "insensitive" } }, select: { name: true } });
+    return supplier?.name ?? null;
+  }
+
+  async findLot(id: string, tx: PrismaTransaction): Promise<ILotForReturn | null> {
+    return tx.stockLot.findUnique({
+      where: { id },
+      select: { id: true, ingredientId: true, supplier: true, cost: true, quantity: true, remaining: true, onCredit: true, fromTransfer: true },
+    });
+  }
+
+  async reduceLot(id: string, quantity: number, tx: PrismaTransaction): Promise<boolean> {
+    // Conditional, so two returns at once can't both take the same stock.
+    const taken = await tx.stockLot.updateMany({ where: { id, remaining: { gte: quantity } }, data: { remaining: { decrement: quantity } } });
+    return taken.count === 1;
+  }
+
+  async findLotRefunded(lotId: string, tx: PrismaTransaction): Promise<number> {
+    const sum = await tx.supplierReturn.aggregate({ where: { lotId }, _sum: { amount: true } });
+    return sum._sum.amount ?? 0;
+  }
+
+  async findSupplierOwed(branchId: string, supplier: string, tx: PrismaTransaction): Promise<number> {
+    // Same ILIKE escaping as the suppliers module: `%`, `_` and `\` in a name match literally.
+    const same = { equals: supplier.replace(/[\\%_]/g, "\\$&"), mode: "insensitive" as const };
+    const [credit, offset, paid] = await Promise.all([
+      tx.stockLot.aggregate({ where: { onCredit: true, fromTransfer: false, supplier: same, ingredient: { branchId } }, _sum: { cost: true } }),
+      tx.supplierReturn.aggregate({ where: { branchId, supplier: same }, _sum: { owedOffset: true } }),
+      tx.supplierPayment.aggregate({ where: { branchId, supplier: same }, _sum: { amount: true } }),
+    ]);
+    return Math.max(0, (credit._sum.cost ?? 0) - (offset._sum.owedOffset ?? 0) - (paid._sum.amount ?? 0));
+  }
+
+  async createSupplierReturn(data: ISupplierReturnCreate, tx: PrismaTransaction): Promise<void> {
+    await tx.supplierReturn.create({ data });
+  }
+
+  async findReturnableLots(ingredientId: string): Promise<IReturnableLot[]> {
+    const lots = await this.prisma.stockLot.findMany({
+      where: { ingredientId, remaining: { gt: 0 }, supplier: { not: null }, fromTransfer: false },
+      orderBy: [{ receivedAt: "desc" }, { id: "desc" }],
+      take: 20,
+      select: { id: true, supplier: true, receivedAt: true, quantity: true, remaining: true, cost: true, onCredit: true },
+    });
+    const refunds = await this.prisma.supplierReturn.groupBy({ by: ["lotId"], where: { lotId: { in: lots.map(l => l.id) } }, _sum: { amount: true } });
+    const refunded = new Map(refunds.map(r => [r.lotId, r._sum.amount ?? 0]));
+    return lots.map(l => ({
+      lotId: l.id,
+      supplier: l.supplier as string,
+      receivedAt: l.receivedAt,
+      quantity: l.quantity,
+      remaining: l.remaining,
+      cost: l.cost,
+      onCredit: l.onCredit,
+      refunded: refunded.get(l.id) ?? 0,
+    }));
   }
 
   async createLot(data: ILotCreate, tx: PrismaTransaction): Promise<void> {

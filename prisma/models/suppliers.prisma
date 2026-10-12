@@ -1,0 +1,21 @@
+/// Someone the kitchen buys from. A delivery names its supplier as plain text (`StockLot.supplier`),
+/// matched to this record by name, so a supplier's name never changes once saved and old deliveries
+/// keep working without a data migration.
+model Supplier {
+  id           String   @id @default(uuid()) @map("id") @db.Uuid
+  restaurantId String   @map("restaurant_id") @db.Uuid
+  name         String   @map("name")
+  phone        String   @default("") @map("phone")
+  note         String   @default("") @map("note")
+  /// Archived, never deleted — deliveries still carry the name.
+  isArchived   Boolean  @default(false) @map("is_archived")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  createdBy    String?  @map("created_by") @db.Uuid
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@unique([restaurantId, name])
+  @@map("suppliers")
+  @@schema("public")
+}

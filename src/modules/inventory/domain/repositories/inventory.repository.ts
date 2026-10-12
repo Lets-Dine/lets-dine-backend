@@ -1,6 +1,6 @@
 import { ExpenseKind, PaymentMethod, StockMovementReason } from "@prisma/client";
 import { PrismaTransaction } from "../../../../common/prisma";
-import { IPurchase, IIngredientSummary, IUsagePage, IIngredient, IRecipeLine } from "../interfaces/inventory.interface";
+import { IPurchase, IIngredientSummary, IUsagePage, IIngredient, IRecipeLine, IReturnableLot } from "../interfaces/inventory.interface";
 import { IUsage } from "../utils/forecast.util";
 import { IRecipeCostLine, IUnitCost } from "../utils/margin.util";
 import { ILotAllocation, IOpenLot } from "../utils/lot.util";
@@ -48,6 +48,10 @@ export interface ILotCreate {
   cost?: number;
   quantity: number;
   createdBy?: string;
+  /** Sent from another branch: not a delivery here, so it stays out of supplier totals. */
+  fromTransfer?: boolean;
+  /** Bought on credit: the supplier is owed `cost` until paid. */
+  onCredit?: boolean;
 }
 
 /** A lot with something left, with enough of its history to carry it to another branch. */
@@ -103,6 +107,33 @@ export interface IDishStock {
   baseLines: { quantity: number; ingredient: { quantity: number } }[];
 }
 
+export interface ILotForReturn {
+  id: string;
+  ingredientId: string;
+  supplier: string | null;
+  cost: number | null;
+  quantity: number;
+  remaining: number;
+  onCredit: boolean;
+  fromTransfer: boolean;
+}
+
+export interface ISupplierReturnCreate {
+  restaurantId: string;
+  branchId: string;
+  ingredientId: string;
+  lotId: string;
+  supplier: string;
+  quantity: number;
+  amount: number;
+  onCredit: boolean;
+  /** The part of `amount` that came off what the supplier is owed. */
+  owedOffset: number;
+  method: PaymentMethod;
+  note: string;
+  createdBy: string;
+}
+
 export abstract class InventoryRepository {
   abstract $transaction<T>(fn: (tx: PrismaTransaction) => Promise<T>): Promise<T>;
   abstract findIngredients(branchId: string): Promise<IIngredient[]>;
@@ -116,6 +147,18 @@ export abstract class InventoryRepository {
   ): Promise<IIngredient>;
   /** Archived ones included — a transfer revives an ingredient rather than clashing with its name. */
   abstract findIngredientByName(branchId: string, name: string, tx: PrismaTransaction): Promise<IIngredient | null>;
+  /** The saved supplier this name refers to, matched without regard to case, so one supplier never splits in two. */
+  abstract findSupplierName(restaurantId: string, name: string): Promise<string | null>;
+  abstract findLot(id: string, tx: PrismaTransaction): Promise<ILotForReturn | null>;
+  /** Takes `quantity` off what is left of a lot, as stock sent back rather than used. False (and nothing taken) if that much is no longer there. */
+  abstract reduceLot(id: string, quantity: number, tx: PrismaTransaction): Promise<boolean>;
+  /** Minor units already given back for earlier returns from one lot. */
+  abstract findLotRefunded(lotId: string, tx: PrismaTransaction): Promise<number>;
+  /** What this branch still owes a supplier for credit deliveries, after returns and payments. */
+  abstract findSupplierOwed(branchId: string, supplier: string, tx: PrismaTransaction): Promise<number>;
+  abstract createSupplierReturn(data: ISupplierReturnCreate, tx: PrismaTransaction): Promise<void>;
+  /** Deliveries of an ingredient with stock left and a named supplier, newest first. */
+  abstract findReturnableLots(ingredientId: string): Promise<IReturnableLot[]>;
   abstract findBranch(id: string): Promise<{ id: string; restaurantId: string; name: string; isActive: boolean } | null>;
   abstract findOpenLotDetails(ingredientId: string, tx: PrismaTransaction): Promise<IOpenLotDetail[]>;
   /** Moves the running quantity by `delta` and writes the movement that explains it, atomically with the caller's tx. */

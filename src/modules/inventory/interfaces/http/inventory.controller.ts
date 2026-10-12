@@ -11,6 +11,7 @@ import {
   FetchUsageDto,
   FetchQualityDto,
   ReceiveDeliveryDto,
+  ReturnStockDto,
   SetRecipeDto,
   SubmitStockTakeDto,
   TransferStockDto,
@@ -19,6 +20,8 @@ import {
 import { AdjustStockUsecase } from "../../application/use-cases/adjust-stock.usecase";
 import { ConsumeStockUsecase } from "../../application/use-cases/consume-stock.usecase";
 import { CreateIngredientUsecase } from "../../application/use-cases/create-ingredient.usecase";
+import { FetchReturnableLotsUsecase } from "../../application/use-cases/fetch-returnable-lots.usecase";
+import { ReturnStockUsecase } from "../../application/use-cases/return-stock.usecase";
 import { FetchBuyListUsecase } from "../../application/use-cases/fetch-buy-list.usecase";
 import { FetchIngredientPurchasesUsecase } from "../../application/use-cases/fetch-ingredient-purchases.usecase";
 import { FetchIngredientSummaryUsecase } from "../../application/use-cases/fetch-ingredient-summary.usecase";
@@ -38,6 +41,7 @@ import {
   IBuyListItem,
   IDishMargin,
   IIngredientSummary,
+  IReturnableLot,
   IPurchase,
   IUsagePage,
   IIngredient,
@@ -67,7 +71,9 @@ export class InventoryController {
     private readonly fetchDishMarginsUsecase: FetchDishMarginsUsecase,
     private readonly getCountSheetUsecase: GetCountSheetUsecase,
     private readonly submitStockTakeUsecase: SubmitStockTakeUsecase,
-    private readonly transferStockUsecase: TransferStockUsecase
+    private readonly transferStockUsecase: TransferStockUsecase,
+    private readonly returnStockUsecase: ReturnStockUsecase,
+    private readonly fetchReturnableLotsUsecase: FetchReturnableLotsUsecase
   ) {}
 
   @Get("ingredients")
@@ -142,6 +148,24 @@ export class InventoryController {
     @AuthUser() authEntity: AuthEntity
   ): Promise<IHttpResponse<IIngredient>> {
     return buildHttpResponse(await this.receiveDeliveryUsecase.execute(id, dto, authEntity), INVENTORY_SUCCESS_MESSAGES.DELIVERY_RECEIVED);
+  }
+
+  @Get("ingredients/:id/returnable")
+  @UseGuards(...VIEW)
+  @CheckPolicies(checkPermissionRules([["inventory:view"]]))
+  async returnable(@Param("id") id: string, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IReturnableLot[]>> {
+    return buildHttpResponse(await this.fetchReturnableLotsUsecase.execute(id, authEntity), INVENTORY_SUCCESS_MESSAGES.RETURNABLE_FETCHED);
+  }
+
+  @Post("ingredients/:id/return")
+  @UseGuards(...VIEW)
+  @CheckPolicies(checkPermissionRules([["inventory:manage"]]))
+  async returnStock(
+    @Param("id") id: string,
+    @Body() dto: ReturnStockDto,
+    @AuthUser() authEntity: AuthEntity
+  ): Promise<IHttpResponse<IIngredient>> {
+    return buildHttpResponse(await this.returnStockUsecase.execute(id, dto, authEntity), INVENTORY_SUCCESS_MESSAGES.RETURNED);
   }
 
   @Post("ingredients/:id/adjust")

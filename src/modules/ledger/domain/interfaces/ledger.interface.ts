@@ -14,6 +14,7 @@ export interface IExpense {
   createdByName: string | null;
   /** Set when a courier settlement posted this row; the cash book cannot delete it. */
   deliverySettlementId: string | null;
+  supplierPaymentId: string | null;
 }
 
 export interface ICashClose {

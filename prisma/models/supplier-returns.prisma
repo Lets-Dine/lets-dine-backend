@@ -1,0 +1,26 @@
+/// Stock sent back to a supplier, from one delivery (`StockLot`). `amount` is what the supplier gives back for
+/// it. `owedOffset` of that comes off what is owed (credit deliveries only, never more than is owed); the rest
+/// is money back, which the cash book records as income. Supplier totals are net of these.
+model SupplierReturn {
+  id           String        @id @default(uuid()) @map("id") @db.Uuid
+  restaurantId String        @map("restaurant_id") @db.Uuid
+  branchId     String        @map("branch_id") @db.Uuid
+  ingredientId String        @map("ingredient_id") @db.Uuid
+  lotId        String        @map("lot_id") @db.Uuid
+  /// The supplier's name as on the delivery (see `Supplier`).
+  supplier     String        @map("supplier")
+  quantity     Int           @map("quantity")
+  amount       Int           @default(0) @map("amount")
+  /// The part of `amount` that came off what is owed to the supplier.
+  owedOffset   Int           @default(0) @map("owed_offset")
+  onCredit     Boolean       @default(false) @map("on_credit")
+  method       PaymentMethod @default(CASH) @map("method")
+  note         String        @default("") @map("note")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  createdBy    String?       @map("created_by") @db.Uuid
+
+  @@index([branchId, supplier])
+  @@index([lotId])
+  @@map("supplier_returns")
+  @@schema("public")
+}

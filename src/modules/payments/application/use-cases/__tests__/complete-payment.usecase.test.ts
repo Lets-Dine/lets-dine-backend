@@ -3,6 +3,7 @@ import { AuditAction, StaffRole } from "@prisma/client";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { ConflictException, ForbiddenException, NotFoundException } from "../../../../../common/exceptions";
 import { buildAuthEntity } from "../../../../../common/testing";
+import { CustomerRepository } from "../../../../customers/domain/repositories/customer.repository";
 import { AuditLogService } from "../../../../audit-logs/application/audit-log.service";
 import { DiningSessionService } from "../../../../dining-sessions/application/dining-session.service";
 import { DiningSessionRepository } from "../../../../dining-sessions/domain/repositories/dining-session.repository";
@@ -50,6 +51,7 @@ describe("CompletePaymentUsecase", () => {
   let auditLogService: jest.Mocked<AuditLogService>;
   let eventEmitter: jest.Mocked<EventEmitter2>;
   let loyaltyService: jest.Mocked<LoyaltyService>;
+  let customerRepository: jest.Mocked<CustomerRepository>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -69,6 +71,7 @@ describe("CompletePaymentUsecase", () => {
         { provide: AuditLogService, useValue: { record: jest.fn() } },
         { provide: EventEmitter2, useValue: { emit: jest.fn() } },
         { provide: LoyaltyService, useValue: { earnForPayment: jest.fn(), planRedemption: jest.fn(), recordRedemption: jest.fn() } },
+        { provide: CustomerRepository, useValue: { findById: jest.fn() } },
       ],
     }).compile();
 
@@ -84,6 +87,7 @@ describe("CompletePaymentUsecase", () => {
     auditLogService = module.get(AuditLogService);
     eventEmitter = module.get(EventEmitter2);
     loyaltyService = module.get(LoyaltyService);
+    customerRepository = module.get(CustomerRepository);
 
     diningSessionRepository.findById.mockResolvedValue(session as any);
     restaurantRepository.findByIdForBranch.mockResolvedValue(restaurant as any);
@@ -209,6 +213,51 @@ describe("CompletePaymentUsecase", () => {
 
       // Assert
       expect(paymentRepository.create.mock.calls[0][0].customerId).toBe("customer-1");
+    });
+
+    describe("choosing the customer (customerId)", () => {
+      const customerUuid = "7f2c1a52-5c2c-4a0b-9d0e-0d6f6a7b8c9d";
+
+      it("should charge the picked customer instead of the one the orders were placed under, and say so in the audit log", async () => {
+        orderRepository.findBySessionId.mockResolvedValue([{ customerId: "customer-1" }] as any);
+        customerRepository.findById.mockResolvedValue({ id: customerUuid, name: "Anita" } as any);
+        paymentRepository.create.mockResolvedValue({ id: "payment-1", total: 1, currency: "NPR", method } as any);
+
+        await usecase.execute({ sessionId: "session-1", items: requestItems, method, customerId: customerUuid }, authUser);
+
+        expect(customerRepository.findById).toHaveBeenCalledWith(customerUuid, authUser.restaurantId, { tx });
+        expect(paymentRepository.create.mock.calls[0][0].customerId).toBe(customerUuid);
+        expect(auditLogService.record.mock.calls[0][0].detail).toContain("customer changed to Anita");
+      });
+
+      it("should spend points for the picked customer, not the one on the orders", async () => {
+        orderRepository.findBySessionId.mockResolvedValue([{ customerId: "customer-1" }] as any);
+        customerRepository.findById.mockResolvedValue({ id: customerUuid, name: "Anita" } as any);
+        loyaltyService.planRedemption.mockResolvedValue(100);
+        paymentRepository.create.mockResolvedValue({ id: "payment-1", total: 1, currency: "NPR", method } as any);
+
+        await usecase.execute({ sessionId: "session-1", items: requestItems, method, customerId: customerUuid, redeemPoints: 10 }, authUser);
+
+        expect(loyaltyService.planRedemption.mock.calls[0][0].customerId).toBe(customerUuid);
+        expect(loyaltyService.recordRedemption.mock.calls[0][0].customerId).toBe(customerUuid);
+      });
+
+      it("should take the bill off its customer when null is sent", async () => {
+        orderRepository.findBySessionId.mockResolvedValue([{ customerId: "customer-1" }] as any);
+        paymentRepository.create.mockResolvedValue({ id: "payment-1", total: 1, currency: "NPR", method } as any);
+
+        await usecase.execute({ sessionId: "session-1", items: requestItems, method, customerId: null }, authUser);
+
+        expect(customerRepository.findById).not.toHaveBeenCalled();
+        expect(paymentRepository.create.mock.calls[0][0].customerId).toBeNull();
+      });
+
+      it("should refuse a customer that isn't this restaurant's, before charging anything", async () => {
+        customerRepository.findById.mockResolvedValue(null);
+
+        await expect(usecase.execute({ sessionId: "session-1", items: requestItems, method, customerId: customerUuid }, authUser)).rejects.toThrow(NotFoundException);
+        expect(paymentRepository.create).not.toHaveBeenCalled();
+      });
     });
 
     it("should leave the payment's customer null when nobody on the visit gave a number", async () => {

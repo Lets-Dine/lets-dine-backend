@@ -67,6 +67,7 @@ export class TransferStockUsecase {
             quantity,
             receivedAt: lot.receivedAt,
             createdBy: authEntity.sub,
+            fromTransfer: true,
           },
           tx
         );
@@ -74,7 +75,7 @@ export class TransferStockUsecase {
       // Stock beyond what any lot accounts for still arrives, just with no history.
       if (carried < dto.quantity) {
         await this.inventoryRepository.createLot(
-          { ingredientId: destination.id, quantity: dto.quantity - carried, createdBy: authEntity.sub },
+          { ingredientId: destination.id, quantity: dto.quantity - carried, createdBy: authEntity.sub, fromTransfer: true },
           tx
         );
       }
