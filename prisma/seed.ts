@@ -976,15 +976,15 @@ async function main(): Promise<void> {
   await seedReviewTags();
   if (process.env.SEED_DEMO === "false") return;
 
-  await seedDemoRestaurant();
+  // await seedDemoRestaurant();
   // SEED_HISTORY=false keeps the demo restaurant empty — useful for looking at
   // the app's own empty states.
-  if (process.env.SEED_HISTORY !== "false") {
-    await seedTradingHistory();
-    await seedDelivery();
-  }
-  await seedInventory();
-  if (process.env.SEED_HISTORY !== "false") await seedLotQuality();
+  // if (process.env.SEED_HISTORY !== "false") {
+  //   await seedTradingHistory();
+  //   await seedDelivery();
+  // }
+  // await seedInventory();
+  // if (process.env.SEED_HISTORY !== "false") await seedLotQuality();
 }
 
 main()
