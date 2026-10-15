@@ -69,6 +69,8 @@ export interface ILotUse {
   ingredientName: string;
   supplier: string | null;
   receivedAt: Date;
+  /** Stock from this delivery is still here and can go back to its supplier. */
+  canReturn: boolean;
   orderId: string;
   dishId: string;
 }
@@ -177,7 +179,7 @@ export abstract class InventoryRepository {
   /** Ingredient use (order deductions) since `since`, per ingredient. */
   abstract findUsage(branchId: string, since: Date): Promise<Map<string, IUsage[]>>;
   abstract findIngredientSummary(ingredientId: string, since: Date): Promise<Omit<IIngredientSummary, "days">>;
-  /** Deliveries of one ingredient, newest first. */
+  /** Deliveries of one ingredient and the stock sent back to suppliers, newest first. */
   abstract findPurchases(ingredientId: string, limit: number): Promise<IPurchase[]>;
   /** Order deductions of one ingredient, newest first, with the dish each was for. */
   abstract findIngredientUsage(ingredientId: string, page: number, pageSize: number): Promise<IUsagePage>;

@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards } from "@n
 import { AbilityGuard, AuthGuard, AuthUser, CheckPolicies, checkPermissionRules } from "../../../../common/auth";
 import { type AuthEntity, IHttpResponse, PaginatedResponse } from "../../../../common/interfaces";
 import { buildHttpResponse } from "../../../../common/utils";
-import { CloseLedgerDto, CreateExpenseDto, FetchLedgerListDto } from "../../application/dto/ledger.dto";
+import { CloseLedgerDto, CreateExpenseDto, FetchLedgerEntriesDto, FetchLedgerListDto } from "../../application/dto/ledger.dto";
 import { CloseLedgerUsecase } from "../../application/use-cases/close-ledger.usecase";
 import { CreateExpenseUsecase } from "../../application/use-cases/create-expense.usecase";
 import { DeleteExpenseUsecase } from "../../application/use-cases/delete-expense.usecase";
@@ -39,8 +39,8 @@ export class LedgerController {
   @Get("entries")
   @UseGuards(...VIEW)
   @CheckPolicies(checkPermissionRules([["ledger:view"]]))
-  async entries(@AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<ILedgerEntry[]>> {
-    return buildHttpResponse(await this.getLedgerEntriesUsecase.execute(authEntity), LEDGER_SUCCESS_MESSAGES.ENTRIES_FETCHED);
+  async entries(@Query() query: FetchLedgerEntriesDto, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<ILedgerEntry[]>> {
+    return buildHttpResponse(await this.getLedgerEntriesUsecase.execute(authEntity, query), LEDGER_SUCCESS_MESSAGES.ENTRIES_FETCHED);
   }
 
   @Post("close")

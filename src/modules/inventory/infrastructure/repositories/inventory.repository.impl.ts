@@ -172,7 +172,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
       where: { createdAt: { gte: since }, lot: { ingredient: { branchId } } },
       select: {
         lotId: true,
-        lot: { select: { supplier: true, receivedAt: true, ingredient: { select: { id: true, name: true } } } },
+        lot: { select: { supplier: true, receivedAt: true, remaining: true, fromTransfer: true, ingredient: { select: { id: true, name: true } } } },
         orderItemId: true,
       },
     });
@@ -191,6 +191,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
           ingredientName: row.lot.ingredient.name,
           supplier: row.lot.supplier,
           receivedAt: row.lot.receivedAt,
+          canReturn: Boolean(row.lot.supplier) && !row.lot.fromTransfer && row.lot.remaining > 0,
           orderId: item.orderId,
           dishId: item.dishId,
         },
@@ -251,12 +252,12 @@ class InventoryRepositoryImpl implements InventoryRepository {
 
   async findPurchases(ingredientId: string, limit: number): Promise<IPurchase[]> {
     const rows = await this.prisma.stockMovement.findMany({
-      where: { ingredientId, reason: "DELIVERY" },
+      where: { ingredientId, reason: { in: ["DELIVERY", "RETURN"] } },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: limit,
-      select: { id: true, createdAt: true, supplier: true, delta: true, cost: true },
+      select: { id: true, createdAt: true, reason: true, supplier: true, delta: true, cost: true },
     });
-    return rows.map(r => ({ id: r.id, at: r.createdAt, supplier: r.supplier, quantity: r.delta, cost: r.cost }));
+    return rows.map(r => ({ id: r.id, at: r.createdAt, kind: r.reason === "RETURN" ? ("return" as const) : ("delivery" as const), supplier: r.supplier, quantity: r.delta, cost: r.cost }));
   }
 
   async findIngredientUsage(ingredientId: string, page: number, pageSize: number): Promise<IUsagePage> {

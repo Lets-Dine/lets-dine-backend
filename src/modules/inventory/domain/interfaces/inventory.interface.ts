@@ -27,6 +27,8 @@ export interface ILotQuality {
   ingredientName: string;
   supplier: string | null;
   receivedAt: Date;
+  /** Stock from this delivery is still here, so it can go back to its supplier. */
+  canReturn: boolean;
   reviewCount: number;
   poorCount: number;
   poorRate: number;
@@ -65,6 +67,8 @@ export interface IIngredientSummary {
 export interface IPurchase {
   id: string;
   at: Date;
+  /** A return takes stock back out: `quantity` is negative and `cost` is what the supplier gave back. */
+  kind: "delivery" | "return";
   supplier: string | null;
   quantity: number;
   cost: number | null;

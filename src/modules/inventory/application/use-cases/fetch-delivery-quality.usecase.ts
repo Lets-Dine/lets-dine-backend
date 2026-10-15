@@ -41,7 +41,7 @@ export class FetchDeliveryQualityUsecase {
     return scoreLots(samples)
       .map(score => {
         const lot = meta.get(score.lotId)!;
-        return { ...score, ingredientName: lot.ingredientName, supplier: lot.supplier, receivedAt: lot.receivedAt };
+        return { ...score, ingredientName: lot.ingredientName, supplier: lot.supplier, receivedAt: lot.receivedAt, canReturn: lot.canReturn };
       })
       .sort((a, b) => Number(b.flagged) - Number(a.flagged) || b.poorRate - a.poorRate || b.reviewCount - a.reviewCount);
   }

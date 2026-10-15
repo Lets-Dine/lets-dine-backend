@@ -65,9 +65,9 @@ class LedgerRepositoryImpl implements LedgerRepository {
     };
   }
 
-  async fetchSales(scope: ILedgerScope, since: Date | null): Promise<ISaleLine[]> {
+  async fetchSales(scope: ILedgerScope, since: Date | null, until?: Date): Promise<ISaleLine[]> {
     const rows = await this.prisma.payment.findMany({
-      where: { ...scope, ...(since && { createdAt: { gt: since } }) },
+      where: { ...scope, ...((since || until) && { createdAt: { ...(since && { gt: since }), ...(until && { lte: until }) } }) },
       orderBy: { createdAt: "asc" },
       select: {
         id: true,
@@ -81,8 +81,9 @@ class LedgerRepositoryImpl implements LedgerRepository {
     return rows.map(({ table, ...sale }) => ({ ...sale, tableName: table?.name ?? null }));
   }
 
-  async fetchAllExpenses(scope: ILedgerScope, since: Date | null): Promise<IExpense[]> {
-    return this.prisma.expense.findMany({ where: { ...scope, ...(since && { createdAt: { gt: since } }) }, orderBy: { createdAt: "asc" } });
+  async fetchAllExpenses(scope: ILedgerScope, since: Date | null, until?: Date): Promise<IExpense[]> {
+    const createdAt = { ...(since && { gt: since }), ...(until && { lte: until }) };
+    return this.prisma.expense.findMany({ where: { ...scope, ...((since || until) && { createdAt }) }, orderBy: { createdAt: "asc" } });
   }
 
   async createClose(data: ICashCloseCreate, options?: { tx?: PrismaTransaction }): Promise<ICashClose> {

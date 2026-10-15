@@ -2,34 +2,43 @@ import { Injectable } from "@nestjs/common";
 import { AuthEntity } from "../../../../common/interfaces";
 import { ILedgerEntry } from "../../domain/interfaces/ledger.interface";
 import { LedgerRepository } from "../../domain/repositories/ledger.repository";
+import { FetchLedgerEntriesQuery } from "../../interfaces/http/validations/fetch-ledger-entries.validation";
 
-/** The open period as one tape: the opening float, then every sale and expense in the order it happened. */
+/**
+ * The open period as one tape: the opening float, then every sale and expense in the order it happened.
+ * With `from`/`to` it reads that window instead (a past close, a chosen day) — no opening line, the caller knows its own base.
+ */
 @Injectable()
 export class GetLedgerEntriesUsecase {
   constructor(private readonly ledgerRepository: LedgerRepository) {}
 
-  async execute(authEntity: AuthEntity): Promise<ILedgerEntry[]> {
+  async execute(authEntity: AuthEntity, { from, to }: FetchLedgerEntriesQuery = {}): Promise<ILedgerEntry[]> {
     const scope = { restaurantId: authEntity.restaurantId, branchId: authEntity.branchId };
-    const last = await this.ledgerRepository.findLastClose(scope);
-    if (!last) return [];
+    const history = Boolean(from || to);
+    const last = history ? null : await this.ledgerRepository.findLastClose(scope);
+    if (!history && !last) return [];
 
     const [sales, expenses] = await Promise.all([
-      this.ledgerRepository.fetchSales(scope, last.closedAt),
-      this.ledgerRepository.fetchAllExpenses(scope, last.closedAt),
+      this.ledgerRepository.fetchSales(scope, last?.closedAt ?? from ?? null, to),
+      this.ledgerRepository.fetchAllExpenses(scope, last?.closedAt ?? from ?? null, to),
     ]);
 
     const entries: ILedgerEntry[] = [
-      {
-        id: last.id,
-        kind: "opening",
-        at: last.closedAt,
-        amount: last.closingCounted + last.bankCounted,
-        method: "CASH",
-        cashDelta: last.closingCounted,
-        bankDelta: last.bankCounted,
-        label: "Day opened",
-        detail: last.closedByName ?? "",
-      },
+      ...(last
+        ? [
+            {
+              id: last.id,
+              kind: "opening" as const,
+              at: last.closedAt,
+              amount: last.closingCounted + last.bankCounted,
+              method: "CASH" as const,
+              cashDelta: last.closingCounted,
+              bankDelta: last.bankCounted,
+              label: "Day opened",
+              detail: last.closedByName ?? "",
+            },
+          ]
+        : []),
       ...sales.map(
         (sale): ILedgerEntry => ({
           id: sale.id,

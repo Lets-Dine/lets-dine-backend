@@ -33,8 +33,8 @@ export abstract class LedgerRepository {
   abstract findBranchTimezone(branchId: string): Promise<string>;
   abstract sumPeriod(scope: ILedgerScope, since: Date | null, until: Date, options?: { tx?: PrismaTransaction }): Promise<IPeriodTotals>;
   /** Every payment after `since` with what it was for, oldest first. */
-  abstract fetchSales(scope: ILedgerScope, since: Date | null): Promise<ISaleLine[]>;
-  abstract fetchAllExpenses(scope: ILedgerScope, since: Date | null): Promise<IExpense[]>;
+  abstract fetchSales(scope: ILedgerScope, since: Date | null, until?: Date): Promise<ISaleLine[]>;
+  abstract fetchAllExpenses(scope: ILedgerScope, since: Date | null, until?: Date): Promise<IExpense[]>;
   abstract createClose(data: ICashCloseCreate, options?: { tx?: PrismaTransaction }): Promise<ICashClose>;
   abstract fetchCloses(scope: ILedgerScope, options?: IPaginationOptions): Promise<PaginatedResponse<ICashClose>>;
   abstract createExpense(data: IExpenseCreate, options?: { tx?: PrismaTransaction }): Promise<IExpense>;

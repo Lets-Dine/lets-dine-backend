@@ -28,6 +28,8 @@ const ORDER_INCLUDE = {
   // Floor orders only — `floorId` is a direct column on `orders` (§16b), so the
   // floor's own display name is one join away, no longer through the session.
   floor: { select: { name: true } },
+  // The linked repeat customer, if any — lets a ticket say who it is for, not just where it goes.
+  customer: { select: { name: true, phone: true } },
   reviews: { select: { dishId: true } },
 } satisfies Prisma.OrderInclude;
 
@@ -319,13 +321,15 @@ class OrderRepositoryImpl implements OrderRepository {
   }
 
   private toOrder(order: OrderRow): IOrderWithItems {
-    const { table, floor, reviews, items, ...rest } = order;
+    const { table, floor, customer, reviews, items, ...rest } = order;
 
     return {
       ...rest,
       items,
       tableName: table?.name ?? null,
       floorName: floor?.name ?? null,
+      customerName: customer?.name ?? null,
+      customerPhone: customer?.phone ?? null,
       reviewedDishIds: [...new Set(reviews.map(review => review.dishId))],
     };
   }
