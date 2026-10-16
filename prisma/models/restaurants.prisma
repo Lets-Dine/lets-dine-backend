@@ -45,6 +45,8 @@ model Restaurant {
   reviews             DishReview[]
   auditLogs           AuditLog[]
   payments            Payment[]
+  paymentTenders      PaymentTender[]
+  paymentRefunds      PaymentRefund[]
   expenses            Expense[]
   cashCloses          CashClose[]
   deliveryPartners    DeliveryPartner[]

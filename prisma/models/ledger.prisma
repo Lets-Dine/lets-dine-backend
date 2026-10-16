@@ -31,6 +31,8 @@ model Expense {
   deliverySettlementId String?       @map("delivery_settlement_id") @db.Uuid
   /// Set when a payment to a supplier posted this row. The supplier ledger owns it, so the cash book cannot delete it.
   supplierPaymentId    String?       @map("supplier_payment_id") @db.Uuid
+  /// Set when a customer refund posted this row. The sale owns it, so the cash book cannot delete it; unique so one refund is one outflow.
+  paymentRefundId      String?       @unique @map("payment_refund_id") @db.Uuid
 
   restaurant         Restaurant          @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   branch             Branch              @relation(fields: [branchId], references: [id], onDelete: Restrict)

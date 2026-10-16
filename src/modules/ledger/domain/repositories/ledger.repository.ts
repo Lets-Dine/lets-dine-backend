@@ -26,6 +26,8 @@ export interface ILedgerScope {
 
 export abstract class LedgerRepository {
   abstract $transaction<T>(fn: (tx: PrismaTransaction) => Promise<T>): Promise<T>;
+  /** The latest close at or before `at` — the base a balance on any past date is rolled forward from. */
+  abstract findLastCloseAtOrBefore(scope: ILedgerScope, at: Date): Promise<ICashClose | null>;
   abstract findLastClose(scope: ILedgerScope, options?: { tx?: PrismaTransaction }): Promise<ICashClose | null>;
   /** Payments (sales) and expenses created after `since` (exclusive) up to `until` (inclusive). */
   abstract countCloses(scope: ILedgerScope, options?: { tx?: PrismaTransaction }): Promise<number>;

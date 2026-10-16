@@ -30,6 +30,7 @@ import { LoyaltyModule } from "./modules/loyalty/loyalty.module";
 import { PaymentsModule } from "./modules/payments/payments.module";
 import { RestaurantsModule } from "./modules/restaurants/restaurants.module";
 import { ReviewsModule } from "./modules/reviews/reviews.module";
+import { TransactionsModule } from "./modules/transactions/transactions.module";
 import { TablesModule } from "./modules/tables/tables.module";
 import { UploadsModule } from "./modules/uploads/uploads.module";
 import { UsersModule } from "./modules/users/users.module";
@@ -61,6 +62,7 @@ import { AppController } from "./app.controller";
     DiningSessionsModule,
     OrdersModule,
     PaymentsModule,
+    TransactionsModule,
     LoyaltyModule,
     LedgerModule,
     DeliveryModule,

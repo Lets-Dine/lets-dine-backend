@@ -36,6 +36,9 @@ export class GetLedgerEntriesUsecase {
               bankDelta: last.bankCounted,
               label: "Day opened",
               detail: last.closedByName ?? "",
+              sourceType: "CLOSE" as const,
+              sourceId: last.id,
+              reference: "",
             },
           ]
         : []),
@@ -50,6 +53,9 @@ export class GetLedgerEntriesUsecase {
           bankDelta: sale.method === "CASH" ? 0 : sale.total,
           label: sale.items.map(item => `${item.quantity}× ${item.dishNameSnapshot}`).join(", "),
           detail: sale.tableName ?? "Delivery",
+          sourceType: "PAYMENT",
+          sourceId: sale.paymentId,
+          reference: sale.reference,
         })
       ),
       ...expenses.map((expense): ILedgerEntry => {
@@ -59,7 +65,7 @@ export class GetLedgerEntriesUsecase {
         const onCash = expense.method === "CASH";
         return {
           id: expense.id,
-          kind: transfer ? "transfer" : expense.kind === "INCOME" ? "income" : "expense",
+          kind: transfer ? "transfer" : expense.kind === "INCOME" ? "income" : expense.paymentRefundId ? "refund" : "expense",
           at: expense.createdAt,
           amount: expense.amount,
           method: expense.method,
@@ -68,7 +74,19 @@ export class GetLedgerEntriesUsecase {
           bankDelta: transfer ? (toBank ? expense.amount : -expense.amount) : onCash ? 0 : sign * expense.amount,
           label: transfer ? (toBank ? "Drawer → Bank" : "Bank → Drawer") : expense.category,
           detail: [expense.kind === "INCOME" ? "Income" : "", expense.note, expense.createdByName].filter(Boolean).join(" · "),
-          locked: expense.deliverySettlementId !== null,
+          locked: expense.deliverySettlementId !== null || expense.supplierPaymentId !== null || expense.paymentRefundId !== null,
+          // Classified by which record posted the row (its link), so a supplier payment is never mistaken for a plain expense.
+          ...(expense.paymentRefundId
+            ? { sourceType: "REFUND" as const, sourceId: expense.paymentRefundId }
+            : expense.supplierPaymentId
+              ? { sourceType: "SUPPLIER_PAYMENT" as const, sourceId: expense.supplierPaymentId }
+              : expense.deliverySettlementId
+                ? { sourceType: "DELIVERY_SETTLEMENT" as const, sourceId: expense.deliverySettlementId }
+                : {
+                    sourceType: transfer ? ("TRANSFER" as const) : expense.kind === "INCOME" ? ("INCOME" as const) : ("EXPENSE" as const),
+                    sourceId: expense.id,
+                  }),
+          reference: "",
         };
       }),
     ];

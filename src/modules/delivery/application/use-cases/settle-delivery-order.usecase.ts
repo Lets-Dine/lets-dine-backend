@@ -1,3 +1,4 @@
+import { openingTenders } from "../../../payments/domain/utils/tender.util";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Injectable } from "@nestjs/common";
 import {
@@ -80,6 +81,7 @@ export class SettleDeliveryOrderUsecase {
           tax: order.tax,
           discount: order.discount,
           total: order.total,
+          ...openingTenders(order.total, method),
           method,
           currency: order.currency,
           createdBy: authEntity.sub,

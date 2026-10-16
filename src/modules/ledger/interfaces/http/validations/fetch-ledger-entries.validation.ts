@@ -14,3 +14,10 @@ export const fetchLedgerEntriesSchema = z
   });
 
 export type FetchLedgerEntriesQuery = z.infer<typeof fetchLedgerEntriesSchema>;
+
+/** The cash book always reports a window, so both edges are required. */
+export const fetchLedgerBookSchema = z
+  .object({ from: z.coerce.date(), to: z.coerce.date() })
+  .refine(({ from, to }) => from < to && to.getTime() - from.getTime() <= MAX_WINDOW_MS, {
+    message: "from must be before to, at most 31 days apart",
+  });

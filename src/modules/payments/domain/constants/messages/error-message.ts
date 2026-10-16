@@ -10,5 +10,19 @@ export const PAYMENT_ERROR_MESSAGES = {
   CUSTOMER_NOT_FOUND: { key: "PAYMENT_CUSTOMER_NOT_FOUND", message: "That customer isn't one of this restaurant's customers" },
   ORDER_NOT_FOUND: { key: "PAYMENT_ORDER_NOT_FOUND", message: "That order is no longer on this session" },
   ORDER_NOT_FLOOR: { key: "PAYMENT_ORDER_NOT_FLOOR", message: "Only a floor order can be paid on its own like this" },
+  TENDERS_EXCEED_TOTAL: { key: "PAYMENT_TENDERS_EXCEED_TOTAL", message: "The amounts collected add up to more than the bill" },
+  TENDERS_BELOW_TOTAL: {
+    key: "PAYMENT_TENDERS_BELOW_TOTAL",
+    message: "The amounts collected don't cover the bill — mark it as credit to leave the rest owed",
+  },
+  CREDIT_NEEDS_CUSTOMER: { key: "PAYMENT_CREDIT_NEEDS_CUSTOMER", message: "A bill left on credit needs a customer to owe it" },
+  OVER_OWED: { key: "PAYMENT_OVER_OWED", message: "That is more than the customer still owes on this bill" },
+  OVER_REFUND: { key: "PAYMENT_OVER_REFUND", message: "That is more than has been collected and not yet refunded on this bill" },
+  KEY_REUSED: { key: "PAYMENT_KEY_REUSED", message: "That request key was already used for a different bill" },
+  TENDER_NOT_REFUNDABLE: {
+    key: "PAYMENT_TENDER_NOT_REFUNDABLE",
+    message: "That refund doesn't fit the collection it points at — use the same method and no more than it took",
+  },
+  TENDER_NOT_FOUND: { key: "PAYMENT_TENDER_NOT_FOUND", message: "That collection doesn't belong to this bill" },
   ORDER_ALREADY_PAID: { key: "PAYMENT_ORDER_ALREADY_PAID", message: "That order has already been paid" },
 };

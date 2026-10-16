@@ -15,6 +15,7 @@ export interface IExpense {
   /** Set when a courier settlement posted this row; the cash book cannot delete it. */
   deliverySettlementId: string | null;
   supplierPaymentId: string | null;
+  paymentRefundId: string | null;
 }
 
 export interface ICashClose {
@@ -76,7 +77,7 @@ export interface ILedgerSummary extends IPeriodTotals {
 /** One line of the open period's tape, oldest first. */
 export interface ILedgerEntry {
   id: string;
-  kind: "opening" | "sale" | "income" | "expense" | "transfer";
+  kind: "opening" | "sale" | "income" | "expense" | "transfer" | "refund";
   at: Date;
   amount: number;
   method: PaymentMethod;
@@ -89,15 +90,38 @@ export interface ILedgerEntry {
   detail: string;
   /** Posted by a delivery settlement: it can only change there, so the tape offers no Remove. */
   locked?: boolean;
+  /** The business record this line came from, classified by the link it carries — never by its description. */
+  sourceType: "PAYMENT" | "EXPENSE" | "INCOME" | "SUPPLIER_PAYMENT" | "REFUND" | "DELIVERY_SETTLEMENT" | "TRANSFER" | "CLOSE";
+  /** The sale for a collection or refund, the supplier payment, the settlement, or the expense row itself. */
+  sourceId: string | null;
+  /** Receipt / wallet reference on a collection, if one was given. */
+  reference: string;
 }
 
 /** A settled payment reduced to what the tape shows. */
 export interface ISaleLine {
   id: string;
+  /** The sale this collection was taken against. */
+  paymentId: string;
+  reference: string;
   createdAt: Date;
   total: number;
   method: PaymentMethod;
   /** Null for a delivery order. */
   tableName: string | null;
   items: { dishNameSnapshot: string; quantity: number }[];
+}
+
+/** The cash and bank balances over a window, with the entries that explain every movement. */
+export interface ICashBook {
+  from: Date;
+  to: Date;
+  opening: { cash: number; bank: number };
+  receipts: { cash: number; bank: number };
+  payments: { cash: number; bank: number };
+  transfers: { cashToBank: number; bankToCash: number };
+  /** What a cash-up inside the window counted beyond what the books expected (variance, or an opening float being set). Zero when none fell inside. */
+  adjustment: { cash: number; bank: number };
+  closing: { cash: number; bank: number };
+  entries: ILedgerEntry[];
 }

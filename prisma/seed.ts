@@ -452,6 +452,7 @@ async function seedTradingHistory(): Promise<void> {
       });
       orders += 1;
 
+      const method = random() < 0.6 ? "CASH" : "CARD";
       await prisma.payment.create({
         data: {
           restaurantId: restaurant.id,
@@ -462,7 +463,11 @@ async function seedTradingHistory(): Promise<void> {
           serviceCharge,
           tax,
           total: order.total,
-          method: random() < 0.6 ? "CASH" : "CARD",
+          method,
+          // Paid in full, the way a till takes it: one collection for the whole bill.
+          paidAmount: order.total,
+          paymentStatus: "PAID",
+          tenders: { create: { restaurantId: restaurant.id, branchId: branch.id, amount: order.total, method, paidAt: completedAt, createdAt: completedAt } },
           currency: restaurant.currency,
           createdAt: completedAt,
           createdByName: "Sunita Tamang",
@@ -794,6 +799,9 @@ async function seedDelivery(): Promise<void> {
           tax,
           total,
           method: "CASH",
+          paidAmount: total,
+          paymentStatus: "PAID",
+          tenders: { create: { restaurantId: restaurant.id, branchId: branch.id, amount: total, method: "CASH", paidAt: completedAt, createdAt: completedAt } },
           currency: restaurant.currency,
           createdAt: completedAt,
           createdByName: "Sunita Tamang",

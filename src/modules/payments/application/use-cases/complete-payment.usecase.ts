@@ -1,8 +1,8 @@
 import { Injectable } from "@nestjs/common";
-import { AuditAction, OrderStatus } from "@prisma/client";
+import { AuditAction, OrderStatus, PaymentMethod } from "@prisma/client";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { can } from "../../../../common/auth";
-import { ConflictException, ForbiddenException, NotFoundException } from "../../../../common/exceptions";
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from "../../../../common/exceptions";
 import { AuthEntity, isInActiveBranch } from "../../../../common/interfaces";
 import { CustomerRepository } from "../../../customers/domain/repositories/customer.repository";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
@@ -19,6 +19,7 @@ import { RESTAURANT_ERROR_MESSAGES } from "../../../restaurants/domain/constants
 import { RestaurantRepository } from "../../../restaurants/domain/repositories/restaurant.repository";
 import { PAYMENT_ERROR_MESSAGES } from "../../domain/constants";
 import { IPaymentWithItems } from "../../domain/interfaces/payment.interface";
+import { openingTenders } from "../../domain/utils/tender.util";
 import { IPaymentItemCreate, PaymentRepository } from "../../domain/repositories/payment.repository";
 import { CompletePaymentInput } from "../../interfaces/http/validations/complete-payment.validation";
 
@@ -40,6 +41,11 @@ export class CompletePaymentUsecase {
   ) {}
 
   async execute(dto: CompletePaymentInput, authEntity: AuthEntity): Promise<IPaymentWithItems> {
+    // A retried request returns the bill it already made — checked first, since the session may have ended with it.
+    if (dto.idempotencyKey) {
+      const replay = await this.paymentRepository.findByIdempotencyKey(authEntity.restaurantId, dto.idempotencyKey);
+      if (replay && replay.branchId === authEntity.branchId) return replay;
+    }
     const [session, restaurant] = await Promise.all([
       this.diningSessionRepository.findById(dto.sessionId),
       this.restaurantRepository.findByIdForBranch(authEntity.restaurantId, authEntity.branchId),
@@ -138,6 +144,15 @@ export class CompletePaymentUsecase {
       const totals = calculateOrderTotals(items, restaurant, discount + loyaltyDiscount);
       if (totals.total < 0) throw new ConflictException(PAYMENT_ERROR_MESSAGES.DISCOUNT_EXCEEDS_TOTAL);
 
+      // The server decides what the bill is worth; the collections must fit inside it. A short bill is only
+      // allowed as credit, and credit needs someone to owe it.
+      const opening = openingTenders(totals.total, dto.method ?? PaymentMethod.CASH, dto.tenders ?? (dto.credit ? [] : undefined));
+      if (opening.paidAmount > totals.total) throw new ConflictException(PAYMENT_ERROR_MESSAGES.TENDERS_EXCEED_TOTAL);
+      if (opening.paidAmount < totals.total) {
+        if (!dto.credit) throw new ConflictException(PAYMENT_ERROR_MESSAGES.TENDERS_BELOW_TOTAL);
+        if (!customerId) throw new BadRequestException(PAYMENT_ERROR_MESSAGES.CREDIT_NEEDS_CUSTOMER);
+      }
+
       const payment = await this.paymentRepository.create(
         {
           restaurantId: authEntity.restaurantId,
@@ -152,7 +167,10 @@ export class CompletePaymentUsecase {
           discount: totals.discount,
           loyaltyDiscount,
           total: totals.total,
-          method: dto.method,
+          ...opening,
+          dueDate: dto.dueDate,
+          idempotencyKey: dto.idempotencyKey,
+          method: dto.method ?? opening.tenders[0]?.method ?? PaymentMethod.CASH,
           currency: restaurant.currency,
           createdBy: authEntity.sub,
           createdByName: authEntity.name,
@@ -165,7 +183,7 @@ export class CompletePaymentUsecase {
         {
           action: AuditAction.payment_completed,
           subject: order ? `Order ${order.reference}` : `Session ${session.id}`,
-          detail: `Charged ${payment.total} ${payment.currency} via ${payment.method}${discount > 0 ? ` (${discount} discount)` : ""}${dto.redeemPoints ? ` (${dto.redeemPoints} points redeemed, ${loyaltyDiscount} off)` : ""}${dto.customerId !== undefined && customerId !== resolvedCustomerId ? ` (customer changed to ${pickedName ?? "none"})` : ""}`,
+          detail: `Charged ${payment.total} ${payment.currency} via ${payment.method}${payment.paymentStatus === "PAID" ? "" : ` (${payment.paymentStatus}, ${payment.total - payment.paidAmount} owed)`}${discount > 0 ? ` (${discount} discount)` : ""}${dto.redeemPoints ? ` (${dto.redeemPoints} points redeemed, ${loyaltyDiscount} off)` : ""}${dto.customerId !== undefined && customerId !== resolvedCustomerId ? ` (customer changed to ${pickedName ?? "none"})` : ""}`,
         },
         authEntity,
         tx

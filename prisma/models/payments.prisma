@@ -3,6 +3,27 @@
 enum PaymentMethod {
   CASH
   CARD
+  /// A scanned wallet / bank QR (Fonepay and the like). Lands in the bank, like CARD.
+  QR
+
+  @@schema("public")
+}
+
+/// How much of a sale has been collected. Derived from `Payment.paidAmount` against `total`, kept in
+/// step by the same write, so a list can filter on it.
+enum PaymentStatus {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+
+  @@schema("public")
+}
+
+/// A collection attempt. Only SUCCEEDED ones count as money received; PENDING/FAILED are the attempt.
+enum TenderStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
 
   @@schema("public")
 }
@@ -34,6 +55,15 @@ model Payment {
   method          PaymentMethod @default(CASH) @map("method")
   currency        String        @map("currency")
   createdAt       DateTime      @default(now()) @map("created_at")
+  /// Collected so far (sum of SUCCEEDED tenders). Outstanding is `total - paidAmount`. A DB check keeps it within [0, total].
+  paidAmount      Int           @default(0) @map("paid_amount")
+  /// Handed back so far (sum of refunds). Never above `paidAmount`; the original payment and its tenders are never edited.
+  refundedAmount  Int           @default(0) @map("refunded_amount")
+  paymentStatus   PaymentStatus @default(UNPAID) @map("payment_status")
+  /// When the unpaid part is expected, for a credit sale.
+  dueDate         DateTime?     @map("due_date")
+  /// Client-sent retry key: the same key for the same restaurant returns the first result instead of a second sale.
+  idempotencyKey  String?       @map("idempotency_key")
   createdBy       String?       @map("created_by") @db.Uuid
   /// Snapshot of the staff member's name at the moment of payment — same
   /// reasoning as `AuditLog.actorName`, so the receipt still reads right
@@ -48,7 +78,11 @@ model Payment {
   customer       Customer?      @relation(fields: [customerId], references: [id], onDelete: Restrict)
   items          PaymentItem[]
   loyaltyEntries LoyaltyEntry[]
+  tenders        PaymentTender[]
+  refunds        PaymentRefund[]
 
+  @@unique([restaurantId, idempotencyKey])
+  @@index([branchId, paymentStatus])
   @@index([restaurantId, createdAt])
   @@index([branchId])
   @@index([sessionId])
@@ -76,5 +110,62 @@ model PaymentItem {
 
   @@index([paymentId])
   @@map("payment_items")
+  @@schema("public")
+}
+
+/// One collection against a sale: a split bill is several of these, a credit sale starts with none
+/// and gains one per later settlement. The cash book reads money in from here, never from `Payment.total`.
+model PaymentTender {
+  id             String        @id @default(uuid()) @map("id") @db.Uuid
+  restaurantId   String        @map("restaurant_id") @db.Uuid
+  branchId       String        @map("branch_id") @db.Uuid
+  paymentId      String        @map("payment_id") @db.Uuid
+  amount         Int           @map("amount")
+  method         PaymentMethod @map("method")
+  status         TenderStatus  @default(SUCCEEDED) @map("status")
+  /// Receipt / wallet / gateway reference.
+  reference      String        @default("") @map("reference")
+  /// Retry key, unique per restaurant: a replayed request finds this row instead of collecting twice.
+  idempotencyKey String?       @map("idempotency_key")
+  paidAt         DateTime      @default(now()) @map("paid_at")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  createdBy      String?       @map("created_by") @db.Uuid
+  createdByName  String?       @map("created_by_name")
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  branch     Branch     @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  payment    Payment    @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@unique([restaurantId, idempotencyKey])
+  @@index([paymentId])
+  @@index([branchId, paidAt])
+  @@map("payment_tenders")
+  @@schema("public")
+}
+
+/// Money handed back against a sale. Its cash-book outflow is the `Expense` row carrying this id.
+model PaymentRefund {
+  id             String        @id @default(uuid()) @map("id") @db.Uuid
+  restaurantId   String        @map("restaurant_id") @db.Uuid
+  branchId       String        @map("branch_id") @db.Uuid
+  paymentId      String        @map("payment_id") @db.Uuid
+  /// The collection being reversed, when the refund is tied to one.
+  tenderId       String?       @map("tender_id") @db.Uuid
+  amount         Int           @map("amount")
+  method         PaymentMethod @map("method")
+  reason         String        @default("") @map("reason")
+  idempotencyKey String?       @map("idempotency_key")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  createdBy      String?       @map("created_by") @db.Uuid
+  createdByName  String?       @map("created_by_name")
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  branch     Branch     @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  payment    Payment    @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@unique([restaurantId, idempotencyKey])
+  @@index([paymentId])
+  @@index([branchId, createdAt])
+  @@map("payment_refunds")
   @@schema("public")
 }

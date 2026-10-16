@@ -4,6 +4,7 @@ import { ReopenLedgerUsecase } from "./application/use-cases/reopen-ledger.useca
 import { CloseLedgerUsecase } from "./application/use-cases/close-ledger.usecase";
 import { CreateExpenseUsecase } from "./application/use-cases/create-expense.usecase";
 import { DeleteExpenseUsecase } from "./application/use-cases/delete-expense.usecase";
+import { GetCashBookUsecase } from "./application/use-cases/get-cash-book.usecase";
 import { GetLedgerEntriesUsecase } from "./application/use-cases/get-ledger-entries.usecase";
 import { GetLedgerSummaryUsecase } from "./application/use-cases/get-ledger-summary.usecase";
 import { ListClosesUsecase } from "./application/use-cases/list-closes.usecase";
@@ -18,6 +19,7 @@ import { LedgerController } from "./interfaces/http/ledger.controller";
   providers: [
     GetLedgerSummaryUsecase,
     GetLedgerEntriesUsecase,
+    GetCashBookUsecase,
     CloseLedgerUsecase,
     ReopenLedgerUsecase,
     ListClosesUsecase,

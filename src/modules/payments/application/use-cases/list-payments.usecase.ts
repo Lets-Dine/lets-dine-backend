@@ -9,10 +9,10 @@ export class ListPaymentsUsecase {
   constructor(private readonly paymentRepository: PaymentRepository) {}
 
   async execute(query: FetchPaymentsQuery, authEntity: AuthEntity): Promise<PaginatedResponse<IPaymentWithItems>> {
-    const { tableId, from, to, ...pagination } = query;
+    const { tableId, from, to, paymentStatus, method, customerId, ...pagination } = query;
 
     return this.paymentRepository.fetchAll(
-      { restaurantId: authEntity.restaurantId, branchId: authEntity.branchId, tableId, from, to },
+      { restaurantId: authEntity.restaurantId, branchId: authEntity.branchId, tableId, from, to, paymentStatus, method, customerId },
       pagination
     );
   }

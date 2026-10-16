@@ -2,17 +2,24 @@ import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards } from "@n
 import { AbilityGuard, AuthGuard, AuthUser, CheckPolicies, checkPermissionRules } from "../../../../common/auth";
 import { type AuthEntity, IHttpResponse, PaginatedResponse } from "../../../../common/interfaces";
 import { buildHttpResponse } from "../../../../common/utils";
-import { CloseLedgerDto, CreateExpenseDto, FetchLedgerEntriesDto, FetchLedgerListDto } from "../../application/dto/ledger.dto";
+import {
+  CloseLedgerDto,
+  CreateExpenseDto,
+  FetchLedgerBookDto,
+  FetchLedgerEntriesDto,
+  FetchLedgerListDto,
+} from "../../application/dto/ledger.dto";
 import { CloseLedgerUsecase } from "../../application/use-cases/close-ledger.usecase";
 import { CreateExpenseUsecase } from "../../application/use-cases/create-expense.usecase";
 import { DeleteExpenseUsecase } from "../../application/use-cases/delete-expense.usecase";
 import { ReopenLedgerUsecase } from "../../application/use-cases/reopen-ledger.usecase";
+import { GetCashBookUsecase } from "../../application/use-cases/get-cash-book.usecase";
 import { GetLedgerEntriesUsecase } from "../../application/use-cases/get-ledger-entries.usecase";
 import { GetLedgerSummaryUsecase } from "../../application/use-cases/get-ledger-summary.usecase";
 import { ListClosesUsecase } from "../../application/use-cases/list-closes.usecase";
 import { ListExpensesUsecase } from "../../application/use-cases/list-expenses.usecase";
 import { LEDGER_SUCCESS_MESSAGES } from "../../domain/constants";
-import { ICashClose, IExpense, ILedgerEntry, ILedgerSummary } from "../../domain/interfaces/ledger.interface";
+import { ICashBook, ICashClose, IExpense, ILedgerEntry, ILedgerSummary } from "../../domain/interfaces/ledger.interface";
 
 const VIEW = [AuthGuard, AbilityGuard] as const;
 
@@ -21,6 +28,7 @@ export class LedgerController {
   constructor(
     private readonly getLedgerSummaryUsecase: GetLedgerSummaryUsecase,
     private readonly getLedgerEntriesUsecase: GetLedgerEntriesUsecase,
+    private readonly getCashBookUsecase: GetCashBookUsecase,
     private readonly closeLedgerUsecase: CloseLedgerUsecase,
     private readonly reopenLedgerUsecase: ReopenLedgerUsecase,
     private readonly listClosesUsecase: ListClosesUsecase,
@@ -41,6 +49,13 @@ export class LedgerController {
   @CheckPolicies(checkPermissionRules([["ledger:view"]]))
   async entries(@Query() query: FetchLedgerEntriesDto, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<ILedgerEntry[]>> {
     return buildHttpResponse(await this.getLedgerEntriesUsecase.execute(authEntity, query), LEDGER_SUCCESS_MESSAGES.ENTRIES_FETCHED);
+  }
+
+  @Get("book")
+  @UseGuards(...VIEW)
+  @CheckPolicies(checkPermissionRules([["ledger:view"]]))
+  async book(@Query() query: FetchLedgerBookDto, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<ICashBook>> {
+    return buildHttpResponse(await this.getCashBookUsecase.execute(authEntity, query), LEDGER_SUCCESS_MESSAGES.ENTRIES_FETCHED);
   }
 
   @Post("close")

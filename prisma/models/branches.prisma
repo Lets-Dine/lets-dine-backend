@@ -39,6 +39,8 @@ model Branch {
   sessions            DiningSession[]
   orders              Order[]
   payments            Payment[]
+  paymentTenders      PaymentTender[]
+  paymentRefunds      PaymentRefund[]
   expenses            Expense[]
   cashCloses          CashClose[]
   deliveryPartners    DeliveryPartner[]

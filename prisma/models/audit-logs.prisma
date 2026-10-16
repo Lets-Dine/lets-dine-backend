@@ -72,6 +72,8 @@ enum AuditAction {
   order_item_cancelled
   table_settled
   payment_completed
+  payment_collected
+  payment_refunded
   settings_updated
   staff_invited
   staff_role_changed

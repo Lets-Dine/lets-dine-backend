@@ -236,7 +236,10 @@ describe("CompletePaymentUsecase", () => {
         loyaltyService.planRedemption.mockResolvedValue(100);
         paymentRepository.create.mockResolvedValue({ id: "payment-1", total: 1, currency: "NPR", method } as any);
 
-        await usecase.execute({ sessionId: "session-1", items: requestItems, method, customerId: customerUuid, redeemPoints: 10 }, authUser);
+        await usecase.execute(
+          { sessionId: "session-1", items: requestItems, method, customerId: customerUuid, redeemPoints: 10 },
+          authUser
+        );
 
         expect(loyaltyService.planRedemption.mock.calls[0][0].customerId).toBe(customerUuid);
         expect(loyaltyService.recordRedemption.mock.calls[0][0].customerId).toBe(customerUuid);
@@ -255,7 +258,9 @@ describe("CompletePaymentUsecase", () => {
       it("should refuse a customer that isn't this restaurant's, before charging anything", async () => {
         customerRepository.findById.mockResolvedValue(null);
 
-        await expect(usecase.execute({ sessionId: "session-1", items: requestItems, method, customerId: customerUuid }, authUser)).rejects.toThrow(NotFoundException);
+        await expect(
+          usecase.execute({ sessionId: "session-1", items: requestItems, method, customerId: customerUuid }, authUser)
+        ).rejects.toThrow(NotFoundException);
         expect(paymentRepository.create).not.toHaveBeenCalled();
       });
     });
