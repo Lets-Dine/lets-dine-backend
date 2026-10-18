@@ -1,6 +1,15 @@
-import { ExpenseKind, PaymentMethod, StockMovementReason } from "@prisma/client";
+import { ExpenseKind, PaymentMethod, StockMovementReason, WasteReason } from "@prisma/client";
 import { PrismaTransaction } from "../../../../common/prisma";
-import { IPurchase, IIngredientSummary, IUsagePage, IIngredient, IRecipeLine, IReturnableLot } from "../interfaces/inventory.interface";
+import {
+  IExpiringLot,
+  IPurchase,
+  IIngredientSummary,
+  IUsagePage,
+  IIngredient,
+  IRecipeLine,
+  IReturnableLot,
+  IWasteEntry,
+} from "../interfaces/inventory.interface";
 import { IUsage } from "../utils/forecast.util";
 import { IRecipeCostLine, IUnitCost } from "../utils/margin.util";
 import { ILotAllocation, IOpenLot } from "../utils/lot.util";
@@ -23,6 +32,10 @@ export interface IMovementCreate {
   dishId?: string;
   note?: string;
   createdBy?: string;
+  /** WASTE only. */
+  wasteReason?: WasteReason;
+  /** WASTE only: null when the lots could not price it. */
+  wasteCost?: number | null;
   /** Defaults to now; a late-entered delivery carries the day it really arrived. */
   createdAt?: Date;
 }
@@ -52,6 +65,7 @@ export interface ILotCreate {
   fromTransfer?: boolean;
   /** Bought on credit: the supplier is owed `cost` until paid. */
   onCredit?: boolean;
+  expiresAt?: Date;
 }
 
 /** A lot with something left, with enough of its history to carry it to another branch. */
@@ -60,6 +74,7 @@ export interface IOpenLotDetail extends IOpenLot {
   cost: number | null;
   quantity: number;
   receivedAt: Date;
+  expiresAt: Date | null;
 }
 
 /** One lot's share of one order line, with the ids a review is reached through. */
@@ -140,6 +155,8 @@ export abstract class InventoryRepository {
   abstract $transaction<T>(fn: (tx: PrismaTransaction) => Promise<T>): Promise<T>;
   abstract findIngredients(branchId: string): Promise<IIngredient[]>;
   abstract findIngredient(id: string, options?: { tx?: PrismaTransaction }): Promise<IIngredient | null>;
+  /** Takes a row lock on the ingredient until the transaction ends, so two writers of its stock and lots run one after the other. */
+  abstract lockIngredient(id: string, tx: PrismaTransaction): Promise<void>;
   abstract findIngredientsByIds(ids: string[], branchId: string): Promise<IIngredient[]>;
   abstract createIngredient(data: IIngredientCreate, options?: { tx?: PrismaTransaction }): Promise<IIngredient>;
   abstract updateIngredient(
@@ -162,10 +179,14 @@ export abstract class InventoryRepository {
   /** Deliveries of an ingredient with stock left and a named supplier, newest first. */
   abstract findReturnableLots(ingredientId: string): Promise<IReturnableLot[]>;
   abstract findBranch(id: string): Promise<{ id: string; restaurantId: string; name: string; isActive: boolean } | null>;
+  /** Waste entries for the branch in a range, newest first (capped). */
+  abstract findWaste(branchId: string, from: Date, to: Date): Promise<IWasteEntry[]>;
   abstract findOpenLotDetails(ingredientId: string, tx: PrismaTransaction): Promise<IOpenLotDetail[]>;
   /** Moves the running quantity by `delta` and writes the movement that explains it, atomically with the caller's tx. */
   abstract applyMovement(ingredientId: string, delta: number, data: IMovementCreate, tx: PrismaTransaction): Promise<IIngredient>;
   abstract createStockExpense(data: IStockExpenseCreate, tx: PrismaTransaction): Promise<void>;
+  /** Lots of this branch with stock left that expire before `before` (already-expired ones included), soonest first. */
+  abstract findExpiringLots(branchId: string, before: Date): Promise<IExpiringLot[]>;
   abstract createLot(data: ILotCreate, tx: PrismaTransaction): Promise<void>;
   /** Lots with something left, oldest first. */
   abstract findOpenLots(ingredientId: string, tx: PrismaTransaction): Promise<IOpenLot[]>;

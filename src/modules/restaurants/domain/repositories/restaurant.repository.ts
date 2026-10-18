@@ -34,6 +34,15 @@ export interface IRestaurantsFetchOptions extends IPaginationOptions {
   tx?: PrismaTransaction;
 }
 
+/** Raw counts the first-run checklist is derived from. Menu and floor rows are counted in the branch being worked in. */
+export interface ISetupSignals {
+  categories: number;
+  dishes: number;
+  tables: number;
+  activeMembers: number;
+  orders: number;
+}
+
 export abstract class RestaurantRepository {
   abstract $transaction<T>(fn: (tx: PrismaTransaction) => Promise<T>): Promise<T>;
   abstract findById(id: string, options?: RestaurantFetchOptions): Promise<IRestaurant | null>;
@@ -46,5 +55,6 @@ export abstract class RestaurantRepository {
   abstract findBySlug(slug: string, options?: RestaurantFetchOptions): Promise<IRestaurant | null>;
   abstract create(data: IRestaurantCreate, options?: { tx?: PrismaTransaction; actorId?: string }): Promise<IRestaurant>;
   abstract update(id: string, data: IRestaurantUpdate, options?: { tx?: PrismaTransaction; actorId?: string }): Promise<IRestaurant>;
+  abstract countSetupSignals(restaurantId: string, branchId: string): Promise<ISetupSignals>;
   abstract fetchAll(query: IRestaurantsFetchQuery, options?: IRestaurantsFetchOptions): Promise<PaginatedResponse<IRestaurant>>;
 }

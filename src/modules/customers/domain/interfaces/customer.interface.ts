@@ -21,6 +21,21 @@ export interface ICustomer {
   updatedAt: Date;
 }
 
+/** What this restaurant knows about one customer, beyond the figures the list shows. */
+export interface ICustomerProfile {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  /** `YYYY-MM-DD`, or empty. */
+  birthday: string;
+  tags: string[];
+  notes: string;
+  offersOk: boolean;
+  /** Dishes they order most, most first — from their own orders here, never typed in. */
+  favourites: string[];
+}
+
 export type CustomerSegment = "new" | "regular" | "lapsed" | "occasional";
 
 /**

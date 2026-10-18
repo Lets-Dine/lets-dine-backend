@@ -28,6 +28,8 @@ import { MenusModule } from "./modules/menus/menus.module";
 import { OrdersModule } from "./modules/orders/orders.module";
 import { LoyaltyModule } from "./modules/loyalty/loyalty.module";
 import { PaymentsModule } from "./modules/payments/payments.module";
+import { DishMarginsModule } from "./modules/dish-margins/dish-margins.module";
+import { ReceivablesModule } from "./modules/receivables/receivables.module";
 import { RestaurantsModule } from "./modules/restaurants/restaurants.module";
 import { ReviewsModule } from "./modules/reviews/reviews.module";
 import { TransactionsModule } from "./modules/transactions/transactions.module";
@@ -62,6 +64,8 @@ import { AppController } from "./app.controller";
     DiningSessionsModule,
     OrdersModule,
     PaymentsModule,
+    ReceivablesModule,
+    DishMarginsModule,
     TransactionsModule,
     LoyaltyModule,
     LedgerModule,

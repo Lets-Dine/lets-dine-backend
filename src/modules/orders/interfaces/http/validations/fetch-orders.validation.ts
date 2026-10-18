@@ -10,6 +10,7 @@ export const fetchOrdersSchema = z.object({
     .optional()
     .transform(value => (value === undefined ? undefined : Array.isArray(value) ? value : [value])),
   tableId: z.string().uuid().optional(),
+  customerId: z.string().uuid().optional(),
   orderType: z.nativeEnum(OrderType).optional(),
   from: z.coerce.date().optional(),
   to: z.coerce.date().optional(),

@@ -3,6 +3,7 @@ import { AuditLogsModule } from "../audit-logs/audit-logs.module";
 import { BranchesModule } from "../branches/branches.module";
 import { UsersModule } from "../users/users.module";
 import { FetchAllRestaurantsUsecase } from "./application/use-cases/fetch-all-restaurants.usecase";
+import { FetchOnboardingProgressUsecase } from "./application/use-cases/fetch-onboarding-progress.usecase";
 import { FetchRestaurantBranchesUsecase } from "./application/use-cases/fetch-restaurant-branches.usecase";
 import { FetchRestaurantBySlugUsecase } from "./application/use-cases/fetch-restaurant-by-slug.usecase";
 import { FetchRestaurantProfileUsecase } from "./application/use-cases/fetch-restaurant-profile.usecase";
@@ -23,6 +24,7 @@ import { BillingModule } from "../billing/billing.module";
     FetchRestaurantBySlugUsecase,
     FetchRestaurantBranchesUsecase,
     FetchRestaurantProfileUsecase,
+    FetchOnboardingProgressUsecase,
     UpdateRestaurantUsecase,
     FetchAllRestaurantsUsecase,
     RestaurantRepositoryImpl,

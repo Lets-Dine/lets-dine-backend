@@ -4,12 +4,13 @@ import { buildHttpResponse } from "../../../../common/utils";
 import { StartDeliverySessionDto } from "../../application/dto/start-delivery-session.dto";
 import { StartDiningSessionDto } from "../../application/dto/start-dining-session.dto";
 import { StartFloorSessionDto } from "../../application/dto/start-floor-session.dto";
+import { ServiceRequestUsecase } from "../../application/use-cases/service-request.usecase";
 import { FetchCurrentSessionUsecase } from "../../application/use-cases/fetch-current-session.usecase";
 import { StartDeliverySessionUsecase } from "../../application/use-cases/start-delivery-session.usecase";
 import { StartDiningSessionUsecase } from "../../application/use-cases/start-dining-session.usecase";
 import { StartFloorSessionUsecase } from "../../application/use-cases/start-floor-session.usecase";
 import { DINING_SESSION_SUCCESS_MESSAGES } from "../../domain/constants";
-import { type IDiningSession } from "../../domain/interfaces/dining-session.interface";
+import { type IDiningSession, type IServiceRequest } from "../../domain/interfaces/dining-session.interface";
 import { IResolvedSession } from "../../domain/interfaces/resolved-session.interface";
 import { DinerSession } from "./decorators/diner-session.decorator";
 import { DinerSessionGuard } from "./guards/diner-session.guard";
@@ -20,7 +21,8 @@ export class DiningSessionController {
     private readonly startDiningSessionUsecase: StartDiningSessionUsecase,
     private readonly startDeliverySessionUsecase: StartDeliverySessionUsecase,
     private readonly startFloorSessionUsecase: StartFloorSessionUsecase,
-    private readonly fetchCurrentSessionUsecase: FetchCurrentSessionUsecase
+    private readonly fetchCurrentSessionUsecase: FetchCurrentSessionUsecase,
+    private readonly serviceRequestUsecase: ServiceRequestUsecase
   ) {}
 
   @Post()
@@ -51,5 +53,19 @@ export class DiningSessionController {
   async fetchCurrent(@DinerSession() session: IDiningSession): Promise<IHttpResponse<IResolvedSession>> {
     const resolved = await this.fetchCurrentSessionUsecase.execute(session);
     return buildHttpResponse(resolved, DINING_SESSION_SUCCESS_MESSAGES.DINING_SESSION_FETCHED);
+  }
+
+  @Post("/current/call-waiter")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(DinerSessionGuard)
+  async callWaiter(@DinerSession() session: IDiningSession): Promise<IHttpResponse<IServiceRequest>> {
+    return buildHttpResponse(await this.serviceRequestUsecase.raise(session, "waiter"), DINING_SESSION_SUCCESS_MESSAGES.SERVICE_REQUESTED);
+  }
+
+  @Post("/current/request-bill")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(DinerSessionGuard)
+  async requestBill(@DinerSession() session: IDiningSession): Promise<IHttpResponse<IServiceRequest>> {
+    return buildHttpResponse(await this.serviceRequestUsecase.raise(session, "bill"), DINING_SESSION_SUCCESS_MESSAGES.SERVICE_REQUESTED);
   }
 }

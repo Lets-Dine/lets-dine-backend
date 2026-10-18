@@ -12,6 +12,20 @@ enum StockMovementReason {
   TRANSFER_IN
   /// Sent back to the supplier.
   RETURN
+  /// Thrown away: spoiled, expired, spilled, trimmed. Carries a `wasteReason` and the cost of the lots it came from.
+  WASTE
+
+  @@schema("public")
+}
+
+/// Why stock was thrown away. Staff meals are not waste: they stay a plain MANUAL_USE.
+enum WasteReason {
+  SPOILED
+  EXPIRED
+  SPILLED
+  TRIM
+  RETURNED
+  OTHER
 
   @@schema("public")
 }
@@ -82,6 +96,10 @@ model StockMovement {
   /// MANUAL_USE only: the dish it was used for, if any. A plain id, so a dish can still be archived.
   dishId       String?             @map("dish_id") @db.Uuid
   note         String              @default("") @map("note")
+  /// WASTE only.
+  wasteReason  WasteReason?        @map("waste_reason")
+  /// WASTE only: what the lots it drew from cost, integer minor units. Null when any part could not be priced — never counted as free.
+  wasteCost    Int?                @map("waste_cost")
   createdAt    DateTime            @default(now()) @map("created_at")
   createdBy    String?             @map("created_by") @db.Uuid
 
@@ -89,6 +107,7 @@ model StockMovement {
 
   @@index([ingredientId, createdAt])
   @@index([orderItemId])
+  @@index([reason, createdAt])
   @@map("stock_movements")
   @@schema("public")
 }
@@ -96,25 +115,28 @@ model StockMovement {
 /// One batch of an ingredient: a delivery, or the opening stock. `remaining` is what is left of it —
 /// the kitchen uses the oldest lot first, so each lot knows which orders it went into.
 model StockLot {
-  id           String   @id @default(uuid()) @map("id") @db.Uuid
-  ingredientId String   @map("ingredient_id") @db.Uuid
+  id           String    @id @default(uuid()) @map("id") @db.Uuid
+  ingredientId String    @map("ingredient_id") @db.Uuid
   /// Null for opening stock, or a delivery with no supplier named.
-  supplier     String?  @map("supplier")
+  supplier     String?   @map("supplier")
   /// What was paid for the whole lot, integer minor units.
-  cost         Int?     @map("cost")
-  quantity     Int      @map("quantity")
-  remaining    Int      @map("remaining")
-  receivedAt   DateTime @default(now()) @map("received_at")
-  createdBy    String?  @map("created_by") @db.Uuid
+  cost         Int?      @map("cost")
+  quantity     Int       @map("quantity")
+  remaining    Int       @map("remaining")
+  receivedAt   DateTime  @default(now()) @map("received_at")
+  createdBy    String?   @map("created_by") @db.Uuid
   /// Stock sent from another branch: carries its supplier for traceability, but is not a delivery here.
-  fromTransfer Boolean  @default(false) @map("from_transfer")
+  fromTransfer Boolean   @default(false) @map("from_transfer")
   /// Bought on credit: no expense was booked, the supplier is owed `cost` until it is paid.
-  onCredit     Boolean  @default(false) @map("on_credit")
+  onCredit     Boolean   @default(false) @map("on_credit")
+  /// Best-before day of a delivery that carries one (stored as that day's midnight UTC). Null: it doesn't spoil, or wasn't noted.
+  expiresAt    DateTime? @map("expires_at")
 
   ingredient   Ingredient       @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
   consumptions LotConsumption[]
 
   @@index([ingredientId, receivedAt])
+  @@index([expiresAt])
   @@map("stock_lots")
   @@schema("public")
 }

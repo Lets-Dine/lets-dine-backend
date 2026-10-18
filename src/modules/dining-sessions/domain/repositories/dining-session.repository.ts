@@ -1,5 +1,5 @@
 import { PrismaTransaction } from "../../../../common/prisma";
-import { IDiningSession } from "../interfaces/dining-session.interface";
+import { IDiningSession, IServiceRequest } from "../interfaces/dining-session.interface";
 
 export interface IDiningSessionCreate {
   restaurantId: string;
@@ -12,7 +12,7 @@ export interface IDiningSessionCreate {
   expiresAt: Date;
 }
 
-export type IDiningSessionUpdate = Partial<Pick<IDiningSession, "expiresAt" | "endedAt">>;
+export type IDiningSessionUpdate = Partial<Pick<IDiningSession, "expiresAt" | "endedAt" | "waiterCalledAt" | "billRequestedAt">>;
 
 export interface DiningSessionFetchOptions {
   tx?: PrismaTransaction;
@@ -23,6 +23,7 @@ export abstract class DiningSessionRepository {
   abstract findByToken(token: string, options?: DiningSessionFetchOptions): Promise<IDiningSession | null>;
   abstract findOpenByTableId(tableId: string, options?: DiningSessionFetchOptions): Promise<IDiningSession | null>;
   abstract findActiveByTableId(tableId: string, options?: DiningSessionFetchOptions): Promise<IDiningSession | null>;
+  abstract findServiceRequests(restaurantId: string, branchId: string): Promise<IServiceRequest[]>;
   abstract create(data: IDiningSessionCreate, options?: { tx?: PrismaTransaction }): Promise<IDiningSession>;
   abstract update(id: string, data: IDiningSessionUpdate, transaction?: PrismaTransaction): Promise<IDiningSession>;
 }

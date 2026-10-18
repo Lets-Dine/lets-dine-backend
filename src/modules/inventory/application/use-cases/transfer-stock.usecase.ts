@@ -66,6 +66,7 @@ export class TransferStockUsecase {
             cost: lot.cost ? Math.round((lot.cost * quantity) / lot.quantity) : undefined,
             quantity,
             receivedAt: lot.receivedAt,
+            expiresAt: lot.expiresAt ?? undefined,
             createdBy: authEntity.sub,
             fromTransfer: true,
           },

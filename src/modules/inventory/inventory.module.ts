@@ -8,9 +8,12 @@ import { CreateIngredientUsecase } from "./application/use-cases/create-ingredie
 import { FetchIngredientPurchasesUsecase } from "./application/use-cases/fetch-ingredient-purchases.usecase";
 import { FetchIngredientSummaryUsecase } from "./application/use-cases/fetch-ingredient-summary.usecase";
 import { FetchIngredientUsageUsecase } from "./application/use-cases/fetch-ingredient-usage.usecase";
+import { FetchExpiringUsecase } from "./application/use-cases/fetch-expiring.usecase";
 import { FetchBuyListUsecase } from "./application/use-cases/fetch-buy-list.usecase";
 import { FetchDeliveryQualityUsecase } from "./application/use-cases/fetch-delivery-quality.usecase";
 import { FetchDishMarginsUsecase } from "./application/use-cases/fetch-dish-margins.usecase";
+import { FetchWasteReportUsecase } from "./application/use-cases/fetch-waste-report.usecase";
+import { LogWasteUsecase } from "./application/use-cases/log-waste.usecase";
 import { GetCountSheetUsecase } from "./application/use-cases/get-count-sheet.usecase";
 import { GetRecipeUsecase } from "./application/use-cases/get-recipe.usecase";
 import { ListIngredientsUsecase } from "./application/use-cases/list-ingredients.usecase";
@@ -36,9 +39,12 @@ import { InventoryController } from "./interfaces/http/inventory.controller";
     ReceiveDeliveryUsecase,
     AdjustStockUsecase,
     ConsumeStockUsecase,
+    LogWasteUsecase,
+    FetchWasteReportUsecase,
     GetRecipeUsecase,
     FetchDeliveryQualityUsecase,
     FetchBuyListUsecase,
+    FetchExpiringUsecase,
     FetchIngredientUsageUsecase,
     FetchIngredientSummaryUsecase,
     FetchIngredientPurchasesUsecase,

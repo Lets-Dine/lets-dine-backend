@@ -21,6 +21,9 @@ model DiningSession {
   startedAt             DateTime  @default(now()) @map("started_at")
   expiresAt             DateTime  @map("expires_at")
   endedAt               DateTime? @map("ended_at")
+  /// Set while the diner is waiting on a waiter / the bill; staff clear it. Re-tapping just re-stamps it.
+  waiterCalledAt        DateTime? @map("waiter_called_at")
+  billRequestedAt       DateTime? @map("bill_requested_at")
   createdAt             DateTime  @default(now()) @map("created_at")
   updatedAt             DateTime  @updatedAt @map("updated_at")
 

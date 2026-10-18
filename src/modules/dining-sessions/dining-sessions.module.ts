@@ -10,6 +10,7 @@ import { DiningSessionService } from "./application/dining-session.service";
 import { EndDiningSessionUsecase } from "./application/use-cases/end-dining-session.usecase";
 import { FetchActiveSessionForTableUsecase } from "./application/use-cases/fetch-active-session-for-table.usecase";
 import { FetchCurrentSessionUsecase } from "./application/use-cases/fetch-current-session.usecase";
+import { ServiceRequestUsecase } from "./application/use-cases/service-request.usecase";
 import { StartDeliverySessionUsecase } from "./application/use-cases/start-delivery-session.usecase";
 import { StartDiningSessionUsecase } from "./application/use-cases/start-dining-session.usecase";
 import { StartFloorSessionUsecase } from "./application/use-cases/start-floor-session.usecase";
@@ -19,7 +20,10 @@ import DiningSessionRepositoryImpl from "./infrastructure/repositories/dining-se
 import { DiningSessionController } from "./interfaces/http/dining-session.controller";
 import { DinerSessionAnyGuard } from "./interfaces/http/guards/diner-session-any.guard";
 import { DinerSessionGuard } from "./interfaces/http/guards/diner-session.guard";
-import { RestaurantDiningSessionController } from "./interfaces/http/restaurant-dining-session.controller";
+import {
+  RestaurantDiningSessionController,
+  RestaurantServiceRequestController,
+} from "./interfaces/http/restaurant-dining-session.controller";
 
 @Module({
   // `EndDiningSessionService` needs `OrderRepository` to close out a session's orders, and
@@ -34,7 +38,7 @@ import { RestaurantDiningSessionController } from "./interfaces/http/restaurant-
     CustomersModule,
     forwardRef(() => OrdersModule),
   ],
-  controllers: [DiningSessionController, RestaurantDiningSessionController],
+  controllers: [DiningSessionController, RestaurantDiningSessionController, RestaurantServiceRequestController],
   providers: [
     DiningSessionService,
     DinerSessionGuard,
@@ -45,6 +49,7 @@ import { RestaurantDiningSessionController } from "./interfaces/http/restaurant-
     StartTableSessionUsecase,
     FetchCurrentSessionUsecase,
     EndDiningSessionUsecase,
+    ServiceRequestUsecase,
     DiningSessionRepositoryImpl,
     { provide: DiningSessionRepository, useExisting: DiningSessionRepositoryImpl },
   ],

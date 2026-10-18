@@ -1,0 +1,20 @@
+/// One time a customer was chased for what they owe. A record that staff sent it (the message itself goes out through
+/// the owner's own WhatsApp), so the screen can say "reminded 3 days ago" and avoid nagging. Append-only.
+model ReceivableReminder {
+  id            String   @id @default(uuid()) @map("id") @db.Uuid
+  restaurantId  String   @map("restaurant_id") @db.Uuid
+  customerId    String   @map("customer_id") @db.Uuid
+  channel       String   @default("WHATSAPP") @map("channel")
+  /// What they owed when it was sent, minor units.
+  amount        Int      @map("amount")
+  createdAt     DateTime @default(now()) @map("created_at")
+  createdBy     String?  @map("created_by") @db.Uuid
+  createdByName String?  @map("created_by_name")
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  customer   Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId, customerId, createdAt])
+  @@map("receivable_reminders")
+  @@schema("public")
+}

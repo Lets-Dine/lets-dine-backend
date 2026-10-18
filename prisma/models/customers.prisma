@@ -11,11 +11,12 @@ model Customer {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  restaurants    CustomerRestaurant[]
-  sessions       DiningSession[]
-  orders         Order[]
-  payments       Payment[]
-  loyaltyEntries LoyaltyEntry[]
+  restaurants         CustomerRestaurant[]
+  sessions            DiningSession[]
+  orders              Order[]
+  payments            Payment[]
+  loyaltyEntries      LoyaltyEntry[]
+  receivableReminders ReceivableReminder[]
 
   @@map("customers")
   @@schema("public")
@@ -31,6 +32,13 @@ model CustomerRestaurant {
   restaurantId   String   @map("restaurant_id") @db.Uuid
   defaultAddress String?  @map("default_address")
   defaultNote    String?  @map("default_note")
+  /// What this restaurant knows about the person — theirs alone, never shown to another restaurant.
+  email          String?  @map("email")
+  /// `YYYY-MM-DD`, or null.
+  birthday       String?  @map("birthday")
+  tags           String[] @default([]) @map("tags")
+  notes          String   @default("") @map("notes")
+  offersOk       Boolean  @default(false) @map("offers_ok")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 

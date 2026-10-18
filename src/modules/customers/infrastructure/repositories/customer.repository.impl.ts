@@ -5,10 +5,11 @@ import { PrismaService } from "../../../../common/prisma";
 import type { PrismaTransaction } from "../../../../common/prisma";
 import { normalizePhone } from "../../../../common/utils";
 import { LAPSED_AFTER_DAYS, NEW_WITHIN_DAYS, REGULAR_MIN_VISITS, RHYTHM_WEEKS } from "../../domain/constants/segments";
-import { CustomerSegment, ICustomer, ICustomerListItem } from "../../domain/interfaces/customer.interface";
+import { CustomerSegment, ICustomer, ICustomerListItem, ICustomerProfile } from "../../domain/interfaces/customer.interface";
 import {
   CustomerFetchOptions,
   CustomerRepository,
+  ICustomerProfileUpdate,
   ICustomersFetchQuery,
   ICustomerUpsert,
 } from "../../domain/repositories/customer.repository";
@@ -68,6 +69,37 @@ class CustomerRepositoryImpl implements CustomerRepository {
       include: { customer: true },
     });
     return link ? toCustomer(link) : null;
+  }
+
+  async getProfile(id: string, restaurantId: string): Promise<ICustomerProfile | null> {
+    const link = await this.prisma.customerRestaurant.findUnique({
+      where: { customerId_restaurantId: { customerId: id, restaurantId } },
+      include: { customer: true },
+    });
+    if (!link) return null;
+    const top = await this.prisma.orderItem.groupBy({
+      by: ["dishNameSnapshot"],
+      where: { status: { not: "CANCELLED" }, order: { restaurantId, customerId: id, status: { not: "CANCELLED" } } },
+      _sum: { quantity: true },
+      orderBy: { _sum: { quantity: "desc" } },
+      take: 3,
+    });
+    return {
+      id,
+      name: link.customer.name,
+      phone: link.customer.phone,
+      email: link.email ?? "",
+      birthday: link.birthday ?? "",
+      tags: link.tags,
+      notes: link.notes,
+      offersOk: link.offersOk,
+      favourites: top.map(t => t.dishNameSnapshot),
+    };
+  }
+
+  async updateProfile(id: string, restaurantId: string, patch: ICustomerProfileUpdate): Promise<ICustomerProfile | null> {
+    const { count } = await this.prisma.customerRestaurant.updateMany({ where: { customerId: id, restaurantId }, data: patch });
+    return count ? this.getProfile(id, restaurantId) : null;
   }
 
   async findByPhone(restaurantId: string, phone: string, options?: CustomerFetchOptions): Promise<ICustomer | null> {

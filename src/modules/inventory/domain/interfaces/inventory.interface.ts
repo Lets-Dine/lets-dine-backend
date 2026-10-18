@@ -1,3 +1,6 @@
+import { WasteReason } from "@prisma/client";
+import { IWasteSummary } from "../utils/waste.util";
+
 export interface IIngredient {
   id: string;
   restaurantId: string;
@@ -135,4 +138,36 @@ export interface IReturnableLot {
   onCredit: boolean;
   /** Minor units already given back for returns from this delivery. */
   refunded: number;
+}
+
+/** Stock still on the shelf that has a best-before day. */
+export interface IExpiringLot {
+  lotId: string;
+  ingredientId: string;
+  name: string;
+  unit: string;
+  remaining: number;
+  /** YYYY-MM-DD */
+  expiresOn: string;
+  /** Minor units the remaining stock cost; null when the delivery had no price. */
+  value: number | null;
+}
+
+/** One waste entry, as the report lists it. `cost` is null when it could not be priced. */
+export interface IWasteEntry {
+  id: string;
+  ingredientId: string;
+  ingredientName: string;
+  unit: string;
+  quantity: number;
+  reason: WasteReason;
+  cost: number | null;
+  note: string;
+  createdAt: Date;
+}
+
+export interface IWasteReport extends IWasteSummary {
+  from: Date;
+  to: Date;
+  recent: IWasteEntry[];
 }

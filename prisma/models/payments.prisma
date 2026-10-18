@@ -70,12 +70,12 @@ model Payment {
   /// after that person is renamed or removed.
   createdByName   String?       @map("created_by_name")
 
-  restaurant     Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  branch         Branch         @relation(fields: [branchId], references: [id], onDelete: Restrict)
-  session        DiningSession  @relation(fields: [sessionId], references: [id], onDelete: Restrict)
-  table          DiningTable?   @relation(fields: [tableId], references: [id], onDelete: Restrict)
-  floor          Floor?         @relation(fields: [floorId], references: [id], onDelete: Restrict)
-  customer       Customer?      @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  restaurant     Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  branch         Branch          @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  session        DiningSession   @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+  table          DiningTable?    @relation(fields: [tableId], references: [id], onDelete: Restrict)
+  floor          Floor?          @relation(fields: [floorId], references: [id], onDelete: Restrict)
+  customer       Customer?       @relation(fields: [customerId], references: [id], onDelete: Restrict)
   items          PaymentItem[]
   loyaltyEntries LoyaltyEntry[]
   tenders        PaymentTender[]

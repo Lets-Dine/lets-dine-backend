@@ -18,7 +18,9 @@ export class ReceiveDeliveryUsecase {
   async execute(id: string, dto: ReceiveDeliveryInput, authEntity: AuthEntity): Promise<IIngredient> {
     const receivedAt = dto.receivedAt ? new Date(dto.receivedAt) : undefined;
     // A typed name that matches a saved supplier (in any case) is stored as that supplier's name.
-    const supplier = dto.supplier ? ((await this.inventoryRepository.findSupplierName(authEntity.restaurantId, dto.supplier)) ?? dto.supplier) : "";
+    const supplier = dto.supplier
+      ? ((await this.inventoryRepository.findSupplierName(authEntity.restaurantId, dto.supplier)) ?? dto.supplier)
+      : "";
     return this.inventoryRepository.$transaction(async tx => {
       const existing = await this.inventoryRepository.findIngredient(id, { tx });
       if (!existing || !isInActiveBranch(authEntity, existing)) throw new NotFoundException(INVENTORY_ERROR_MESSAGES.INGREDIENT_NOT_FOUND);
@@ -45,6 +47,7 @@ export class ReceiveDeliveryUsecase {
           quantity: dto.quantity,
           createdBy: authEntity.sub,
           onCredit: dto.onCredit,
+          expiresAt: dto.expiresOn ? new Date(dto.expiresOn) : undefined,
         },
         tx
       );

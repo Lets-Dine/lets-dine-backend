@@ -1,6 +1,15 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService, PrismaTransaction } from "../../../../common/prisma";
-import { IPurchase, IIngredientSummary, IUsagePage, IIngredient, IRecipeLine, IReturnableLot } from "../../domain/interfaces/inventory.interface";
+import {
+  IPurchase,
+  IIngredientSummary,
+  IUsagePage,
+  IIngredient,
+  IRecipeLine,
+  IReturnableLot,
+  IExpiringLot,
+  IWasteEntry,
+} from "../../domain/interfaces/inventory.interface";
 import {
   IDishRecipe,
   IDishStock,
@@ -38,6 +47,10 @@ class InventoryRepositoryImpl implements InventoryRepository {
     return prisma.ingredient.findUnique({ where: { id } });
   }
 
+  async lockIngredient(id: string, tx: PrismaTransaction): Promise<void> {
+    await tx.$queryRaw`SELECT id FROM ingredients WHERE id = ${id}::uuid FOR UPDATE`;
+  }
+
   async findIngredientsByIds(ids: string[], branchId: string): Promise<IIngredient[]> {
     return this.prisma.ingredient.findMany({ where: { id: { in: ids }, branchId, isArchived: false } });
   }
@@ -64,11 +77,41 @@ class InventoryRepositoryImpl implements InventoryRepository {
     return this.prisma.branch.findUnique({ where: { id }, select: { id: true, restaurantId: true, name: true, isActive: true } });
   }
 
+  async findWaste(branchId: string, from: Date, to: Date): Promise<IWasteEntry[]> {
+    // ponytail: capped at 5000 entries, which is years of waste for one branch; page the report past that.
+    const rows = await this.prisma.stockMovement.findMany({
+      where: { reason: "WASTE", createdAt: { gte: from, lt: to }, ingredient: { branchId } },
+      orderBy: { createdAt: "desc" },
+      take: 5000,
+      select: {
+        id: true,
+        ingredientId: true,
+        delta: true,
+        wasteReason: true,
+        wasteCost: true,
+        note: true,
+        createdAt: true,
+        ingredient: { select: { name: true, unit: true } },
+      },
+    });
+    return rows.map(r => ({
+      id: r.id,
+      ingredientId: r.ingredientId,
+      ingredientName: r.ingredient.name,
+      unit: r.ingredient.unit,
+      quantity: -r.delta,
+      reason: r.wasteReason ?? "OTHER",
+      cost: r.wasteCost,
+      note: r.note,
+      createdAt: r.createdAt,
+    }));
+  }
+
   async findOpenLotDetails(ingredientId: string, tx: PrismaTransaction): Promise<IOpenLotDetail[]> {
     return tx.stockLot.findMany({
       where: { ingredientId, remaining: { gt: 0 } },
       orderBy: { receivedAt: "asc" },
-      select: { id: true, remaining: true, supplier: true, cost: true, quantity: true, receivedAt: true },
+      select: { id: true, remaining: true, supplier: true, cost: true, quantity: true, receivedAt: true, expiresAt: true },
     });
   }
 
@@ -82,20 +125,35 @@ class InventoryRepositoryImpl implements InventoryRepository {
   }
 
   async findSupplierName(restaurantId: string, name: string): Promise<string | null> {
-    const supplier = await this.prisma.supplier.findFirst({ where: { restaurantId, name: { equals: name.replace(/[\\%_]/g, "\\$&"), mode: "insensitive" } }, select: { name: true } });
+    const supplier = await this.prisma.supplier.findFirst({
+      where: { restaurantId, name: { equals: name.replace(/[\\%_]/g, "\\$&"), mode: "insensitive" } },
+      select: { name: true },
+    });
     return supplier?.name ?? null;
   }
 
   async findLot(id: string, tx: PrismaTransaction): Promise<ILotForReturn | null> {
     return tx.stockLot.findUnique({
       where: { id },
-      select: { id: true, ingredientId: true, supplier: true, cost: true, quantity: true, remaining: true, onCredit: true, fromTransfer: true },
+      select: {
+        id: true,
+        ingredientId: true,
+        supplier: true,
+        cost: true,
+        quantity: true,
+        remaining: true,
+        onCredit: true,
+        fromTransfer: true,
+      },
     });
   }
 
   async reduceLot(id: string, quantity: number, tx: PrismaTransaction): Promise<boolean> {
     // Conditional, so two returns at once can't both take the same stock.
-    const taken = await tx.stockLot.updateMany({ where: { id, remaining: { gte: quantity } }, data: { remaining: { decrement: quantity } } });
+    const taken = await tx.stockLot.updateMany({
+      where: { id, remaining: { gte: quantity } },
+      data: { remaining: { decrement: quantity } },
+    });
     return taken.count === 1;
   }
 
@@ -108,7 +166,10 @@ class InventoryRepositoryImpl implements InventoryRepository {
     // Same ILIKE escaping as the suppliers module: `%`, `_` and `\` in a name match literally.
     const same = { equals: supplier.replace(/[\\%_]/g, "\\$&"), mode: "insensitive" as const };
     const [credit, offset, paid] = await Promise.all([
-      tx.stockLot.aggregate({ where: { onCredit: true, fromTransfer: false, supplier: same, ingredient: { branchId } }, _sum: { cost: true } }),
+      tx.stockLot.aggregate({
+        where: { onCredit: true, fromTransfer: false, supplier: same, ingredient: { branchId } },
+        _sum: { cost: true },
+      }),
       tx.supplierReturn.aggregate({ where: { branchId, supplier: same }, _sum: { owedOffset: true } }),
       tx.supplierPayment.aggregate({ where: { branchId, supplier: same }, _sum: { amount: true } }),
     ]);
@@ -126,7 +187,11 @@ class InventoryRepositoryImpl implements InventoryRepository {
       take: 20,
       select: { id: true, supplier: true, receivedAt: true, quantity: true, remaining: true, cost: true, onCredit: true },
     });
-    const refunds = await this.prisma.supplierReturn.groupBy({ by: ["lotId"], where: { lotId: { in: lots.map(l => l.id) } }, _sum: { amount: true } });
+    const refunds = await this.prisma.supplierReturn.groupBy({
+      by: ["lotId"],
+      where: { lotId: { in: lots.map(l => l.id) } },
+      _sum: { amount: true },
+    });
     const refunded = new Map(refunds.map(r => [r.lotId, r._sum.amount ?? 0]));
     return lots.map(l => ({
       lotId: l.id,
@@ -137,6 +202,30 @@ class InventoryRepositoryImpl implements InventoryRepository {
       cost: l.cost,
       onCredit: l.onCredit,
       refunded: refunded.get(l.id) ?? 0,
+    }));
+  }
+
+  async findExpiringLots(branchId: string, before: Date): Promise<IExpiringLot[]> {
+    const lots = await this.prisma.stockLot.findMany({
+      where: { remaining: { gt: 0 }, expiresAt: { lt: before }, ingredient: { branchId, isArchived: false } },
+      orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+      select: {
+        id: true,
+        remaining: true,
+        quantity: true,
+        cost: true,
+        expiresAt: true,
+        ingredient: { select: { id: true, name: true, unit: true } },
+      },
+    });
+    return lots.map(l => ({
+      lotId: l.id,
+      ingredientId: l.ingredient.id,
+      name: l.ingredient.name,
+      unit: l.ingredient.unit,
+      remaining: l.remaining,
+      expiresOn: (l.expiresAt as Date).toISOString().slice(0, 10),
+      value: l.cost && l.quantity ? Math.round((l.cost * l.remaining) / l.quantity) : null,
     }));
   }
 
@@ -172,7 +261,15 @@ class InventoryRepositoryImpl implements InventoryRepository {
       where: { createdAt: { gte: since }, lot: { ingredient: { branchId } } },
       select: {
         lotId: true,
-        lot: { select: { supplier: true, receivedAt: true, remaining: true, fromTransfer: true, ingredient: { select: { id: true, name: true } } } },
+        lot: {
+          select: {
+            supplier: true,
+            receivedAt: true,
+            remaining: true,
+            fromTransfer: true,
+            ingredient: { select: { id: true, name: true } },
+          },
+        },
         orderItemId: true,
       },
     });
@@ -257,13 +354,20 @@ class InventoryRepositoryImpl implements InventoryRepository {
       take: limit,
       select: { id: true, createdAt: true, reason: true, supplier: true, delta: true, cost: true },
     });
-    return rows.map(r => ({ id: r.id, at: r.createdAt, kind: r.reason === "RETURN" ? ("return" as const) : ("delivery" as const), supplier: r.supplier, quantity: r.delta, cost: r.cost }));
+    return rows.map(r => ({
+      id: r.id,
+      at: r.createdAt,
+      kind: r.reason === "RETURN" ? ("return" as const) : ("delivery" as const),
+      supplier: r.supplier,
+      quantity: r.delta,
+      cost: r.cost,
+    }));
   }
 
   async findIngredientUsage(ingredientId: string, page: number, pageSize: number): Promise<IUsagePage> {
     const where = {
       ingredientId,
-      OR: [{ reason: "ORDER" as const, orderItemId: { not: null } }, { reason: "MANUAL_USE" as const }],
+      OR: [{ reason: "ORDER" as const, orderItemId: { not: null } }, { reason: "MANUAL_USE" as const }, { reason: "WASTE" as const }],
     };
     const [total, movements] = await Promise.all([
       this.prisma.stockMovement.count({ where }),
@@ -272,7 +376,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         skip: (page - 1) * pageSize,
         take: pageSize,
-        select: { id: true, delta: true, createdAt: true, reason: true, orderItemId: true, dishId: true, note: true },
+        select: { id: true, delta: true, createdAt: true, reason: true, orderItemId: true, dishId: true, note: true, wasteReason: true },
       }),
     ]);
     const [orderItems, dishNames] = await Promise.all([
@@ -288,6 +392,17 @@ class InventoryRepositoryImpl implements InventoryRepository {
       page,
       pageSize,
       items: movements.map(m => {
+        if (m.reason === "WASTE") {
+          return {
+            id: m.id,
+            at: m.createdAt,
+            dishName: null,
+            source: "manual" as const,
+            note: `Thrown away (${(m.wasteReason ?? "OTHER").toLowerCase()})${m.note ? `: ${m.note}` : ""}`,
+            portions: null,
+            quantity: -m.delta,
+          };
+        }
         if (m.reason === "MANUAL_USE") {
           return {
             id: m.id,

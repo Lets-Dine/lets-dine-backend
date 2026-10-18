@@ -8,14 +8,27 @@ import { ReturnStockUsecase } from "../return-stock.usecase";
 
 const authUser = buildAuthEntity();
 const tx = {} as any;
-const lot = (over = {}) => ({ id: "l1", ingredientId: "i1", supplier: "Ram Traders", cost: 1000, quantity: 10, remaining: 8, onCredit: false, fromTransfer: false, ...over });
+const lot = (over = {}) => ({
+  id: "l1",
+  ingredientId: "i1",
+  supplier: "Ram Traders",
+  cost: 1000,
+  quantity: 10,
+  remaining: 8,
+  onCredit: false,
+  fromTransfer: false,
+  ...over,
+});
 const input = (over = {}) => ({ lotId: "l1", quantity: 4, method: "CASH" as const, note: "", ...over });
 
 describe("ReturnStockUsecase", () => {
   let usecase: ReturnStockUsecase;
   let repo: jest.Mocked<InventoryRepository>;
 
-  const setup = async (found: unknown, { owed = 1000, refunded = 0, ingredient = {} }: { owed?: number; refunded?: number; ingredient?: object } = {}) => {
+  const setup = async (
+    found: unknown,
+    { owed = 1000, refunded = 0, ingredient = {} }: { owed?: number; refunded?: number; ingredient?: object } = {}
+  ) => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ReturnStockUsecase,
@@ -23,7 +36,17 @@ describe("ReturnStockUsecase", () => {
           provide: InventoryRepository,
           useValue: {
             $transaction: jest.fn(async (fn: any) => fn(tx)),
-            findIngredient: jest.fn().mockResolvedValue({ id: "i1", name: "Chicken", quantity: 20, isArchived: false, restaurantId: authUser.restaurantId, branchId: authUser.branchId, ...ingredient }),
+            findIngredient: jest
+              .fn()
+              .mockResolvedValue({
+                id: "i1",
+                name: "Chicken",
+                quantity: 20,
+                isArchived: false,
+                restaurantId: authUser.restaurantId,
+                branchId: authUser.branchId,
+                ...ingredient,
+              }),
             findLot: jest.fn().mockResolvedValue(found),
             applyMovement: jest.fn().mockResolvedValue({ id: "i1" }),
             reduceLot: jest.fn().mockResolvedValue(true),
@@ -43,7 +66,12 @@ describe("ReturnStockUsecase", () => {
   it("returns part of a paid delivery, and books the refund share as income", async () => {
     await setup(lot());
     await usecase.execute("i1", input({ quantity: 4 }), authUser);
-    expect(repo.applyMovement).toHaveBeenCalledWith("i1", -4, expect.objectContaining({ reason: StockMovementReason.RETURN, cost: 400 }), tx);
+    expect(repo.applyMovement).toHaveBeenCalledWith(
+      "i1",
+      -4,
+      expect.objectContaining({ reason: StockMovementReason.RETURN, cost: 400 }),
+      tx
+    );
     expect(repo.reduceLot).toHaveBeenCalledWith("l1", 4, tx);
     expect(repo.createStockExpense).toHaveBeenCalledWith(expect.objectContaining({ kind: ExpenseKind.INCOME, amount: 400 }), tx);
   });

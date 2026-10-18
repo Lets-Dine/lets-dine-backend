@@ -7,8 +7,11 @@ import {
   ConsumeStockDto,
   CreateIngredientDto,
   FetchBuyListDto,
+  FetchExpiringDto,
   FetchPurchasesDto,
   FetchUsageDto,
+  FetchWasteDto,
+  LogWasteDto,
   FetchQualityDto,
   ReceiveDeliveryDto,
   ReturnStockDto,
@@ -22,6 +25,9 @@ import { ConsumeStockUsecase } from "../../application/use-cases/consume-stock.u
 import { CreateIngredientUsecase } from "../../application/use-cases/create-ingredient.usecase";
 import { FetchReturnableLotsUsecase } from "../../application/use-cases/fetch-returnable-lots.usecase";
 import { ReturnStockUsecase } from "../../application/use-cases/return-stock.usecase";
+import { FetchWasteReportUsecase } from "../../application/use-cases/fetch-waste-report.usecase";
+import { LogWasteUsecase } from "../../application/use-cases/log-waste.usecase";
+import { FetchExpiringUsecase } from "../../application/use-cases/fetch-expiring.usecase";
 import { FetchBuyListUsecase } from "../../application/use-cases/fetch-buy-list.usecase";
 import { FetchIngredientPurchasesUsecase } from "../../application/use-cases/fetch-ingredient-purchases.usecase";
 import { FetchIngredientSummaryUsecase } from "../../application/use-cases/fetch-ingredient-summary.usecase";
@@ -39,6 +45,7 @@ import { UpdateIngredientUsecase } from "../../application/use-cases/update-ingr
 import { INVENTORY_SUCCESS_MESSAGES } from "../../domain/constants";
 import {
   IBuyListItem,
+  IExpiringLot,
   IDishMargin,
   IIngredientSummary,
   IReturnableLot,
@@ -48,6 +55,7 @@ import {
   IStockTakeResult,
   ILotQuality,
   IRecipeLine,
+  IWasteReport,
 } from "../../domain/interfaces/inventory.interface";
 
 const VIEW = [AuthGuard, AbilityGuard] as const;
@@ -65,6 +73,7 @@ export class InventoryController {
     private readonly setRecipeUsecase: SetRecipeUsecase,
     private readonly fetchDeliveryQualityUsecase: FetchDeliveryQualityUsecase,
     private readonly fetchBuyListUsecase: FetchBuyListUsecase,
+    private readonly fetchExpiringUsecase: FetchExpiringUsecase,
     private readonly fetchIngredientUsageUsecase: FetchIngredientUsageUsecase,
     private readonly fetchIngredientSummaryUsecase: FetchIngredientSummaryUsecase,
     private readonly fetchIngredientPurchasesUsecase: FetchIngredientPurchasesUsecase,
@@ -73,7 +82,9 @@ export class InventoryController {
     private readonly submitStockTakeUsecase: SubmitStockTakeUsecase,
     private readonly transferStockUsecase: TransferStockUsecase,
     private readonly returnStockUsecase: ReturnStockUsecase,
-    private readonly fetchReturnableLotsUsecase: FetchReturnableLotsUsecase
+    private readonly fetchReturnableLotsUsecase: FetchReturnableLotsUsecase,
+    private readonly logWasteUsecase: LogWasteUsecase,
+    private readonly fetchWasteReportUsecase: FetchWasteReportUsecase
   ) {}
 
   @Get("ingredients")
@@ -190,6 +201,24 @@ export class InventoryController {
     return buildHttpResponse(await this.consumeStockUsecase.execute(id, dto, authEntity), INVENTORY_SUCCESS_MESSAGES.STOCK_USED);
   }
 
+  @Post("ingredients/:id/waste")
+  @UseGuards(...VIEW)
+  @CheckPolicies(checkPermissionRules([["inventory:manage"]]))
+  async logWaste(
+    @Param("id") id: string,
+    @Body() dto: LogWasteDto,
+    @AuthUser() authEntity: AuthEntity
+  ): Promise<IHttpResponse<IIngredient>> {
+    return buildHttpResponse(await this.logWasteUsecase.execute(id, dto, authEntity), INVENTORY_SUCCESS_MESSAGES.WASTE_LOGGED);
+  }
+
+  @Get("waste")
+  @UseGuards(...VIEW)
+  @CheckPolicies(checkPermissionRules([["inventory:view"]]))
+  async waste(@Query() query: FetchWasteDto, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IWasteReport>> {
+    return buildHttpResponse(await this.fetchWasteReportUsecase.execute(query, authEntity), INVENTORY_SUCCESS_MESSAGES.WASTE_FETCHED);
+  }
+
   @Get("stock-take/sheet")
   @UseGuards(...VIEW)
   @CheckPolicies(checkPermissionRules([["inventory:manage"]]))
@@ -216,6 +245,13 @@ export class InventoryController {
   @CheckPolicies(checkPermissionRules([["inventory:view"]]))
   async buyList(@Query() query: FetchBuyListDto, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IBuyListItem[]>> {
     return buildHttpResponse(await this.fetchBuyListUsecase.execute(query, authEntity), INVENTORY_SUCCESS_MESSAGES.BUY_LIST_FETCHED);
+  }
+
+  @Get("expiring")
+  @UseGuards(...VIEW)
+  @CheckPolicies(checkPermissionRules([["inventory:view"]]))
+  async expiring(@Query() query: FetchExpiringDto, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IExpiringLot[]>> {
+    return buildHttpResponse(await this.fetchExpiringUsecase.execute(query, authEntity), INVENTORY_SUCCESS_MESSAGES.EXPIRING_FETCHED);
   }
 
   @Get("quality")

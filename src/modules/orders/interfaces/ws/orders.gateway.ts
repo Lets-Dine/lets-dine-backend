@@ -16,7 +16,7 @@ import { ForbiddenException } from "../../../../common/exceptions";
 import { type AuthEntity } from "../../../../common/interfaces";
 import { SUBSCRIPTION_LOCKED_EVENT } from "../../../billing/domain/constants";
 import { DiningSessionService } from "../../../dining-sessions/application/dining-session.service";
-import { type IDiningSession } from "../../../dining-sessions/domain/interfaces/dining-session.interface";
+import { type IDiningSession, type IServiceRequest } from "../../../dining-sessions/domain/interfaces/dining-session.interface";
 import { FetchSessionOrderUsecase } from "../../application/use-cases/fetch-session-order.usecase";
 import { type IOrderWithItems } from "../../domain/interfaces/order.interface";
 
@@ -160,5 +160,11 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @OnEvent("session.ended")
   handleSessionEnded(session: IDiningSession): void {
     this.server.to(sessionRoom(session.id)).emit("session.ended", session);
+  }
+
+  /** A diner asked for a waiter or the bill (or staff cleared it) — every pass tab on that branch updates at once. */
+  @OnEvent("service.requested")
+  handleServiceRequested(request: IServiceRequest): void {
+    this.server.to(restaurantQueueRoom(request.restaurantId, request.branchId)).emit("service.requested", request);
   }
 }

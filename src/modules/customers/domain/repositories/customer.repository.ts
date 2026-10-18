@@ -1,6 +1,6 @@
 import { PrismaTransaction } from "../../../../common/prisma";
 import { IPaginationOptions, PaginatedResponse } from "../../../../common/interfaces";
-import { CustomerSegment, ICustomer, ICustomerListItem } from "../interfaces/customer.interface";
+import { CustomerSegment, ICustomer, ICustomerListItem, ICustomerProfile } from "../interfaces/customer.interface";
 
 export interface ICustomerUpsert {
   restaurantId: string;
@@ -19,6 +19,14 @@ export interface ICustomersFetchQuery {
   segment?: Exclude<CustomerSegment, "occasional">;
 }
 
+export interface ICustomerProfileUpdate {
+  email?: string | null;
+  birthday?: string | null;
+  tags?: string[];
+  notes?: string;
+  offersOk?: boolean;
+}
+
 export interface CustomerFetchOptions {
   tx?: PrismaTransaction;
 }
@@ -30,5 +38,8 @@ export abstract class CustomerRepository {
   abstract findByPhone(restaurantId: string, phone: string, options?: CustomerFetchOptions): Promise<ICustomer | null>;
   /** The dashboard's customers list for one branch — every customer the restaurant knows, with figures from this branch's payments — see the impl. `sortBy` is one of `CUSTOMER_SORT_KEYS`. */
   abstract fetchAll(query: ICustomersFetchQuery, options?: IPaginationOptions): Promise<PaginatedResponse<ICustomerListItem>>;
+  /** Null when the restaurant doesn't know this customer. */
+  abstract getProfile(id: string, restaurantId: string): Promise<ICustomerProfile | null>;
+  abstract updateProfile(id: string, restaurantId: string, patch: ICustomerProfileUpdate): Promise<ICustomerProfile | null>;
   abstract upsert(data: ICustomerUpsert, options?: CustomerFetchOptions): Promise<ICustomer>;
 }

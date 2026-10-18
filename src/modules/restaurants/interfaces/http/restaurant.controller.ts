@@ -3,20 +3,30 @@ import { AbilityGuard, AuthGuard, AuthUser, CheckPolicies, checkPermissionRules 
 import { type AuthEntity, IHttpResponse } from "../../../../common/interfaces";
 import { buildHttpResponse } from "../../../../common/utils";
 import { UpdateRestaurantDto } from "../../application/dto/update-restaurant.dto";
+import { FetchOnboardingProgressUsecase, IOnboardingProgress } from "../../application/use-cases/fetch-onboarding-progress.usecase";
 import { FetchRestaurantProfileUsecase } from "../../application/use-cases/fetch-restaurant-profile.usecase";
 import { UpdateRestaurantUsecase } from "../../application/use-cases/update-restaurant.usecase";
 import { RESTAURANT_SUCCESS_MESSAGES } from "../../domain/constants";
 import { IRestaurant } from "../../domain/interfaces/restaurant.interface";
 import { SubscriptionActiveGuard } from "../../../billing/interfaces/http/guards/subscription-active.guard";
 
-@Controller("restaurant/profile")
+@Controller("restaurant")
 export class RestaurantController {
   constructor(
     private readonly fetchRestaurantProfileUsecase: FetchRestaurantProfileUsecase,
+    private readonly fetchOnboardingProgressUsecase: FetchOnboardingProgressUsecase,
     private readonly updateRestaurantUsecase: UpdateRestaurantUsecase
   ) {}
 
-  @Get()
+  @Get("onboarding")
+  @UseGuards(AuthGuard, AbilityGuard)
+  @CheckPolicies(checkPermissionRules([["tables:edit"]]))
+  async fetchOnboarding(@AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IOnboardingProgress>> {
+    const progress = await this.fetchOnboardingProgressUsecase.execute(authEntity);
+    return buildHttpResponse(progress, RESTAURANT_SUCCESS_MESSAGES.ONBOARDING_FETCHED);
+  }
+
+  @Get("profile")
   @UseGuards(AuthGuard, AbilityGuard)
   @CheckPolicies(checkPermissionRules([["settings:view"], ["orders:view"]]))
   async fetchProfile(@AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IRestaurant>> {
@@ -24,7 +34,7 @@ export class RestaurantController {
     return buildHttpResponse(restaurant, RESTAURANT_SUCCESS_MESSAGES.RESTAURANT_FETCHED);
   }
 
-  @Patch()
+  @Patch("profile")
   @UseGuards(AuthGuard, AbilityGuard, SubscriptionActiveGuard)
   @CheckPolicies(checkPermissionRules([["settings:edit"]]))
   async update(@Body() dto: UpdateRestaurantDto, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IRestaurant>> {

@@ -9,6 +9,11 @@ export const receiveDeliverySchema = z
     cost: z.number().int().min(0).default(0),
     /** When it actually arrived, for a delivery entered late. Defaults to now; never in the future. */
     receivedAt: z.string().datetime().optional(),
+    /** Best-before day (YYYY-MM-DD) printed on what arrived. Optional: not everything has one. */
+    expiresOn: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
     method: z.nativeEnum(PaymentMethod).default(PaymentMethod.CASH),
     /** Bought on credit: nothing is booked now, the supplier is owed until a payment is recorded. */
     onCredit: z.boolean().default(false),

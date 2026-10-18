@@ -102,6 +102,7 @@ class OrderRepositoryImpl implements OrderRepository {
       ...(query.branchId && { branchId: query.branchId }),
       ...(query.sessionId && { sessionId: query.sessionId }),
       ...(query.tableId && { tableId: query.tableId }),
+      ...(query.customerId && { customerId: query.customerId }),
       ...(query.orderType && { orderType: query.orderType }),
       ...(query.statuses?.length && { status: { in: query.statuses } }),
       ...((query.from || query.to) && {

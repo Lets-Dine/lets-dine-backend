@@ -10,10 +10,10 @@ export class FetchAllOrdersUsecase {
   constructor(private readonly orderRepository: OrderRepository) {}
 
   async execute(query: FetchOrdersQuery, authEntity: AuthEntity): Promise<PaginatedResponse<IOrderWithItems>> {
-    const { status, tableId, orderType, from, to, ...pagination } = query;
+    const { status, tableId, customerId, orderType, from, to, ...pagination } = query;
 
     return this.orderRepository.fetchAll(
-      { restaurantId: authEntity.restaurantId, branchId: authEntity.branchId, statuses: status, tableId, orderType, from, to },
+      { restaurantId: authEntity.restaurantId, branchId: authEntity.branchId, statuses: status, tableId, customerId, orderType, from, to },
       pagination
     );
   }

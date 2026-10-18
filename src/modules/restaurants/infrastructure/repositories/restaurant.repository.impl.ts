@@ -9,6 +9,7 @@ import {
   IRestaurantsFetchOptions,
   IRestaurantsFetchQuery,
   IRestaurantUpdate,
+  ISetupSignals,
   RestaurantFetchOptions,
   RestaurantRepository,
 } from "../../domain/repositories/restaurant.repository";
@@ -59,6 +60,18 @@ class RestaurantRepositoryImpl implements RestaurantRepository {
   async update(id: string, data: IRestaurantUpdate, options?: { tx?: PrismaTransaction; actorId?: string }): Promise<IRestaurant> {
     const prisma = options?.tx ?? this.prisma;
     return prisma.restaurant.update({ where: { id }, data: { ...data, updatedBy: options?.actorId } });
+  }
+
+  async countSetupSignals(restaurantId: string, branchId: string): Promise<ISetupSignals> {
+    const inBranch = { restaurantId, branchId };
+    const [categories, dishes, tables, activeMembers, orders] = await Promise.all([
+      this.prisma.menuCategory.count({ where: inBranch }),
+      this.prisma.dish.count({ where: { ...inBranch, isArchived: false } }),
+      this.prisma.diningTable.count({ where: { ...inBranch, isActive: true } }),
+      this.prisma.restaurantMember.count({ where: { restaurantId, isActive: true } }),
+      this.prisma.order.findFirst({ where: inBranch, select: { id: true } }).then(o => (o ? 1 : 0)),
+    ]);
+    return { categories, dishes, tables, activeMembers, orders };
   }
 
   async fetchAll(query: IRestaurantsFetchQuery, options?: IRestaurantsFetchOptions): Promise<PaginatedResponse<IRestaurant>> {

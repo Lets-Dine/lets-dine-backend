@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService, PrismaTransaction } from "../../../../common/prisma";
-import { IDiningSession } from "../../domain/interfaces/dining-session.interface";
+import { IDiningSession, IServiceRequest } from "../../domain/interfaces/dining-session.interface";
 import {
   DiningSessionFetchOptions,
   DiningSessionRepository,
@@ -41,6 +41,28 @@ class DiningSessionRepositoryImpl implements DiningSessionRepository {
       },
       orderBy: { startedAt: "desc" },
     });
+  }
+
+  async findServiceRequests(restaurantId: string, branchId: string): Promise<IServiceRequest[]> {
+    const rows = await this.prisma.diningSession.findMany({
+      where: {
+        restaurantId,
+        branchId,
+        endedAt: null,
+        expiresAt: { gt: new Date() },
+        OR: [{ waiterCalledAt: { not: null } }, { billRequestedAt: { not: null } }],
+      },
+      include: { table: { select: { name: true } }, floor: { select: { name: true } } },
+      orderBy: { updatedAt: "asc" },
+    });
+    return rows.map(row => ({
+      sessionId: row.id,
+      restaurantId: row.restaurantId,
+      branchId: row.branchId,
+      label: row.table?.name ?? row.floor?.name ?? "Table",
+      waiterCalledAt: row.waiterCalledAt,
+      billRequestedAt: row.billRequestedAt,
+    }));
   }
 
   async create(data: IDiningSessionCreate, options?: { tx?: PrismaTransaction }): Promise<IDiningSession> {

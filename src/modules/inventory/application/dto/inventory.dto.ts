@@ -2,8 +2,11 @@ import { createZodDto } from "nestjs-zod";
 import { adjustStockSchema } from "../../interfaces/http/validations/adjust-stock.validation";
 import { consumeStockSchema } from "../../interfaces/http/validations/consume-stock.validation";
 import { createIngredientSchema } from "../../interfaces/http/validations/create-ingredient.validation";
+import { fetchExpiringSchema } from "../../interfaces/http/validations/fetch-expiring.validation";
 import { fetchBuyListSchema } from "../../interfaces/http/validations/fetch-buy-list.validation";
 import { fetchPurchasesSchema } from "../../interfaces/http/validations/fetch-purchases.validation";
+import { fetchWasteSchema } from "../../interfaces/http/validations/fetch-waste.validation";
+import { logWasteSchema } from "../../interfaces/http/validations/log-waste.validation";
 import { fetchUsageSchema } from "../../interfaces/http/validations/fetch-usage.validation";
 import { fetchQualitySchema } from "../../interfaces/http/validations/fetch-quality.validation";
 import { receiveDeliverySchema } from "../../interfaces/http/validations/receive-delivery.validation";
@@ -22,7 +25,10 @@ export class SetRecipeDto extends createZodDto(setRecipeSchema) {}
 export class FetchQualityDto extends createZodDto(fetchQualitySchema) {}
 export class FetchPurchasesDto extends createZodDto(fetchPurchasesSchema) {}
 export class FetchUsageDto extends createZodDto(fetchUsageSchema) {}
+export class FetchExpiringDto extends createZodDto(fetchExpiringSchema) {}
 export class FetchBuyListDto extends createZodDto(fetchBuyListSchema) {}
 export class SubmitStockTakeDto extends createZodDto(submitStockTakeSchema) {}
 export class TransferStockDto extends createZodDto(transferStockSchema) {}
 export class ReturnStockDto extends createZodDto(returnStockSchema) {}
+export class LogWasteDto extends createZodDto(logWasteSchema) {}
+export class FetchWasteDto extends createZodDto(fetchWasteSchema) {}

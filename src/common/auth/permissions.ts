@@ -20,6 +20,7 @@ export type Permission =
   | "audit:view"
   | "payments:view"
   | "customers:view"
+  | "customers:edit"
   | "payments:discount"
   | "ledger:view"
   | "ledger:manage"
@@ -43,6 +44,7 @@ const MANAGER: Permission[] = [
   "settings:view",
   "audit:view",
   "payments:discount",
+  "customers:edit",
   // Expenses and cash-up: the money side of the shift. A manager keeps the books, staff only ring up bills.
   "ledger:view",
   "ledger:manage",

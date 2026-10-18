@@ -70,7 +70,7 @@ export class DiningSessionService {
 
   async endSession(session: IDiningSession, authEntity: AuthEntity, tx: PrismaTransaction): Promise<IDiningTable | null> {
     const closed = await this.closeOpenOrders(session, authEntity, tx);
-    const ended = await this.diningSessionRepository.update(session.id, { endedAt: new Date() }, tx);
+    const ended = await this.diningSessionRepository.update(session.id, { endedAt: new Date(), waiterCalledAt: null, billRequestedAt: null }, tx);
     // A delivery or floor session has no table to free up.
     const table = session.tableId ? await this.diningTableRepository.update(session.tableId, { currentSessionId: null }, { tx }) : null;
     // A floor has no singleton to clear — the session ending is the whole story for it.
@@ -98,6 +98,17 @@ export class DiningSessionService {
     // order's own `order.updated`, so the pass and any open status screen
     // see the same final tickets rather than the ones they last polled.
     this.eventEmitter.emit("session.ended", ended);
+    // The visit is over, so whatever it was waiting on is moot — drop it from every open pass.
+    if (session.waiterCalledAt || session.billRequestedAt) {
+      this.eventEmitter.emit("service.requested", {
+        sessionId: ended.id,
+        restaurantId: ended.restaurantId,
+        branchId: ended.branchId,
+        label: subject,
+        waiterCalledAt: null,
+        billRequestedAt: null,
+      });
+    }
     for (const order of closed) this.eventEmitter.emit("order.updated", order);
 
     return table;

@@ -275,7 +275,7 @@ describe("DiningSessionService", () => {
 
       // Assert
       expect(result).toEqual({ id: "table-1", name: "T1" });
-      expect(diningSessionRepository.update).toHaveBeenCalledWith("session-1", { endedAt: expect.any(Date) }, tx);
+      expect(diningSessionRepository.update).toHaveBeenCalledWith("session-1", { endedAt: expect.any(Date), waiterCalledAt: null, billRequestedAt: null }, tx);
       expect(diningTableRepository.update).toHaveBeenCalledWith("table-1", { currentSessionId: null }, { tx });
       expect(auditLogService.record).toHaveBeenCalledWith(
         expect.objectContaining({

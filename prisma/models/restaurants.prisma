@@ -57,6 +57,7 @@ model Restaurant {
   customers           CustomerRestaurant[]
   loyaltyProgram      LoyaltyProgram?
   loyaltyEntries      LoyaltyEntry[]
+  receivableReminders ReceivableReminder[]
   branches            Branch[]
 
   fonepayConfig RestaurantFonepayConfig?

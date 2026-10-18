@@ -14,6 +14,10 @@ export const DINING_SESSION_ERROR_MESSAGES = {
   },
   NO_ACTIVE_SESSION: { key: "DINING_SESSION_NO_ACTIVE_SESSION", message: "This table has no active visit to end" },
   BRANCH_NOT_FOUND: { key: "DINING_SESSION_BRANCH_NOT_FOUND", message: "This branch is not available for delivery" },
+  SERVICE_NOT_AVAILABLE: {
+    key: "DINING_SESSION_SERVICE_NOT_AVAILABLE",
+    message: "Calling a waiter or asking for the bill is only available when you are seated",
+  },
   CUSTOMER_NAME_REQUIRED: {
     key: "DINING_SESSION_CUSTOMER_NAME_REQUIRED",
     message: "Enter your name to start your first order",

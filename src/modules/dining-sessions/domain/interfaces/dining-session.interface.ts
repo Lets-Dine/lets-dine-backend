@@ -16,6 +16,20 @@ export interface IDiningSession {
   startedAt: Date;
   expiresAt: Date;
   endedAt: Date | null;
+  /** Set while the diner is waiting on a waiter / the bill — cleared by staff. */
+  waiterCalledAt: Date | null;
+  billRequestedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+/** What the pass sees: one open visit that wants attention, labelled with where it is. */
+export interface IServiceRequest {
+  sessionId: string;
+  restaurantId: string;
+  branchId: string;
+  /** The table's name, or the floor's for a floor visit. */
+  label: string;
+  waiterCalledAt: Date | null;
+  billRequestedAt: Date | null;
 }
