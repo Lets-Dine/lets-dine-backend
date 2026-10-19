@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { BadRequestException } from "../../../../common/exceptions";
 import { AuthEntity } from "../../../../common/interfaces";
 import { RestaurantRepository } from "../../../restaurants/domain/repositories/restaurant.repository";
-import { ITopSellingDish } from "../../domain/interfaces/analytics.interface";
+import { ITopSellingDishTrend } from "../../domain/interfaces/analytics.interface";
 import { AnalyticsRepository } from "../../domain/repositories/analytics.repository";
 import { resolveAnalyticsScope } from "../../domain/utils/resolve-analytics-scope.util";
 import { startOfZonedDay } from "../../domain/utils/resolve-comparison-range.util";
@@ -34,7 +34,7 @@ export class FetchTopSellingDishesUsecase {
     private readonly restaurantRepository: RestaurantRepository
   ) {}
 
-  async execute(query: FetchTopSellingDishesQuery, authEntity: AuthEntity): Promise<ITopSellingDish[]> {
+  async execute(query: FetchTopSellingDishesQuery, authEntity: AuthEntity): Promise<ITopSellingDishTrend[]> {
     if (query.endDate && !query.startDate) throw new BadRequestException(TOP_SELLING_DISHES_ERROR_MESSAGES.END_DATE_WITHOUT_START_DATE);
 
     const restaurant = await this.restaurantRepository.findById(authEntity.restaurantId);
@@ -45,6 +45,17 @@ export class FetchTopSellingDishesUsecase {
 
     if (from.getTime() > to) throw new BadRequestException(TOP_SELLING_DISHES_ERROR_MESSAGES.INVALID_RANGE);
 
-    return this.analyticsRepository.fetchTopSellingDishes(resolveAnalyticsScope(authEntity, query.branchId), { from, to: new Date(to) });
+    const scope = resolveAnalyticsScope(authEntity, query.branchId);
+    const current = await this.analyticsRepository.fetchTopSellingDishes(scope, { from, to: new Date(to) });
+    // With no startDate the range is all time — there is nothing before it to compare against.
+    if (!query.startDate) return current.map(dish => ({ ...dish, previousCount: null }));
+
+    // The window of equal length that ends where this one begins.
+    const previous = await this.analyticsRepository.fetchTopSellingDishes(scope, { from: new Date(2 * from.getTime() - to), to: from });
+    const before = new Map(previous.map(dish => [dish.dishId, dish]));
+    const seen = new Set(current.map(dish => dish.dishId));
+    // A dish that sold last period and nothing this one is the clearest "losing popularity" there is — keep it.
+    const gone = previous.filter(dish => !seen.has(dish.dishId)).map(dish => ({ ...dish, orderCount: 0, totalAmount: 0, previousCount: dish.orderCount }));
+    return [...current.map(dish => ({ ...dish, previousCount: before.get(dish.dishId)?.orderCount ?? 0 })), ...gone];
   }
 }

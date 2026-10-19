@@ -21,7 +21,7 @@ import {
   IOrderComparison,
   IRevenueComparison,
   IRevenueTrend,
-  ITopSellingDish,
+  ITopSellingDishTrend,
 } from "../../domain/interfaces/analytics.interface";
 
 @Controller("restaurant/analytics")
@@ -90,7 +90,7 @@ export class AnalyticsController {
   async fetchTopSellingDishes(
     @Query() query: FetchTopSellingDishesDto,
     @AuthUser() authEntity: AuthEntity
-  ): Promise<IHttpResponse<ITopSellingDish[]>> {
+  ): Promise<IHttpResponse<ITopSellingDishTrend[]>> {
     const dishes = await this.fetchTopSellingDishesUsecase.execute(query, authEntity);
     return buildHttpResponse(dishes, ANALYTICS_SUCCESS_MESSAGES.TOP_SELLING_DISHES_FETCHED);
   }

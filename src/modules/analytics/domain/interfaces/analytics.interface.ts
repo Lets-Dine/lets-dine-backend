@@ -94,6 +94,11 @@ export interface ITopSellingDish {
   totalAmount: number;
 }
 
+/** A top-selling row plus its units over the equal-length window just before the range; null when the range is all time. */
+export interface ITopSellingDishTrend extends ITopSellingDish {
+  previousCount: number | null;
+}
+
 export type RevenueTrendPeriod = "week" | "month" | "year";
 
 /** `week` and `month` read one bucket per day; `year` one per month. */

@@ -96,16 +96,36 @@ describe("FetchTopSellingDishesUsecase", () => {
       ).rejects.toThrow(new BadRequestException(TOP_SELLING_DISHES_ERROR_MESSAGES.INVALID_RANGE));
     });
 
-    it("returns whatever the repository resolves", async () => {
+    it("returns null previousCount for an all-time range", async () => {
       // Arrange
-      const dishes = [{ dishId: "d1", dishName: "Momo", orderCount: 5, totalAmount: 1000 }];
-      analyticsRepository.fetchTopSellingDishes.mockResolvedValue(dishes);
+      analyticsRepository.fetchTopSellingDishes.mockResolvedValue([{ dishId: "d1", dishName: "Momo", orderCount: 5, totalAmount: 1000 }]);
 
       // Act
-      const result = await usecase.execute({ startDate: new Date("2026-01-15T00:00:00.000Z") }, authUser);
+      const result = await usecase.execute({}, authUser);
 
       // Assert
-      expect(result).toEqual(dishes);
+      expect(result).toEqual([{ dishId: "d1", dishName: "Momo", orderCount: 5, totalAmount: 1000, previousCount: null }]);
+    });
+
+    it("compares against the equal-length window before, and keeps dishes that sold nothing this time", async () => {
+      // Arrange — current window is Jan 10–12 (3 days), so the previous one is Jan 7–9
+      const momo = { dishId: "d1", dishName: "Momo", orderCount: 6, totalAmount: 1200 };
+      analyticsRepository.fetchTopSellingDishes
+        .mockResolvedValueOnce([momo])
+        .mockResolvedValueOnce([{ ...momo, orderCount: 3 }, { dishId: "d2", dishName: "Thukpa", orderCount: 4, totalAmount: 800 }]);
+
+      // Act
+      const result = await usecase.execute({ startDate: new Date("2026-01-10T00:00:00.000Z"), endDate: new Date("2026-01-12T00:00:00.000Z") }, authUser);
+
+      // Assert
+      expect(analyticsRepository.fetchTopSellingDishes).toHaveBeenLastCalledWith(
+        { restaurantId: authUser.restaurantId },
+        { from: new Date("2026-01-07T00:00:00.000Z"), to: new Date("2026-01-10T00:00:00.000Z") }
+      );
+      expect(result).toEqual([
+        { ...momo, previousCount: 3 },
+        { dishId: "d2", dishName: "Thukpa", orderCount: 0, totalAmount: 0, previousCount: 4 },
+      ]);
     });
   });
 });
