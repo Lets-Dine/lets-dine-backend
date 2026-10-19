@@ -130,6 +130,9 @@ export class CreateOrderUsecase {
       deliveryPhone: customer.phone,
       deliveryCustomerName: customer.name,
       deliveryAddress: dto.deliveryAddress ?? customer.defaultAddress,
+      // One coordinate on its own is no location at all.
+      deliveryLatitude: dto.deliveryLatitude !== undefined && dto.deliveryLongitude !== undefined ? dto.deliveryLatitude : null,
+      deliveryLongitude: dto.deliveryLatitude !== undefined && dto.deliveryLongitude !== undefined ? dto.deliveryLongitude : null,
       deliveryNote: dto.deliveryNote ?? customer.defaultNote,
     };
   }

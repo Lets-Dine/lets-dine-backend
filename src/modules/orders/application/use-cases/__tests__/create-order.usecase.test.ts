@@ -401,6 +401,23 @@ describe("CreateOrderUsecase", () => {
       expect(created).toMatchObject({ deliveryAddress: "Office, Durbarmarg", deliveryNote: "Leave at reception" });
     });
 
+    it("should keep the shared coordinates on a delivery order, and drop a lone one", async () => {
+      // Arrange
+      restaurantRepository.findByIdForBranch.mockResolvedValue(restaurant);
+      dishRepository.findManyByIds.mockResolvedValue([dish]);
+      customerRepository.findById.mockResolvedValue(customer as any);
+      orderRepository.create.mockResolvedValue({ id: "order-1" } as any);
+      const lines = [{ dishId: "dish-1", quantity: 1, addOnIds: [] }];
+
+      // Act
+      await usecase.execute({ lines, deliveryLatitude: 27.7172, deliveryLongitude: 85.324 }, deliverySession);
+      await usecase.execute({ lines, deliveryLatitude: 27.7172 }, deliverySession);
+
+      // Assert
+      expect(orderRepository.create.mock.calls[0][0]).toMatchObject({ deliveryLatitude: 27.7172, deliveryLongitude: 85.324 });
+      expect(orderRepository.create.mock.calls[1][0]).toMatchObject({ deliveryLatitude: null, deliveryLongitude: null });
+    });
+
     it("should not charge a delivery fee for a dine-in order even when the restaurant has one configured", async () => {
       // Arrange
       restaurantRepository.findByIdForBranch.mockResolvedValue(restaurant);

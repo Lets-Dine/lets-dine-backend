@@ -24,6 +24,9 @@ export const createOrderSchema = z.object({
    * the client.
    */
   deliveryAddress: z.string().min(1).max(500).optional(),
+  /** Delivery only — where the device was when the diner tapped "use my location". Only stored when both are sent. */
+  deliveryLatitude: z.number().min(-90).max(90).optional(),
+  deliveryLongitude: z.number().min(-180).max(180).optional(),
   deliveryNote: z.string().max(280).optional(),
   /**
    * Dine-in only (table or floor) — identity captured at order time rather than at session

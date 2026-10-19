@@ -33,6 +33,10 @@ model Order {
   /// Snapshots taken at order time — editing the `Customer` row later must
   /// not rewrite a placed order, same reasoning as `OrderItem`'s own snapshots.
   deliveryAddress      String?     @map("delivery_address")
+  /// The exact spot the diner shared from their device, when they did — the address text is only its label.
+  /// Both set or both null. Doubles are ample here: a latitude has ~1 cm of precision to spare.
+  deliveryLatitude     Float?      @map("delivery_latitude")
+  deliveryLongitude    Float?      @map("delivery_longitude")
   deliveryPhone        String?     @map("delivery_phone")
   deliveryCustomerName String?     @map("delivery_customer_name")
   deliveryNote         String?     @map("delivery_note")

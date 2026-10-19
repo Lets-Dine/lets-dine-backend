@@ -56,6 +56,9 @@ export interface IOrder {
   currency: string;
   /** Snapshots taken at order time — editing the `Customer` row later must not rewrite a placed order. */
   deliveryAddress: string | null;
+  /** The device's own position when the diner shared it; `deliveryAddress` is then just its label. Both null or both set. */
+  deliveryLatitude: number | null;
+  deliveryLongitude: number | null;
   deliveryPhone: string | null;
   deliveryCustomerName: string | null;
   deliveryNote: string | null;

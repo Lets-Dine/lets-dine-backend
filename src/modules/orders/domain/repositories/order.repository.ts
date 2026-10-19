@@ -32,6 +32,8 @@ export interface IOrderCreate {
   deliveryFee?: number;
   total: number;
   deliveryAddress?: string | null;
+  deliveryLatitude?: number | null;
+  deliveryLongitude?: number | null;
   deliveryPhone?: string | null;
   deliveryCustomerName?: string | null;
   deliveryNote?: string | null;

@@ -153,6 +153,8 @@ class OrderRepositoryImpl implements OrderRepository {
         o.total,
         o.currency,
         o.delivery_address       AS "deliveryAddress",
+        o.delivery_latitude      AS "deliveryLatitude",
+        o.delivery_longitude     AS "deliveryLongitude",
         o.delivery_phone         AS "deliveryPhone",
         o.delivery_customer_name AS "deliveryCustomerName",
         o.delivery_note          AS "deliveryNote",
