@@ -5,12 +5,14 @@ import { buildHttpResponse } from "../../../../common/utils";
 import { FetchAnalyticsDto } from "../../application/dto/fetch-analytics.dto";
 import { FetchBranchPerformanceDto } from "../../application/dto/fetch-branch-performance.dto";
 import { FetchOrderComparisonDto } from "../../application/dto/fetch-order-comparison.dto";
+import { FetchProfitLossDto } from "../../application/dto/fetch-profit-loss.dto";
 import { FetchRevenueComparisonDto } from "../../application/dto/fetch-revenue-comparison.dto";
 import { FetchRevenueTrendDto } from "../../application/dto/fetch-revenue-trend.dto";
 import { FetchTopSellingDishesDto } from "../../application/dto/fetch-top-selling-dishes.dto";
 import { FetchAnalyticsOverviewUsecase } from "../../application/use-cases/fetch-analytics-overview.usecase";
 import { FetchBranchPerformanceUsecase } from "../../application/use-cases/fetch-branch-performance.usecase";
 import { FetchOrderComparisonUsecase } from "../../application/use-cases/fetch-order-comparison.usecase";
+import { FetchProfitLossUsecase } from "../../application/use-cases/fetch-profit-loss.usecase";
 import { FetchRevenueComparisonUsecase } from "../../application/use-cases/fetch-revenue-comparison.usecase";
 import { FetchRevenueTrendUsecase } from "../../application/use-cases/fetch-revenue-trend.usecase";
 import { FetchTopSellingDishesUsecase } from "../../application/use-cases/fetch-top-selling-dishes.usecase";
@@ -19,6 +21,7 @@ import {
   IAnalyticsOverview,
   IBranchPerformance,
   IOrderComparison,
+  IProfitLoss,
   IRevenueComparison,
   IRevenueTrend,
   ITopSellingDishTrend,
@@ -32,7 +35,8 @@ export class AnalyticsController {
     private readonly fetchRevenueTrendUsecase: FetchRevenueTrendUsecase,
     private readonly fetchOrderComparisonUsecase: FetchOrderComparisonUsecase,
     private readonly fetchTopSellingDishesUsecase: FetchTopSellingDishesUsecase,
-    private readonly fetchBranchPerformanceUsecase: FetchBranchPerformanceUsecase
+    private readonly fetchBranchPerformanceUsecase: FetchBranchPerformanceUsecase,
+    private readonly fetchProfitLossUsecase: FetchProfitLossUsecase
   ) {}
 
   @Get()
@@ -93,5 +97,13 @@ export class AnalyticsController {
   ): Promise<IHttpResponse<ITopSellingDishTrend[]>> {
     const dishes = await this.fetchTopSellingDishesUsecase.execute(query, authEntity);
     return buildHttpResponse(dishes, ANALYTICS_SUCCESS_MESSAGES.TOP_SELLING_DISHES_FETCHED);
+  }
+
+  @Get("profit-loss")
+  @UseGuards(AuthGuard, AbilityGuard)
+  @CheckPolicies(checkPermissionRules([["analytics:view"]]))
+  async fetchProfitLoss(@Query() query: FetchProfitLossDto, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IProfitLoss>> {
+    const statement = await this.fetchProfitLossUsecase.execute(query, authEntity);
+    return buildHttpResponse(statement, ANALYTICS_SUCCESS_MESSAGES.PROFIT_LOSS_FETCHED);
   }
 }

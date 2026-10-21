@@ -137,3 +137,36 @@ export interface IRevenueBucket {
   key: string;
   revenue: number;
 }
+
+/** What the repository reads for one branch and range, in minor units; the use case turns it into the statement. */
+export interface IProfitLossFigures {
+  /** `total − tax` over the payments of the range, credit sales included. Tax is never revenue. */
+  sales: number;
+  tax: number;
+  refunds: number;
+  /** Stock on hand at the start and end of the range, valued at the average price paid for it. */
+  stockOpening: number;
+  stockClosing: number;
+  /** Cost of every delivery, opening-stock entry and transfer received in the range, paid or on credit. */
+  stockPurchases: number;
+  /** Stock that left otherwise than being used — sent back to a supplier or to another branch. */
+  stockOut: number;
+  /** Ingredients that held stock, or were bought, with no price on record — their cost is missing. */
+  unpricedItems: number;
+  /** Already inside the cost of food; shown only so an owner can see how much of it was thrown away. */
+  waste: number;
+  wasteUnpricedCount: number;
+  expenses: { category: string; amount: number }[];
+}
+
+export interface IProfitLoss extends IProfitLossFigures {
+  range: IAnalyticsRange;
+  revenue: number;
+  /** `stockOpening + stockPurchases − stockOut − stockClosing`: everything that left the shelves, sold or not. */
+  cogs: number;
+  grossProfit: number;
+  operatingExpenses: number;
+  netProfit: number;
+  /** `netProfit / revenue`, null when there was no revenue. */
+  netMargin: number | null;
+}

@@ -4,5 +4,6 @@ export const ANALYTICS_SUCCESS_MESSAGES = {
   REVENUE_TREND_FETCHED: { key: "REVENUE_TREND_FETCHED", message: "Revenue trend fetched successfully" },
   ORDER_COMPARISON_FETCHED: { key: "ORDER_COMPARISON_FETCHED", message: "Order comparison fetched successfully" },
   BRANCH_PERFORMANCE_FETCHED: { key: "BRANCH_PERFORMANCE_FETCHED", message: "Branch performance fetched successfully" },
+  PROFIT_LOSS_FETCHED: { key: "PROFIT_LOSS_FETCHED", message: "Profit and loss fetched successfully" },
   TOP_SELLING_DISHES_FETCHED: { key: "TOP_SELLING_DISHES_FETCHED", message: "Top selling dishes fetched successfully" },
 };

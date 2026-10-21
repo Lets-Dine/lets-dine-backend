@@ -1,5 +1,14 @@
 import { Module } from "@nestjs/common";
 import { AuditLogsModule } from "../audit-logs/audit-logs.module";
+import { RestaurantsModule } from "../restaurants/restaurants.module";
+import { CreateRecurringExpenseUsecase } from "./application/use-cases/create-recurring-expense.usecase";
+import { DeleteRecurringExpenseUsecase } from "./application/use-cases/delete-recurring-expense.usecase";
+import { ListRecurringExpensesUsecase } from "./application/use-cases/list-recurring-expenses.usecase";
+import { SettleRecurringExpenseUsecase } from "./application/use-cases/settle-recurring-expense.usecase";
+import { UpdateRecurringExpenseUsecase } from "./application/use-cases/update-recurring-expense.usecase";
+import { RecurringExpenseRepository } from "./domain/repositories/recurring-expense.repository";
+import RecurringExpenseRepositoryImpl from "./infrastructure/repositories/recurring-expense.repository.impl";
+import { RecurringExpenseController } from "./interfaces/http/recurring-expense.controller";
 import { ReopenLedgerUsecase } from "./application/use-cases/reopen-ledger.usecase";
 import { CloseLedgerUsecase } from "./application/use-cases/close-ledger.usecase";
 import { CreateExpenseUsecase } from "./application/use-cases/create-expense.usecase";
@@ -14,8 +23,8 @@ import LedgerRepositoryImpl from "./infrastructure/repositories/ledger.repositor
 import { LedgerController } from "./interfaces/http/ledger.controller";
 
 @Module({
-  imports: [AuditLogsModule],
-  controllers: [LedgerController],
+  imports: [AuditLogsModule, RestaurantsModule],
+  controllers: [LedgerController, RecurringExpenseController],
   providers: [
     GetLedgerSummaryUsecase,
     GetLedgerEntriesUsecase,
@@ -26,6 +35,13 @@ import { LedgerController } from "./interfaces/http/ledger.controller";
     CreateExpenseUsecase,
     ListExpensesUsecase,
     DeleteExpenseUsecase,
+    ListRecurringExpensesUsecase,
+    CreateRecurringExpenseUsecase,
+    UpdateRecurringExpenseUsecase,
+    DeleteRecurringExpenseUsecase,
+    SettleRecurringExpenseUsecase,
+    RecurringExpenseRepositoryImpl,
+    { provide: RecurringExpenseRepository, useExisting: RecurringExpenseRepositoryImpl },
     LedgerRepositoryImpl,
     { provide: LedgerRepository, useExisting: LedgerRepositoryImpl },
   ],

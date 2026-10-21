@@ -7,4 +7,9 @@ export const LEDGER_SUCCESS_MESSAGES = {
   EXPENSE_CREATED: { key: "LEDGER_EXPENSE_CREATED", message: "Expense recorded" },
   EXPENSES_FETCHED: { key: "LEDGER_EXPENSES_FETCHED", message: "Expenses fetched" },
   EXPENSE_DELETED: { key: "LEDGER_EXPENSE_DELETED", message: "Expense removed" },
+  RECURRING_FETCHED: { key: "LEDGER_RECURRING_FETCHED", message: "Recurring expenses fetched" },
+  RECURRING_CREATED: { key: "LEDGER_RECURRING_CREATED", message: "Recurring expense saved" },
+  RECURRING_UPDATED: { key: "LEDGER_RECURRING_UPDATED", message: "Recurring expense updated" },
+  RECURRING_DELETED: { key: "LEDGER_RECURRING_DELETED", message: "Recurring expense removed" },
+  RECURRING_SETTLED: { key: "LEDGER_RECURRING_SETTLED", message: "Due date handled" },
 };

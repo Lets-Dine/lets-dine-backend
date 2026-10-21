@@ -82,6 +82,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
       // The payment legs of a supplier bill, a refund or a courier settlement are not new activity — the bill and the refund are listed on their own.
       supplierPaymentId: null,
       paymentRefundId: null,
+      recurringExpenseId: null,
       // A courier settlement's rows are the money side of a delivery fee, which is listed as its own transaction.
       deliverySettlementId: null,
       ...(kinds && { kind: { in: kinds } }),

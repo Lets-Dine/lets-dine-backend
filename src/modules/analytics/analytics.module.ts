@@ -3,6 +3,7 @@ import { RestaurantsModule } from "../restaurants/restaurants.module";
 import { FetchAnalyticsOverviewUsecase } from "./application/use-cases/fetch-analytics-overview.usecase";
 import { FetchBranchPerformanceUsecase } from "./application/use-cases/fetch-branch-performance.usecase";
 import { FetchOrderComparisonUsecase } from "./application/use-cases/fetch-order-comparison.usecase";
+import { FetchProfitLossUsecase } from "./application/use-cases/fetch-profit-loss.usecase";
 import { FetchRevenueComparisonUsecase } from "./application/use-cases/fetch-revenue-comparison.usecase";
 import { FetchRevenueTrendUsecase } from "./application/use-cases/fetch-revenue-trend.usecase";
 import { FetchTopSellingDishesUsecase } from "./application/use-cases/fetch-top-selling-dishes.usecase";
@@ -16,6 +17,7 @@ import { BillingModule } from "../billing/billing.module";
   controllers: [AnalyticsController],
   providers: [
     FetchAnalyticsOverviewUsecase,
+    FetchProfitLossUsecase,
     FetchRevenueComparisonUsecase,
     FetchRevenueTrendUsecase,
     FetchOrderComparisonUsecase,

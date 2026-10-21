@@ -1,7 +1,7 @@
 import { PaymentMethod, PaymentStatus } from "@prisma/client";
 import { IPaginationOptions, PaginatedResponse } from "../../../../common/interfaces";
 import { PrismaTransaction } from "../../../../common/prisma";
-import { IPaymentRefund, IPaymentTender, IPaymentWithItems } from "../interfaces/payment.interface";
+import { IPaymentRefund, IPaymentsSummary, IPaymentTender, IPaymentWithItems } from "../interfaces/payment.interface";
 
 export interface IPaymentItemCreate {
   dishId: string;
@@ -77,6 +77,7 @@ export interface IPaymentsFetchOptions extends IPaginationOptions {
 export abstract class PaymentRepository {
   abstract $transaction<T>(fn: (tx: PrismaTransaction) => Promise<T>): Promise<T>;
   abstract create(data: IPaymentCreate, options?: { tx?: PrismaTransaction }): Promise<IPaymentWithItems>;
+  abstract summarize(query: IPaymentsFetchQuery): Promise<IPaymentsSummary>;
   abstract fetchAll(query: IPaymentsFetchQuery, options?: IPaymentsFetchOptions): Promise<PaginatedResponse<IPaymentWithItems>>;
   abstract findById(
     id: string,

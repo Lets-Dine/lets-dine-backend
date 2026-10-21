@@ -33,11 +33,17 @@ model Expense {
   supplierPaymentId    String?       @map("supplier_payment_id") @db.Uuid
   /// Set when a customer refund posted this row. The sale owns it, so the cash book cannot delete it; unique so one refund is one outflow.
   paymentRefundId      String?       @unique @map("payment_refund_id") @db.Uuid
+  /// Set when a recurring expense's due date posted this row. The schedule owns it, so the cash book cannot delete it
+  /// (the cursor has already moved past that date); unique so one due date is one outflow.
+  recurringExpenseId   String?       @map("recurring_expense_id") @db.Uuid
+  recurringDueOn       DateTime?     @map("recurring_due_on") @db.Date
 
   restaurant         Restaurant          @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   branch             Branch              @relation(fields: [branchId], references: [id], onDelete: Restrict)
   deliverySettlement DeliverySettlement? @relation(fields: [deliverySettlementId], references: [id], onDelete: Restrict)
+  recurringExpense   RecurringExpense?   @relation(fields: [recurringExpenseId], references: [id], onDelete: SetNull)
 
+  @@unique([recurringExpenseId, recurringDueOn])
   @@index([branchId, createdAt])
   @@index([deliverySettlementId])
   @@map("expenses")
@@ -82,5 +88,43 @@ model CashClose {
 
   @@index([branchId, closedAt])
   @@map("cash_closes")
+  @@schema("public")
+}
+
+enum RecurrenceFrequency {
+  WEEKLY
+  MONTHLY
+
+  @@schema("public")
+}
+
+/// A cost that comes round on a schedule — rent, wages, utilities. It never posts itself: each due date waits
+/// to be confirmed (posted to the cash book as an `Expense`) or skipped, so nothing reaches the books unseen.
+/// `handledThrough` is the cursor: every due date up to and including it has been posted or skipped.
+model RecurringExpense {
+  id             String              @id @default(uuid()) @map("id") @db.Uuid
+  restaurantId   String              @map("restaurant_id") @db.Uuid
+  branchId       String              @map("branch_id") @db.Uuid
+  /// Free text, like `Expense.category`.
+  category       String              @map("category")
+  amount         Int                 @map("amount")
+  method         PaymentMethod       @default(CASH) @map("method")
+  note           String              @default("") @map("note")
+  frequency      RecurrenceFrequency @map("frequency")
+  /// MONTHLY: day of the month, 1–31 (a short month uses its last day). WEEKLY: 0 Sunday – 6 Saturday.
+  dueDay         Int                 @map("due_day")
+  /// No due date before this day.
+  startsOn       DateTime            @map("starts_on") @db.Date
+  handledThrough DateTime?           @map("handled_through") @db.Date
+  isActive       Boolean             @default(true) @map("is_active")
+  createdAt      DateTime            @default(now()) @map("created_at")
+  createdBy      String?             @map("created_by") @db.Uuid
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  branch     Branch     @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  expenses   Expense[]
+
+  @@index([branchId, isActive])
+  @@map("recurring_expenses")
   @@schema("public")
 }

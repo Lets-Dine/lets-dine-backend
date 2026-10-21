@@ -74,7 +74,7 @@ export class GetLedgerEntriesUsecase {
           bankDelta: transfer ? (toBank ? expense.amount : -expense.amount) : onCash ? 0 : sign * expense.amount,
           label: transfer ? (toBank ? "Drawer → Bank" : "Bank → Drawer") : expense.category,
           detail: [expense.kind === "INCOME" ? "Income" : "", expense.note, expense.createdByName].filter(Boolean).join(" · "),
-          locked: expense.deliverySettlementId !== null || expense.supplierPaymentId !== null || expense.paymentRefundId !== null,
+          locked: expense.deliverySettlementId !== null || expense.supplierPaymentId !== null || expense.paymentRefundId !== null || expense.recurringExpenseId !== null,
           // Classified by which record posted the row (its link), so a supplier payment is never mistaken for a plain expense.
           ...(expense.paymentRefundId
             ? { sourceType: "REFUND" as const, sourceId: expense.paymentRefundId }

@@ -14,6 +14,7 @@ import { RefundPaymentUsecase } from "./application/use-cases/refund-payment.use
 import { CompletePaymentUsecase } from "./application/use-cases/complete-payment.usecase";
 import { FetchSessionPaymentUsecase } from "./application/use-cases/fetch-session-payment.usecase";
 import { GetPaymentUsecase } from "./application/use-cases/get-payment.usecase";
+import { SummarizePaymentsUsecase } from "./application/use-cases/summarize-payments.usecase";
 import { ListPaymentsUsecase } from "./application/use-cases/list-payments.usecase";
 import { FonepayService } from "./infrastructure/fonepay/fonepay.service";
 import { PaymentRepository } from "./domain/repositories/payment.repository";
@@ -41,6 +42,7 @@ import { PublicPaymentController } from "./interfaces/http/public-payment.contro
     CollectPaymentUsecase,
     RefundPaymentUsecase,
     ListPaymentsUsecase,
+    SummarizePaymentsUsecase,
     GetPaymentUsecase,
     FetchSessionPaymentUsecase,
     FonepayService,

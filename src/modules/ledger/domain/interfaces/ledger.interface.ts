@@ -16,6 +16,8 @@ export interface IExpense {
   deliverySettlementId: string | null;
   supplierPaymentId: string | null;
   paymentRefundId: string | null;
+  /** Set when a recurring expense posted this row; its schedule owns it, so the cash book cannot delete it. */
+  recurringExpenseId: string | null;
 }
 
 export interface ICashClose {

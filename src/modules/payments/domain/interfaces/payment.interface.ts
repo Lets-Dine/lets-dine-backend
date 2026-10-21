@@ -69,3 +69,12 @@ export interface IPaymentWithItems extends IPayment {
   /** The paying customer's name, joined in read-side for the receipt; null when no customer is linked. */
   customerName: string | null;
 }
+
+export interface IPaymentsSummary {
+  count: number;
+  sold: number;
+  collected: number;
+  refunded: number;
+  /** `sold − collected`; a payment's collected amount never exceeds its total. */
+  owed: number;
+}

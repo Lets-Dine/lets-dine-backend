@@ -48,6 +48,7 @@ model Restaurant {
   paymentTenders      PaymentTender[]
   paymentRefunds      PaymentRefund[]
   expenses            Expense[]
+  recurringExpenses   RecurringExpense[]
   cashCloses          CashClose[]
   deliveryPartners    DeliveryPartner[]
   deliveryRiders      DeliveryRider[]

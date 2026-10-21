@@ -8,6 +8,7 @@ import {
   IHourlyOrders,
   IOrderComparisonTotals,
   IOrderSummary,
+  IProfitLossFigures,
   IRevenueBucket,
   IRevenueTotals,
   RevenueTrendGranularity,
@@ -64,4 +65,6 @@ export abstract class AnalyticsRepository {
     timeZone: string,
     options?: AnalyticsFetchOptions
   ): Promise<IRevenueBucket[]>;
+  /** Revenue, cost and spend for one branch over `range` — the raw figures behind the profit and loss statement. */
+  abstract fetchProfitLossFigures(scope: IAnalyticsScope, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<IProfitLossFigures>;
 }

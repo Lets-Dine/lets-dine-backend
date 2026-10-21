@@ -15,6 +15,9 @@ export interface IExpenseCreate {
   createdByName: string;
   /** Set by a courier settlement posting its rows, so they stay tied to it. */
   deliverySettlementId?: string;
+  /** Set when a recurring expense posts its due date, so the row stays tied to it and a date posts once. */
+  recurringExpenseId?: string;
+  recurringDueOn?: Date;
 }
 
 export type ICashCloseCreate = Omit<ICashClose, "id">;

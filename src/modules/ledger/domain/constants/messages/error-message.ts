@@ -13,9 +13,19 @@ export const LEDGER_ERROR_MESSAGES = {
     key: "LEDGER_EXPENSE_FROM_DELIVERY",
     message: "This entry was posted by a delivery settlement and can't be removed from the cash book",
   },
+  EXPENSE_FROM_RECURRING: {
+    key: "LEDGER_EXPENSE_FROM_RECURRING",
+    message: "This entry was posted from a recurring expense and can't be removed from the cash book",
+  },
   ALREADY_CLOSED_TODAY: {
     key: "LEDGER_ALREADY_CLOSED_TODAY",
     message: "Today's books are already closed. Reopen the last close to add to it.",
   },
   NOTHING_TO_REOPEN: { key: "LEDGER_NOTHING_TO_REOPEN", message: "There is no closed period to reopen" },
+  RECURRING_NOT_FOUND: { key: "LEDGER_RECURRING_NOT_FOUND", message: "This recurring expense no longer exists" },
+  RECURRING_NOT_DUE: {
+    key: "LEDGER_RECURRING_NOT_DUE",
+    message: "That date is not the next one waiting. Handle the earliest due date first — it may already have been handled.",
+  },
+  RECURRING_BAD_DAY: { key: "LEDGER_RECURRING_BAD_DAY", message: "A monthly cost is due on day 1–31, a weekly one on a weekday 0–6" },
 };

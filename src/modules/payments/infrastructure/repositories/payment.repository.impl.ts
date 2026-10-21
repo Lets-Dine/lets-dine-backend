@@ -3,7 +3,7 @@ import { ExpenseKind, Prisma, TenderStatus } from "@prisma/client";
 import { buildPaginationQuery } from "../../../../common/helpers";
 import { PaginatedResponse } from "../../../../common/interfaces";
 import { PrismaService, PrismaTransaction } from "../../../../common/prisma";
-import { IPaymentRefund, IPaymentTender, IPaymentWithItems } from "../../domain/interfaces/payment.interface";
+import { IPaymentRefund, IPaymentsSummary, IPaymentTender, IPaymentWithItems } from "../../domain/interfaces/payment.interface";
 import {
   IActor,
   IPaymentCreate,
@@ -81,11 +81,8 @@ class PaymentRepositoryImpl implements PaymentRepository {
     );
   }
 
-  async fetchAll(query: IPaymentsFetchQuery, options?: IPaymentsFetchOptions): Promise<PaginatedResponse<IPaymentWithItems>> {
-    const prisma = options?.tx ?? this.prisma;
-    const { orderBy, ...paginationQuery } = buildPaginationQuery<"createdAt">(options ?? {});
-
-    const where: Prisma.PaymentWhereInput = {
+  private whereOf(query: IPaymentsFetchQuery): Prisma.PaymentWhereInput {
+    return {
       restaurantId: query.restaurantId,
       branchId: query.branchId,
       ...(query.tableId && { tableId: query.tableId }),
@@ -96,6 +93,20 @@ class PaymentRepositoryImpl implements PaymentRepository {
         createdAt: { ...(query.from && { gte: query.from }), ...(query.to && { lte: query.to }) },
       }),
     };
+  }
+
+  async summarize(query: IPaymentsFetchQuery): Promise<IPaymentsSummary> {
+    const sum = await this.prisma.payment.aggregate({ where: this.whereOf(query), _count: { _all: true }, _sum: { total: true, paidAmount: true, refundedAmount: true } });
+    const sold = sum._sum.total ?? 0;
+    const collected = sum._sum.paidAmount ?? 0;
+    return { count: sum._count._all, sold, collected, refunded: sum._sum.refundedAmount ?? 0, owed: sold - collected };
+  }
+
+  async fetchAll(query: IPaymentsFetchQuery, options?: IPaymentsFetchOptions): Promise<PaginatedResponse<IPaymentWithItems>> {
+    const prisma = options?.tx ?? this.prisma;
+    const { orderBy, ...paginationQuery } = buildPaginationQuery<"createdAt">(options ?? {});
+
+    const where = this.whereOf(query);
 
     const [rows, count] = await Promise.all([
       options?.returnData === false

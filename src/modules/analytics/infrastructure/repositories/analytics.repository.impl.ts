@@ -10,6 +10,7 @@ import {
   IHourlyOrders,
   IOrderComparisonTotals,
   IOrderSummary,
+  IProfitLossFigures,
   IRevenueBucket,
   IRevenueTotals,
   RevenueTrendGranularity,
@@ -316,6 +317,111 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
     return {
       restaurantId: scope.restaurantId,
       ...(scope.branchIds && { order: { branchId: { in: scope.branchIds } } }),
+    };
+  }
+
+  /**
+   * Expense rows named "stock" are purchases (cost reaches the statement through consumption instead) and
+   * "refund" is already taken off revenue, so neither is spend. Matching is on the literal category the
+   * postings write, case-insensitive; a hand-typed variant like "stocks" would count as spend.
+   * ponytail: a marker column on Expense would replace the string match.
+   */
+  async fetchProfitLossFigures(scope: IAnalyticsScope, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<IProfitLossFigures> {
+    const prisma = options?.tx ?? this.prisma;
+    const branchIds = scope.branchIds ?? null;
+
+    const [sales, refunds, stock, waste, expenses] = await Promise.all([
+      prisma.$queryRaw<{ sales: bigint; tax: bigint }[]>`
+        SELECT COALESCE(SUM(total - tax), 0)::bigint AS sales, COALESCE(SUM(tax), 0)::bigint AS tax
+        FROM payments
+        WHERE restaurant_id = ${scope.restaurantId}::uuid
+          AND (${branchIds}::uuid[] IS NULL OR branch_id = ANY(${branchIds}::uuid[]))
+          AND created_at >= ${range.from} AND created_at < ${range.to}`,
+      // A refund's amount includes the bill's tax, so scale it to the same net-of-tax basis as `sales`.
+      prisma.$queryRaw<{ refunds: bigint }[]>`
+        SELECT COALESCE(ROUND(SUM(r.amount::float8 * (p.total - p.tax) / NULLIF(p.total, 0))), 0)::bigint AS refunds
+        FROM payment_refunds r
+        JOIN payments p ON p.id = r.payment_id
+        WHERE r.restaurant_id = ${scope.restaurantId}::uuid
+          AND (${branchIds}::uuid[] IS NULL OR r.branch_id = ANY(${branchIds}::uuid[]))
+          AND r.created_at >= ${range.from} AND r.created_at < ${range.to}`,
+      // Stock at a past moment = quantity now − every movement since, valued at the average price paid for the
+      // lots received by then. ponytail: average-cost, so price swings between the two ends show up as cost.
+      prisma.$queryRaw<{ opening: number; closing: number; purchases: number; stock_out: number; unpriced: bigint }[]>`
+        WITH ing AS (
+          SELECT id, quantity FROM ingredients
+          WHERE restaurant_id = ${scope.restaurantId}::uuid
+            AND (${branchIds}::uuid[] IS NULL OR branch_id = ANY(${branchIds}::uuid[]))
+        ),
+        held AS (
+          SELECT ing.id,
+                 GREATEST(ing.quantity - COALESCE(SUM(m.delta), 0), 0) AS open_qty,
+                 GREATEST(ing.quantity - COALESCE(SUM(m.delta) FILTER (WHERE m.created_at >= ${range.to}), 0), 0) AS close_qty
+          FROM ing
+          LEFT JOIN stock_movements m ON m.ingredient_id = ing.id AND m.created_at >= ${range.from}
+          GROUP BY ing.id, ing.quantity
+        ),
+        price AS (
+          SELECT ing.id,
+                 (SUM(l.cost) FILTER (WHERE l.received_at < ${range.from} AND l.cost IS NOT NULL AND l.quantity > 0))::float8
+                   / NULLIF(SUM(l.quantity) FILTER (WHERE l.received_at < ${range.from} AND l.cost IS NOT NULL AND l.quantity > 0), 0) AS open_unit,
+                 (SUM(l.cost) FILTER (WHERE l.received_at < ${range.to} AND l.cost IS NOT NULL AND l.quantity > 0))::float8
+                   / NULLIF(SUM(l.quantity) FILTER (WHERE l.received_at < ${range.to} AND l.cost IS NOT NULL AND l.quantity > 0), 0) AS close_unit,
+                 COALESCE(SUM(l.cost) FILTER (WHERE NOT l.from_transfer AND l.received_at >= ${range.from} AND l.received_at < ${range.to}), 0) AS bought,
+                 BOOL_OR(l.cost IS NULL AND NOT l.from_transfer AND l.received_at >= ${range.from} AND l.received_at < ${range.to}) AS bought_unpriced
+          FROM ing LEFT JOIN stock_lots l ON l.ingredient_id = ing.id
+          GROUP BY ing.id
+        ),
+        moved AS (
+          SELECT m.ingredient_id AS id,
+                 COALESCE(SUM(m.delta) FILTER (WHERE m.reason = 'TRANSFER_IN'), 0) AS qty_in,
+                 COALESCE(SUM(-m.delta) FILTER (WHERE m.reason = 'TRANSFER_OUT'), 0) AS qty_out,
+                 -- A supplier return takes the stock off at once and credits only what the supplier gave back.
+                 COALESCE(SUM(m.cost) FILTER (WHERE m.reason = 'RETURN'), 0) AS refunded
+          FROM stock_movements m JOIN ing ON ing.id = m.ingredient_id
+          WHERE m.reason IN ('TRANSFER_IN', 'TRANSFER_OUT', 'RETURN') AND m.created_at >= ${range.from} AND m.created_at < ${range.to}
+          GROUP BY m.ingredient_id
+        )
+        SELECT COALESCE(SUM(h.open_qty * COALESCE(p.open_unit, 0)), 0)::float8 AS opening,
+               COALESCE(SUM(h.close_qty * COALESCE(p.close_unit, 0)), 0)::float8 AS closing,
+               COALESCE(SUM(p.bought + COALESCE(g.qty_in, 0) * COALESCE(p.close_unit, 0)), 0)::float8 AS purchases,
+               COALESCE(SUM(COALESCE(g.qty_out, 0) * COALESCE(p.close_unit, 0) + COALESCE(g.refunded, 0)), 0)::float8 AS stock_out,
+               (COUNT(*) FILTER (WHERE (h.open_qty > 0 AND p.open_unit IS NULL) OR (h.close_qty > 0 AND p.close_unit IS NULL) OR p.bought_unpriced))::bigint AS unpriced
+        FROM held h
+        JOIN price p ON p.id = h.id
+        LEFT JOIN moved g ON g.id = h.id`,
+      prisma.$queryRaw<{ cost: bigint; unpriced: bigint }[]>`
+        SELECT COALESCE(SUM(sm.waste_cost), 0)::bigint AS cost, (COUNT(*) FILTER (WHERE sm.waste_cost IS NULL))::bigint AS unpriced
+        FROM stock_movements sm
+        JOIN ingredients i ON i.id = sm.ingredient_id
+        WHERE sm.reason = 'WASTE'
+          AND i.restaurant_id = ${scope.restaurantId}::uuid
+          AND (${branchIds}::uuid[] IS NULL OR i.branch_id = ANY(${branchIds}::uuid[]))
+          AND sm.created_at >= ${range.from} AND sm.created_at < ${range.to}`,
+      prisma.$queryRaw<{ category: string; amount: bigint }[]>`
+        SELECT MIN(category) AS category, SUM(amount)::bigint AS amount
+        FROM expenses
+        WHERE restaurant_id = ${scope.restaurantId}::uuid
+          AND (${branchIds}::uuid[] IS NULL OR branch_id = ANY(${branchIds}::uuid[]))
+          AND kind = 'EXPENSE'
+          AND lower(trim(category)) NOT IN ('stock', 'refund')
+          AND created_at >= ${range.from} AND created_at < ${range.to}
+        GROUP BY lower(trim(category))
+        ORDER BY SUM(amount) DESC`,
+    ]);
+
+    return {
+      sales: Number(sales[0].sales),
+      tax: Number(sales[0].tax),
+      refunds: Number(refunds[0].refunds),
+      stockOpening: Math.round(stock[0].opening),
+      stockClosing: Math.round(stock[0].closing),
+      stockPurchases: Math.round(stock[0].purchases),
+      stockOut: Math.round(stock[0].stock_out),
+      unpricedItems: Number(stock[0].unpriced),
+      waste: Number(waste[0].cost),
+      wasteUnpricedCount: Number(waste[0].unpriced),
+      expenses: expenses.map(e => ({ category: e.category, amount: Number(e.amount) })),
     };
   }
 }

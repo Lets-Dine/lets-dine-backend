@@ -21,6 +21,9 @@ export class DeleteExpenseUsecase {
     // A customer refund posted this row and the sale owns it: removing it would leave the refund recorded but its money back in the drawer.
     if (expense.paymentRefundId) throw new ConflictException(LEDGER_ERROR_MESSAGES.EXPENSE_FROM_REFUND);
 
+    // A recurring expense posted this row and its schedule owns it: the due date is already handled, so removing it would lose the cost for good.
+    if (expense.recurringExpenseId) throw new ConflictException(LEDGER_ERROR_MESSAGES.EXPENSE_FROM_RECURRING);
+
     // A closed period's totals are frozen; deleting from it would leave them disagreeing with the rows.
     const last = await this.ledgerRepository.findLastClose({ restaurantId: authEntity.restaurantId, branchId: authEntity.branchId });
     if (last && expense.createdAt <= last.closedAt) throw new ConflictException(LEDGER_ERROR_MESSAGES.EXPENSE_ALREADY_CLOSED);

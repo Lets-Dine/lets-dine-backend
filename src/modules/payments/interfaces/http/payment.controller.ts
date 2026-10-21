@@ -10,15 +10,18 @@ import { CollectPaymentUsecase } from "../../application/use-cases/collect-payme
 import { RefundPaymentUsecase } from "../../application/use-cases/refund-payment.usecase";
 import { CompletePaymentUsecase } from "../../application/use-cases/complete-payment.usecase";
 import { GetPaymentUsecase } from "../../application/use-cases/get-payment.usecase";
+import { FetchPaymentsSummaryDto } from "../../application/dto/fetch-payments-summary.dto";
+import { SummarizePaymentsUsecase } from "../../application/use-cases/summarize-payments.usecase";
 import { ListPaymentsUsecase } from "../../application/use-cases/list-payments.usecase";
 import { PAYMENT_SUCCESS_MESSAGES } from "../../domain/constants";
-import { IPaymentWithItems } from "../../domain/interfaces/payment.interface";
+import { IPaymentsSummary, IPaymentWithItems } from "../../domain/interfaces/payment.interface";
 
 @Controller("restaurant/payments")
 export class PaymentController {
   constructor(
     private readonly completePaymentUsecase: CompletePaymentUsecase,
     private readonly listPaymentsUsecase: ListPaymentsUsecase,
+    private readonly summarizePaymentsUsecase: SummarizePaymentsUsecase,
     private readonly getPaymentUsecase: GetPaymentUsecase,
     private readonly collectPaymentUsecase: CollectPaymentUsecase,
     private readonly refundPaymentUsecase: RefundPaymentUsecase
@@ -64,6 +67,14 @@ export class PaymentController {
   ): Promise<IHttpResponse<PaginatedResponse<IPaymentWithItems>>> {
     const payments = await this.listPaymentsUsecase.execute(query, authEntity);
     return buildHttpResponse(payments, PAYMENT_SUCCESS_MESSAGES.PAYMENTS_FETCHED);
+  }
+
+  /** Declared before `:id`, which would otherwise take "summary" for an id. */
+  @Get("summary")
+  @UseGuards(AuthGuard, AbilityGuard)
+  @CheckPolicies(checkPermissionRules([["payments:view"]]))
+  async summarize(@Query() query: FetchPaymentsSummaryDto, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IPaymentsSummary>> {
+    return buildHttpResponse(await this.summarizePaymentsUsecase.execute(query, authEntity), PAYMENT_SUCCESS_MESSAGES.PAYMENTS_SUMMARY_FETCHED);
   }
 
   @Get(":id")
