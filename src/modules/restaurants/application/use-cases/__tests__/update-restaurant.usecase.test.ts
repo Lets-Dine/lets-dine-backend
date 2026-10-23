@@ -1,6 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { AuditAction } from "@prisma/client";
-import { NotFoundException } from "../../../../../common/exceptions";
+import { BadRequestException, NotFoundException } from "../../../../../common/exceptions";
 import { buildAuthEntity } from "../../../../../common/testing";
 import { AuditLogService } from "../../../../audit-logs/application/audit-log.service";
 import { RESTAURANT_ERROR_MESSAGES } from "../../../domain/constants";
@@ -24,6 +24,9 @@ function buildRestaurant(overrides: Partial<IRestaurant> = {}): IRestaurant {
     serviceChargeRate: 0.1,
     taxRate: 0.13,
     deliveryFeeAmount: null,
+    deliveryEnabled: true,
+    deliveryChannel: "APP",
+    whatsappNumber: null,
     autoConsumeStock: true,
     vatPanNumber: null,
     isActive: true,
@@ -83,6 +86,17 @@ describe("UpdateRestaurantUsecase", () => {
         { action: AuditAction.settings_updated, subject: "Newa Kitchen", detail: "deliveryFeeAmount: — → 5000" },
         authUser
       );
+    });
+
+    it("should refuse the WhatsApp channel until a WhatsApp number is on file", async () => {
+      // Arrange
+      restaurantRepository.findById.mockResolvedValue(buildRestaurant());
+
+      // Act & Assert
+      await expect(usecase.execute({ deliveryChannel: "WHATSAPP" }, authUser)).rejects.toThrow(
+        new BadRequestException(RESTAURANT_ERROR_MESSAGES.WHATSAPP_NUMBER_REQUIRED)
+      );
+      expect(restaurantRepository.update).not.toHaveBeenCalled();
     });
 
     it("should not record an audit entry when nothing actually changed", async () => {

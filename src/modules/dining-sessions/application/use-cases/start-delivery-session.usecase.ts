@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { DeliveryChannel } from "@prisma/client";
 import { BadRequestException, NotFoundException } from "../../../../common/exceptions";
 import { BranchRepository } from "../../../branches/domain/repositories/branch.repository";
 import { CustomerRepository } from "../../../customers/domain/repositories/customer.repository";
@@ -29,6 +30,8 @@ export class StartDeliverySessionUsecase {
   async execute(dto: StartDeliverySessionInput): Promise<IResolvedSession> {
     const restaurant = await this.restaurantRepository.findBySlug(dto.restaurantSlug);
     if (!restaurant || !restaurant.isActive) throw new NotFoundException(RESTAURANT_ERROR_MESSAGES.NOT_FOUND);
+    if (!restaurant.deliveryEnabled) throw new BadRequestException(RESTAURANT_ERROR_MESSAGES.DELIVERY_DISABLED);
+    if (restaurant.deliveryChannel !== DeliveryChannel.APP) throw new BadRequestException(RESTAURANT_ERROR_MESSAGES.DELIVERY_VIA_WHATSAPP);
 
     // Delivery has no table/floor to take a branch from: the customer names one, else the default.
     const branch = dto.branchSlug

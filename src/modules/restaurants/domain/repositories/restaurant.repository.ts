@@ -1,3 +1,4 @@
+import { DeliveryChannel } from "@prisma/client";
 import { IPaginationOptions, PaginatedResponse } from "../../../../common/interfaces";
 import { PrismaTransaction } from "../../../../common/prisma";
 import { IRestaurant } from "../interfaces/restaurant.interface";
@@ -14,6 +15,9 @@ export interface IRestaurantCreate {
   serviceChargeRate?: number;
   taxRate?: number;
   deliveryFeeAmount?: number | null;
+  deliveryEnabled?: boolean;
+  deliveryChannel?: DeliveryChannel;
+  whatsappNumber?: string | null;
   autoConsumeStock?: boolean;
   vatPanNumber?: string | null;
   referredByRestaurantId?: string;

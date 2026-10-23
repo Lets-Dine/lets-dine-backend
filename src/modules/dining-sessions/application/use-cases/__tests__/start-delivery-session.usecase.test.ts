@@ -9,7 +9,7 @@ import { DiningSessionRepository } from "../../../domain/repositories/dining-ses
 import { StartDeliverySessionUsecase } from "../start-delivery-session.usecase";
 
 const dto = { restaurantSlug: "newa-kitchen", phone: "9800000000", name: "Hari Gurung", address: "Baneshwor, Kathmandu" };
-const restaurant = { id: "restaurant-1", isActive: true } as any;
+const restaurant = { id: "restaurant-1", isActive: true, deliveryEnabled: true, deliveryChannel: "APP" } as any;
 const branch = { id: "branch-1", slug: "main", isActive: true } as any;
 const customer = {
   id: "customer-1",
@@ -118,6 +118,23 @@ describe("StartDeliverySessionUsecase", () => {
       // Assert
       expect(branchRepository.findBySlug).toHaveBeenCalledWith(restaurant.id, "lazimpat");
       expect(diningSessionRepository.create.mock.calls[0][0]).toMatchObject({ branchId: "branch-2" });
+    });
+
+    it("should throw BadRequestException when the restaurant has switched delivery off", async () => {
+      // Arrange
+      restaurantRepository.findBySlug.mockResolvedValue({ ...restaurant, deliveryEnabled: false });
+
+      // Act & Assert
+      await expect(usecase.execute(dto)).rejects.toThrow(new BadRequestException(RESTAURANT_ERROR_MESSAGES.DELIVERY_DISABLED));
+      expect(diningSessionRepository.create).not.toHaveBeenCalled();
+    });
+
+    it("should throw BadRequestException when delivery is taken on WhatsApp", async () => {
+      // Arrange
+      restaurantRepository.findBySlug.mockResolvedValue({ ...restaurant, deliveryChannel: "WHATSAPP" });
+
+      // Act & Assert
+      await expect(usecase.execute(dto)).rejects.toThrow(new BadRequestException(RESTAURANT_ERROR_MESSAGES.DELIVERY_VIA_WHATSAPP));
     });
 
     it("should throw NotFoundException for an unknown or disabled branch", async () => {

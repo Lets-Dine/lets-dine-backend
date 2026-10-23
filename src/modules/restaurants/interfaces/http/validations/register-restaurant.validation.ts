@@ -6,7 +6,7 @@ const slugSchema = z
   .max(80)
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug may only contain lowercase letters, numbers and dashes");
 
-const phoneSchema = z
+export const phoneSchema = z
   .string()
   .transform(value => value.replace(/[\s-]/g, ""))
   .pipe(z.string().regex(/^\+?\d{7,15}$/, "Enter a valid phone number"));

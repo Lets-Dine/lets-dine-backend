@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
-import { OrderType } from "@prisma/client";
+import { DeliveryChannel, OrderType } from "@prisma/client";
 import { BadRequestException, NotFoundException } from "../../../../common/exceptions";
 import { PrismaTransaction } from "../../../../common/prisma";
 import { AddOnRepository } from "../../../add-ons/domain/repositories/add-on.repository";
@@ -54,6 +54,10 @@ export class CreateOrderUsecase {
     const order = await this.orderRepository.$transaction(async tx => {
       const restaurant = await this.restaurantRepository.findByIdForBranch(session.restaurantId, session.branchId, { tx });
       if (!restaurant || !restaurant.isActive) throw new NotFoundException(RESTAURANT_ERROR_MESSAGES.NOT_FOUND);
+      if (session.customerId && !restaurant.deliveryEnabled) throw new BadRequestException(RESTAURANT_ERROR_MESSAGES.DELIVERY_DISABLED);
+      if (session.customerId && restaurant.deliveryChannel !== DeliveryChannel.APP) {
+        throw new BadRequestException(RESTAURANT_ERROR_MESSAGES.DELIVERY_VIA_WHATSAPP);
+      }
 
       // Closed means closed for every diner at this branch — a QR scan can still seat someone, but nothing is cooked.
       const branch = await this.branchRepository.findById(session.branchId, { tx });

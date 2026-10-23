@@ -1,3 +1,11 @@
+/// How delivery orders arrive: placed in the app, or composed as a WhatsApp message to the restaurant.
+enum DeliveryChannel {
+  APP
+  WHATSAPP
+
+  @@schema("public")
+}
+
 /// §15. The restaurant itself, including the fee configuration order totals are
 /// built from — never hardcode tax or service charge in domain logic (§41).
 model Restaurant {
@@ -16,6 +24,12 @@ model Restaurant {
   /// Flat minor-unit delivery charge; null/0 = no fee. Owner-editable
   /// alongside `serviceChargeRate`/`taxRate`.
   deliveryFeeAmount      Int?      @map("delivery_fee_amount")
+  /// Off = the restaurant takes no delivery orders; diners can still browse the menu.
+  deliveryEnabled        Boolean   @default(true) @map("delivery_enabled")
+  /// Only one channel at a time. WHATSAPP creates no order here — the diner sends a message to `whatsappNumber`.
+  deliveryChannel        DeliveryChannel @default(APP) @map("delivery_channel")
+  /// Digits with country code, no "+"; required while `deliveryChannel` is WHATSAPP.
+  whatsappNumber         String?   @map("whatsapp_number")
   /// VAT/PAN registration number printed on receipts; null = not registered/not shown.
   vatPanNumber           String?   @map("vat_pan_number")
   isActive               Boolean   @default(true) @map("is_active")

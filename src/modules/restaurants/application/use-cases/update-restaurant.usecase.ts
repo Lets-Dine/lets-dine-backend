@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
-import { AuditAction } from "@prisma/client";
-import { NotFoundException } from "../../../../common/exceptions";
+import { AuditAction, DeliveryChannel } from "@prisma/client";
+import { BadRequestException, NotFoundException } from "../../../../common/exceptions";
 import { AuthEntity } from "../../../../common/interfaces";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
 import { RESTAURANT_ERROR_MESSAGES } from "../../domain/constants";
@@ -19,6 +19,12 @@ export class UpdateRestaurantUsecase {
   async execute(dto: UpdateRestaurantInput, authEntity: AuthEntity): Promise<IRestaurant> {
     const existing = await this.restaurantRepository.findById(authEntity.restaurantId);
     if (!existing) throw new NotFoundException(RESTAURANT_ERROR_MESSAGES.NOT_FOUND);
+
+    const channel = dto.deliveryChannel ?? existing.deliveryChannel;
+    const number = dto.whatsappNumber !== undefined ? dto.whatsappNumber : existing.whatsappNumber;
+    if (channel === DeliveryChannel.WHATSAPP && !number) {
+      throw new BadRequestException(RESTAURANT_ERROR_MESSAGES.WHATSAPP_NUMBER_REQUIRED);
+    }
 
     const updated = await this.restaurantRepository.update(existing.id, dto, { actorId: authEntity.sub });
 

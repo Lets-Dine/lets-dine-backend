@@ -158,6 +158,7 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
     return hours.map((count, hour) => ({ hour, orders: count }));
   }
 
+  /** Revenue is cash actually collected (`paid_amount`) net of refunds — not the billed `total`, which counts unpaid credit sales. */
   async fetchRevenueComparison(
     scope: IAnalyticsScope,
     currentRange: IAnalyticsRange,
@@ -168,8 +169,8 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
 
     const [row] = await prisma.$queryRaw<{ current: bigint; previous: bigint }[]>`
       SELECT
-        COALESCE(SUM(total) FILTER (WHERE created_at >= ${currentRange.from} AND created_at < ${currentRange.to}), 0)::bigint AS current,
-        COALESCE(SUM(total) FILTER (WHERE created_at >= ${previousRange.from} AND created_at < ${previousRange.to}), 0)::bigint AS previous
+        COALESCE(SUM(paid_amount - refunded_amount) FILTER (WHERE created_at >= ${currentRange.from} AND created_at < ${currentRange.to}), 0)::bigint AS current,
+        COALESCE(SUM(paid_amount - refunded_amount) FILTER (WHERE created_at >= ${previousRange.from} AND created_at < ${previousRange.to}), 0)::bigint AS previous
       FROM payments
       WHERE restaurant_id = ${scope.restaurantId}::uuid
         AND (${scope.branchIds ?? null}::uuid[] IS NULL OR branch_id = ANY(${scope.branchIds ?? null}::uuid[]))
@@ -200,7 +201,7 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
     const rows = await prisma.$queryRaw<{ key: string; revenue: bigint }[]>`
       SELECT
         to_char(date_trunc(${unit}, created_at AT TIME ZONE 'UTC' AT TIME ZONE ${timeZone}::text), ${format}) AS key,
-        SUM(total)::bigint AS revenue
+        SUM(paid_amount - refunded_amount)::bigint AS revenue
       FROM payments
       WHERE restaurant_id = ${scope.restaurantId}::uuid
         AND (${scope.branchIds ?? null}::uuid[] IS NULL OR branch_id = ANY(${scope.branchIds ?? null}::uuid[]))

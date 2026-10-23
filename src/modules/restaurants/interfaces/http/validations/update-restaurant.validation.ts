@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { phoneSchema } from "./register-restaurant.validation";
 
 export const updateRestaurantSchema = z.object({
   name: z.string().min(1).max(120).optional(),
@@ -13,6 +14,17 @@ export const updateRestaurantSchema = z.object({
   taxRate: z.number().min(0).max(1).optional(),
   /** Flat minor-unit delivery charge; null clears it back to "no fee". */
   deliveryFeeAmount: z.number().int().min(0).nullish(),
+  /** Off = no delivery orders; the menu stays visible. */
+  deliveryEnabled: z.boolean().optional(),
+  deliveryChannel: z.enum(["APP", "WHATSAPP"]).optional(),
+  /** Same rule as the owner phone at sign-up, with the country code included (wa.me needs it). Empty clears it; "+", spaces and dashes are dropped. */
+  whatsappNumber: z
+    .string()
+    .trim()
+    .nullish()
+    .transform(v => (v === undefined ? undefined : v || null))
+    .pipe(phoneSchema.nullish())
+    .transform(v => (v ? v.replace(/\D/g, "") : v)),
   /** Whether starting a dish takes its recipe off stock. */
   autoConsumeStock: z.boolean().optional(),
   /** VAT/PAN registration number for receipts; null/empty clears it. */
