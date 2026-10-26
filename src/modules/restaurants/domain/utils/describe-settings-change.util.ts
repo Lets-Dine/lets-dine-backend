@@ -16,6 +16,9 @@ const TRACKED_FIELDS: (keyof IRestaurant)[] = [
   "whatsappNumber",
   "autoConsumeStock",
   "vatPanNumber",
+  "addressName",
+  "latitude",
+  "longitude",
   "isActive",
 ];
 

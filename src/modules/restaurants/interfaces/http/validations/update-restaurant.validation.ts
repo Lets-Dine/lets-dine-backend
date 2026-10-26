@@ -34,7 +34,11 @@ export const updateRestaurantSchema = z.object({
     .max(30)
     .nullish()
     .transform(v => (v === undefined ? undefined : v || null)),
+  /** Pinned on a map; the name is free text the owner can edit. Send all three, or all null to clear. */
+  addressName: z.string().trim().min(1).max(200).nullish(),
+  latitude: z.number().min(-90).max(90).nullish(),
+  longitude: z.number().min(-180).max(180).nullish(),
   isActive: z.boolean().optional(),
-});
+}).refine(d => (d.latitude == null) === (d.longitude == null), { message: "latitude and longitude go together", path: ["latitude"] });
 
 export type UpdateRestaurantInput = z.infer<typeof updateRestaurantSchema>;

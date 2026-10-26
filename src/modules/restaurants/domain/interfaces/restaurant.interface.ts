@@ -24,6 +24,10 @@ export interface IRestaurant {
   autoConsumeStock: boolean;
   /** VAT/PAN registration number printed on receipts. */
   vatPanNumber: string | null;
+  /** Pinned restaurant location — the start of every delivery route. Coordinates are both set or both null. */
+  addressName: string | null;
+  latitude: number | null;
+  longitude: number | null;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;

@@ -20,6 +20,9 @@ export interface IRestaurantCreate {
   whatsappNumber?: string | null;
   autoConsumeStock?: boolean;
   vatPanNumber?: string | null;
+  addressName?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   referredByRestaurantId?: string;
 }
 

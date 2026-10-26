@@ -32,6 +32,10 @@ model Restaurant {
   whatsappNumber         String?   @map("whatsapp_number")
   /// VAT/PAN registration number printed on receipts; null = not registered/not shown.
   vatPanNumber           String?   @map("vat_pan_number")
+  /// Where the restaurant is, pinned on a map; delivery routes start here. Name is owner-editable text, coordinates are both-or-none.
+  addressName            String?   @map("address_name")
+  latitude               Float?    @map("latitude")
+  longitude              Float?    @map("longitude")
   isActive               Boolean   @default(true) @map("is_active")
   /// Whether starting a dish takes its recipe off stock. A branch or a dish can override it.
   autoConsumeStock       Boolean   @default(true) @map("auto_consume_stock")
