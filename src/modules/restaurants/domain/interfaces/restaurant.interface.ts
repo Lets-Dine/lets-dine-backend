@@ -28,6 +28,9 @@ export interface IRestaurant {
   addressName: string | null;
   latitude: number | null;
   longitude: number | null;
+  googleUrl: string | null;
+  /** Null = set up by us, not yet claimed by its owner. */
+  claimedAt: Date | null;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;

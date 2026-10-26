@@ -46,13 +46,13 @@ export class RegisterRestaurantUsecase {
     const sameOwner = (await this.userRepository.findByEmailKey(key)) ?? (phone ? await this.userRepository.findByPhone(phone) : null);
     if (sameOwner) throw new ConflictException(RESTAURANT_ERROR_MESSAGES.OWNER_ALREADY_REGISTERED);
 
-    const { owner, referralCode, ...restaurantData } = dto;
+    const { owner, referralCode, claimed, ...restaurantData } = dto;
     const pinHash = await hashPin(owner.pin);
     const referredByRestaurantId = await this.resolveInviter(referralCode, dto.slug);
 
     return this.restaurantRepository.$transaction(async tx => {
       const restaurant = await this.restaurantRepository.create(
-        { ...restaurantData, ...(referredByRestaurantId && { referredByRestaurantId }) },
+        { ...restaurantData, ...(claimed === false && { claimedAt: null }), ...(referredByRestaurantId && { referredByRestaurantId }) },
         { tx }
       );
       const user = await this.userRepository.create({ email: owner.email, name: owner.name, pinHash, emailKey: key, phone }, { tx });

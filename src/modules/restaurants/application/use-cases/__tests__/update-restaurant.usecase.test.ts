@@ -32,6 +32,8 @@ function buildRestaurant(overrides: Partial<IRestaurant> = {}): IRestaurant {
     addressName: null,
     latitude: null,
     longitude: null,
+    googleUrl: null,
+    claimedAt: new Date(),
     isActive: true,
     createdAt: new Date(),
     updatedAt: new Date(),

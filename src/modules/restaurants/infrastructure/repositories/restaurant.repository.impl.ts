@@ -62,6 +62,10 @@ class RestaurantRepositoryImpl implements RestaurantRepository {
     return prisma.restaurant.update({ where: { id }, data: { ...data, updatedBy: options?.actorId } });
   }
 
+  async createClaimRequest(data: { restaurantId: string; name: string; phone: string }): Promise<void> {
+    await this.prisma.restaurantClaimRequest.create({ data });
+  }
+
   async countSetupSignals(restaurantId: string, branchId: string): Promise<ISetupSignals> {
     const inBranch = { restaurantId, branchId };
     const [categories, dishes, tables, activeMembers, orders] = await Promise.all([

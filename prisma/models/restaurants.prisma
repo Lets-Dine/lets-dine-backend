@@ -36,6 +36,10 @@ model Restaurant {
   addressName            String?   @map("address_name")
   latitude               Float?    @map("latitude")
   longitude              Float?    @map("longitude")
+  /// The restaurant's own Google Maps / website link; shown to the owner when they claim it.
+  googleUrl              String?   @map("google_url")
+  /// Null = set up by us and not yet taken over by its owner. Self sign-ups are claimed from the start.
+  claimedAt              DateTime? @default(now()) @map("claimed_at")
   isActive               Boolean   @default(true) @map("is_active")
   /// Whether starting a dish takes its recipe off stock. A branch or a dish can override it.
   autoConsumeStock       Boolean   @default(true) @map("auto_consume_stock")
@@ -49,6 +53,7 @@ model Restaurant {
   updatedBy              String?   @map("updated_by") @db.Uuid
 
   members             RestaurantMember[]
+  claimRequests       RestaurantClaimRequest[]
   tables              DiningTable[]
   floors              Floor[]
   sessions            DiningSession[]
@@ -90,5 +95,19 @@ model Restaurant {
 
   @@index([referredByRestaurantId])
   @@map("restaurants")
+  @@schema("public")
+}
+
+/// An owner asking to take over a restaurant we created. We verify by hand, then set `claimedAt`.
+model RestaurantClaimRequest {
+  id           String     @id @default(uuid()) @map("id") @db.Uuid
+  restaurantId String     @map("restaurant_id") @db.Uuid
+  name         String     @map("name")
+  phone        String     @map("phone")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+
+  @@index([restaurantId])
+  @@map("restaurant_claim_requests")
   @@schema("public")
 }

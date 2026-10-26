@@ -23,6 +23,8 @@ export interface IRestaurantCreate {
   addressName?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  googleUrl?: string | null;
+  claimedAt?: Date | null;
   referredByRestaurantId?: string;
 }
 
@@ -62,6 +64,7 @@ export abstract class RestaurantRepository {
   abstract findBySlug(slug: string, options?: RestaurantFetchOptions): Promise<IRestaurant | null>;
   abstract create(data: IRestaurantCreate, options?: { tx?: PrismaTransaction; actorId?: string }): Promise<IRestaurant>;
   abstract update(id: string, data: IRestaurantUpdate, options?: { tx?: PrismaTransaction; actorId?: string }): Promise<IRestaurant>;
+  abstract createClaimRequest(data: { restaurantId: string; name: string; phone: string }): Promise<void>;
   abstract countSetupSignals(restaurantId: string, branchId: string): Promise<ISetupSignals>;
   abstract fetchAll(query: IRestaurantsFetchQuery, options?: IRestaurantsFetchOptions): Promise<PaginatedResponse<IRestaurant>>;
 }

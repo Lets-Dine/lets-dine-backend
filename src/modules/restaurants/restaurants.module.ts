@@ -8,6 +8,8 @@ import { FetchRestaurantBranchesUsecase } from "./application/use-cases/fetch-re
 import { FetchRestaurantBySlugUsecase } from "./application/use-cases/fetch-restaurant-by-slug.usecase";
 import { FetchRestaurantProfileUsecase } from "./application/use-cases/fetch-restaurant-profile.usecase";
 import { RegisterRestaurantUsecase } from "./application/use-cases/register-restaurant.usecase";
+import { RequestRestaurantClaimUsecase } from "./application/use-cases/request-restaurant-claim.usecase";
+import { SetRestaurantClaimedUsecase } from "./application/use-cases/set-restaurant-claimed.usecase";
 import { UpdateRestaurantUsecase } from "./application/use-cases/update-restaurant.usecase";
 import { RestaurantRepository } from "./domain/repositories/restaurant.repository";
 import RestaurantRepositoryImpl from "./infrastructure/repositories/restaurant.repository.impl";
@@ -26,6 +28,8 @@ import { BillingModule } from "../billing/billing.module";
     FetchRestaurantProfileUsecase,
     FetchOnboardingProgressUsecase,
     UpdateRestaurantUsecase,
+    RequestRestaurantClaimUsecase,
+    SetRestaurantClaimedUsecase,
     FetchAllRestaurantsUsecase,
     RestaurantRepositoryImpl,
     { provide: RestaurantRepository, useExisting: RestaurantRepositoryImpl },
