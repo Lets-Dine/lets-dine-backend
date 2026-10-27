@@ -6,6 +6,7 @@ import { buildAuthEntity } from "../../../../../common/testing";
 import { AuditLogService } from "../../../../audit-logs/application/audit-log.service";
 import { ORDER_ERROR_MESSAGES } from "../../../domain/constants";
 import { OrderRepository } from "../../../domain/repositories/order.repository";
+import { KitchenTicketService } from "../../kitchen-ticket.service";
 import { UpdateOrderStatusUsecase } from "../update-order-status.usecase";
 
 const authUser = buildAuthEntity();
@@ -32,8 +33,9 @@ describe("UpdateOrderStatusUsecase", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UpdateOrderStatusUsecase,
-        { provide: OrderRepository, useValue: { findById: jest.fn(), update: jest.fn() } },
+        { provide: OrderRepository, useValue: { $transaction: jest.fn(fn => fn({})), findById: jest.fn(), update: jest.fn() } },
         { provide: AuditLogService, useValue: { record: jest.fn() } },
+        { provide: KitchenTicketService, useValue: { reconcile: jest.fn().mockResolvedValue([]), announce: jest.fn() } },
         { provide: EventEmitter2, useValue: { emit: jest.fn() } },
       ],
     }).compile();
@@ -57,7 +59,8 @@ describe("UpdateOrderStatusUsecase", () => {
       expect(result.status).toBe(OrderStatus.ACCEPTED);
       expect(auditLogService.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: AuditAction.order_status_changed, detail: "PENDING → ACCEPTED" }),
-        authUser
+        authUser,
+        expect.anything()
       );
       expect(eventEmitter.emit).toHaveBeenCalledWith("order.updated", result);
     });

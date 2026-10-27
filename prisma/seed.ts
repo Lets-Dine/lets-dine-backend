@@ -95,6 +95,7 @@ async function seedDemoRestaurant(): Promise<void> {
     update: {},
     create: {
       name: "Newa Kitchen",
+      legalName: "Newa Kitchen Pvt. Ltd.",
       slug: DEMO_SLUG,
       tagline: "Kathmandu classics, cooked to order",
       description: "Charcoal grill, momo steamers and a chiya counter that never closes.",

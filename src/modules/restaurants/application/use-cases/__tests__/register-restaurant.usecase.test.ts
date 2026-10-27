@@ -12,6 +12,7 @@ import { RegisterRestaurantUsecase } from "../register-restaurant.usecase";
 
 const dto = {
   name: "Newa Kitchen",
+  legalName: "Newa Kitchen Pvt. Ltd.",
   slug: "newa-kitchen",
   coverImageUrl:
     "https://static.vecteezy.com/system/resources/thumbnails/054/611/336/small_2x/wide-angle-foodgraphy-for-restaurant-with-copy-space-photo.jpg",
@@ -78,7 +79,7 @@ describe("RegisterRestaurantUsecase", () => {
       // Assert
       expect(result).toEqual({ restaurant, owner: member });
       expect(restaurantRepository.create).toHaveBeenCalledWith(
-        { name: dto.name, slug: dto.slug, coverImageUrl: dto.coverImageUrl },
+        { name: dto.name, legalName: dto.legalName, slug: dto.slug, coverImageUrl: dto.coverImageUrl },
         expect.objectContaining({ tx: expect.anything() })
       );
       expect(restaurantMemberRepository.create).toHaveBeenCalledWith(
@@ -142,7 +143,7 @@ describe("RegisterRestaurantUsecase", () => {
 
       // Assert
       expect(restaurantRepository.create).toHaveBeenCalledWith(
-        { name: dto.name, slug: dto.slug, coverImageUrl: dto.coverImageUrl },
+        { name: dto.name, legalName: dto.legalName, slug: dto.slug, coverImageUrl: dto.coverImageUrl },
         expect.anything()
       );
     });

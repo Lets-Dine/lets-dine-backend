@@ -20,6 +20,8 @@ const ownerSchema = z.object({
 /** Onboarding: the restaurant and the owner who will run it, in one request. */
 export const registerRestaurantSchema = z.object({
   name: z.string().min(1).max(120),
+  /** Registered name printed on receipts. */
+  legalName: z.string().trim().min(1).max(120),
   slug: slugSchema,
   tagline: z.string().max(160).optional(),
   description: z.string().max(2000).optional(),

@@ -3,29 +3,34 @@
 /// payments belong to a branch. Every restaurant has exactly one `isDefault`
 /// branch so single-location restaurants behave as before.
 model Branch {
-  id                String   @id @default(uuid()) @map("id") @db.Uuid
-  restaurantId      String   @map("restaurant_id") @db.Uuid
-  name              String   @map("name")
+  id                String           @id @default(uuid()) @map("id") @db.Uuid
+  restaurantId      String           @map("restaurant_id") @db.Uuid
+  name              String           @map("name")
   /// Unique inside the restaurant — used in public URLs.
-  slug              String   @map("slug")
-  address           String   @default("") @map("address")
-  phone             String?  @map("phone")
-  latitude          Float?   @map("latitude")
-  longitude         Float?   @map("longitude")
-  timezone          String   @default("Asia/Kathmandu") @map("timezone")
+  slug              String           @map("slug")
+  address           String           @default("") @map("address")
+  phone             String?          @map("phone")
+  latitude          Float?           @map("latitude")
+  longitude         Float?           @map("longitude")
+  timezone          String           @default("Asia/Kathmandu") @map("timezone")
   /// Null = inherit from `Restaurant`. Ratios, not money.
-  serviceChargeRate Float?   @map("service_charge_rate")
-  taxRate           Float?   @map("tax_rate")
+  serviceChargeRate Float?           @map("service_charge_rate")
+  taxRate           Float?           @map("tax_rate")
   /// Flat minor-unit delivery charge; null = inherit from `Restaurant`.
-  deliveryFeeAmount Int?     @map("delivery_fee_amount")
+  deliveryFeeAmount Int?             @map("delivery_fee_amount")
   /// Null = inherit from `Restaurant`.
-  autoConsumeStock  Boolean? @map("auto_consume_stock")
-  isDefault         Boolean  @default(false) @map("is_default")
-  isActive          Boolean  @default(true) @map("is_active")
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
-  createdBy         String?  @map("created_by") @db.Uuid
-  updatedBy         String?  @map("updated_by") @db.Uuid
+  autoConsumeStock  Boolean?         @map("auto_consume_stock")
+  isDefault         Boolean          @default(false) @map("is_default")
+  /// Last kitchen/bar ticket number handed out here; bumped atomically so numbers never collide.
+  ticketSeq         Int              @default(0) @map("ticket_seq")
+  /// Stations with a screen or printer in use. A ticket for one of these that nobody acknowledges
+  /// raises a warning up front; a station not listed stays silent (no device to acknowledge it).
+  ackStations       KitchenStation[] @default([]) @map("ack_stations")
+  isActive          Boolean          @default(true) @map("is_active")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+  createdBy         String?          @map("created_by") @db.Uuid
+  updatedBy         String?          @map("updated_by") @db.Uuid
 
   restaurant          Restaurant           @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   hours               BranchHours[]
@@ -38,6 +43,8 @@ model Branch {
   floors              Floor[]
   sessions            DiningSession[]
   orders              Order[]
+  kitchenTickets      KitchenTicket[]
+  printers            Printer[]
   payments            Payment[]
   paymentTenders      PaymentTender[]
   paymentRefunds      PaymentRefund[]

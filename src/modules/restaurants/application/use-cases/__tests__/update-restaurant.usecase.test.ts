@@ -14,6 +14,7 @@ function buildRestaurant(overrides: Partial<IRestaurant> = {}): IRestaurant {
   return {
     id: authUser.restaurantId,
     name: "Newa Kitchen",
+    legalName: "Newa Kitchen",
     slug: "newa-kitchen",
     tagline: "",
     description: "",

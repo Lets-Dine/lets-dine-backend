@@ -1,4 +1,4 @@
-import { DishDietaryType } from "@prisma/client";
+import { DishDietaryType, KitchenStation } from "@prisma/client";
 
 export interface IDish {
   id: string;
@@ -13,6 +13,8 @@ export interface IDish {
   /** Integer minor units (paisa) — §34, never a float. */
   price: number;
   isAvailable: boolean;
+  /** Which pass cooks it — decides the kitchen or bar ticket. */
+  station: KitchenStation;
   /** Null = inherit from the branch, then the restaurant. */
   autoConsumeStock: boolean | null;
   isArchived: boolean;

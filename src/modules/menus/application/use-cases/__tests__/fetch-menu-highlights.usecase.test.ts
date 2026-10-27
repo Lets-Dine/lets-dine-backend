@@ -16,6 +16,7 @@ function buildDish(id: string, stats: Partial<IDishStats>): IDishWithStats {
     categoryId: "category-1",
     name: id,
     slug: id,
+    station: "KITCHEN",
     description: "",
     imageUrl: null,
     price: 40000,

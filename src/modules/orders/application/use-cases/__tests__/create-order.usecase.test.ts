@@ -361,9 +361,9 @@ describe("CreateOrderUsecase", () => {
       restaurantRepository.findByIdForBranch.mockResolvedValue({ ...restaurant, deliveryEnabled: false });
 
       // Act & Assert
-      await expect(
-        usecase.execute({ lines: [{ dishId: "dish-1", quantity: 1, addOnIds: [] }] }, deliverySession)
-      ).rejects.toThrow(new BadRequestException(RESTAURANT_ERROR_MESSAGES.DELIVERY_DISABLED));
+      await expect(usecase.execute({ lines: [{ dishId: "dish-1", quantity: 1, addOnIds: [] }] }, deliverySession)).rejects.toThrow(
+        new BadRequestException(RESTAURANT_ERROR_MESSAGES.DELIVERY_DISABLED)
+      );
     });
 
     it("should reject a delivery order when the restaurant takes delivery on WhatsApp", async () => {
@@ -371,9 +371,9 @@ describe("CreateOrderUsecase", () => {
       restaurantRepository.findByIdForBranch.mockResolvedValue({ ...restaurant, deliveryChannel: "WHATSAPP" });
 
       // Act & Assert
-      await expect(
-        usecase.execute({ lines: [{ dishId: "dish-1", quantity: 1, addOnIds: [] }] }, deliverySession)
-      ).rejects.toThrow(new BadRequestException(RESTAURANT_ERROR_MESSAGES.DELIVERY_VIA_WHATSAPP));
+      await expect(usecase.execute({ lines: [{ dishId: "dish-1", quantity: 1, addOnIds: [] }] }, deliverySession)).rejects.toThrow(
+        new BadRequestException(RESTAURANT_ERROR_MESSAGES.DELIVERY_VIA_WHATSAPP)
+      );
     });
 
     it("should place a DELIVERY order with a null tableId, the restaurant's delivery fee, and the customer's own details", async () => {

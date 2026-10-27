@@ -3,6 +3,8 @@ import { phoneSchema } from "./register-restaurant.validation";
 
 export const updateRestaurantSchema = z.object({
   name: z.string().min(1).max(120).optional(),
+  /** Registered name printed on receipts. Omitted leaves it unchanged; empty is refused. */
+  legalName: z.string().trim().min(1).max(120).optional(),
   tagline: z.string().max(160).optional(),
   description: z.string().max(2000).optional(),
   coverImageUrl: z.string().url().max(5000).nullish(),

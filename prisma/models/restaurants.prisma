@@ -9,48 +9,50 @@ enum DeliveryChannel {
 /// §15. The restaurant itself, including the fee configuration order totals are
 /// built from — never hardcode tax or service charge in domain logic (§41).
 model Restaurant {
-  id                     String    @id @default(uuid()) @map("id") @db.Uuid
-  name                   String    @map("name")
-  slug                   String    @unique @map("slug")
-  tagline                String    @default("") @map("tagline")
-  description            String    @default("") @map("description")
-  coverImageUrl          String?   @map("cover_image_url")
-  logoUrl                String?   @map("logo_url")
-  currency               String    @default("NPR") @map("currency")
-  timezone               String    @default("Asia/Kathmandu") @map("timezone")
+  id                     String          @id @default(uuid()) @map("id") @db.Uuid
+  name                   String          @map("name")
+  /// Registered name printed on receipts. Always set; existing rows were copied from `name`.
+  legalName              String          @map("legal_name")
+  slug                   String          @unique @map("slug")
+  tagline                String          @default("") @map("tagline")
+  description            String          @default("") @map("description")
+  coverImageUrl          String?         @map("cover_image_url")
+  logoUrl                String?         @map("logo_url")
+  currency               String          @default("NPR") @map("currency")
+  timezone               String          @default("Asia/Kathmandu") @map("timezone")
   /// Ratios, not money — money itself is always integer minor units.
-  serviceChargeRate      Float     @default(0) @map("service_charge_rate")
-  taxRate                Float     @default(0) @map("tax_rate")
+  serviceChargeRate      Float           @default(0) @map("service_charge_rate")
+  taxRate                Float           @default(0) @map("tax_rate")
   /// Flat minor-unit delivery charge; null/0 = no fee. Owner-editable
   /// alongside `serviceChargeRate`/`taxRate`.
-  deliveryFeeAmount      Int?      @map("delivery_fee_amount")
+  deliveryFeeAmount      Int?            @map("delivery_fee_amount")
   /// Off = the restaurant takes no delivery orders; diners can still browse the menu.
-  deliveryEnabled        Boolean   @default(true) @map("delivery_enabled")
+  deliveryEnabled        Boolean         @default(true) @map("delivery_enabled")
   /// Only one channel at a time. WHATSAPP creates no order here — the diner sends a message to `whatsappNumber`.
   deliveryChannel        DeliveryChannel @default(APP) @map("delivery_channel")
   /// Digits with country code, no "+"; required while `deliveryChannel` is WHATSAPP.
-  whatsappNumber         String?   @map("whatsapp_number")
+  whatsappNumber         String?         @map("whatsapp_number")
   /// VAT/PAN registration number printed on receipts; null = not registered/not shown.
-  vatPanNumber           String?   @map("vat_pan_number")
+  vatPanNumber           String?         @map("vat_pan_number")
   /// Where the restaurant is, pinned on a map; delivery routes start here. Name is owner-editable text, coordinates are both-or-none.
-  addressName            String?   @map("address_name")
-  latitude               Float?    @map("latitude")
-  longitude              Float?    @map("longitude")
+  addressName            String?         @map("address_name")
+  latitude               Float?          @map("latitude")
+  longitude              Float?          @map("longitude")
   /// The restaurant's own Google Maps / website link; shown to the owner when they claim it.
-  googleUrl              String?   @map("google_url")
+  googleUrl              String?         @map("google_url")
   /// Null = set up by us and not yet taken over by its owner. Self sign-ups are claimed from the start.
-  claimedAt              DateTime? @default(now()) @map("claimed_at")
-  isActive               Boolean   @default(true) @map("is_active")
+  claimedAt              DateTime?       @default(now()) @map("claimed_at")
+  isActive               Boolean         @default(true) @map("is_active")
   /// Whether starting a dish takes its recipe off stock. A branch or a dish can override it.
-  autoConsumeStock       Boolean   @default(true) @map("auto_consume_stock")
+  autoConsumeStock       Boolean         @default(true) @map("auto_consume_stock")
   /// Set when this restaurant joined through another restaurant's invite link.
-  referredByRestaurantId String?   @map("referred_by_restaurant_id") @db.Uuid
+  referredByRestaurantId String?         @map("referred_by_restaurant_id") @db.Uuid
   /// Set once, when that inviter has been given the extra month for this restaurant's first payment.
-  referralRewardedAt     DateTime? @map("referral_rewarded_at")
-  createdAt              DateTime  @default(now()) @map("created_at")
-  updatedAt              DateTime  @updatedAt @map("updated_at")
-  createdBy              String?   @map("created_by") @db.Uuid
-  updatedBy              String?   @map("updated_by") @db.Uuid
+  referralRewardedAt     DateTime?       @map("referral_rewarded_at")
+  createdAt              DateTime        @default(now()) @map("created_at")
+  updatedAt              DateTime        @updatedAt @map("updated_at")
+  createdBy              String?         @map("created_by") @db.Uuid
+  updatedBy              String?         @map("updated_by") @db.Uuid
 
   members             RestaurantMember[]
   claimRequests       RestaurantClaimRequest[]

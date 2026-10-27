@@ -34,6 +34,15 @@ export class FetchProfitLossUsecase {
     const operatingExpenses = figures.expenses.reduce((sum, e) => sum + e.amount, 0);
     const netProfit = grossProfit - operatingExpenses;
 
-    return { ...figures, range, revenue, cogs, grossProfit, operatingExpenses, netProfit, netMargin: revenue > 0 ? netProfit / revenue : null };
+    return {
+      ...figures,
+      range,
+      revenue,
+      cogs,
+      grossProfit,
+      operatingExpenses,
+      netProfit,
+      netMargin: revenue > 0 ? netProfit / revenue : null,
+    };
   }
 }

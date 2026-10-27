@@ -20,6 +20,7 @@ function buildDish(overrides: Partial<IDish> = {}): IDish {
     categoryId: "category-1",
     name: "Chicken Sekuwa",
     slug: "chicken-sekuwa",
+    station: "KITCHEN",
     description: "",
     imageUrl: null,
     price: 45000,

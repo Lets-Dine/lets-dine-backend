@@ -42,7 +42,7 @@ export abstract class AnalyticsRepository {
     previousRange: IAnalyticsRange,
     options?: AnalyticsFetchOptions
   ): Promise<IOrderComparisonTotals>;
-  /** §31 — units actually paid for on the day, ranked highest-first; `range` is one calendar day. */
+  /** §31 — units served in the range, ranked highest-first (counted when handed over, not when paid). */
   abstract fetchTopSellingDishes(
     scope: IAnalyticsScope,
     range: IAnalyticsRange,
@@ -66,5 +66,9 @@ export abstract class AnalyticsRepository {
     options?: AnalyticsFetchOptions
   ): Promise<IRevenueBucket[]>;
   /** Revenue, cost and spend for one branch over `range` — the raw figures behind the profit and loss statement. */
-  abstract fetchProfitLossFigures(scope: IAnalyticsScope, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<IProfitLossFigures>;
+  abstract fetchProfitLossFigures(
+    scope: IAnalyticsScope,
+    range: IAnalyticsRange,
+    options?: AnalyticsFetchOptions
+  ): Promise<IProfitLossFigures>;
 }

@@ -23,7 +23,7 @@ export const TOP_SELLING_DISHES_ERROR_MESSAGES = {
 };
 
 /**
- * §31 — no dates: everything up to now. `startDate` alone: that one day.
+ * §31 — dishes served (not merely paid for). No dates: everything up to now. `startDate` alone: that one day.
  * Both: that inclusive range. Day boundaries are the restaurant's own
  * timezone, same as `FetchRevenueComparisonUsecase`.
  */
@@ -55,7 +55,9 @@ export class FetchTopSellingDishesUsecase {
     const before = new Map(previous.map(dish => [dish.dishId, dish]));
     const seen = new Set(current.map(dish => dish.dishId));
     // A dish that sold last period and nothing this one is the clearest "losing popularity" there is — keep it.
-    const gone = previous.filter(dish => !seen.has(dish.dishId)).map(dish => ({ ...dish, orderCount: 0, totalAmount: 0, previousCount: dish.orderCount }));
+    const gone = previous
+      .filter(dish => !seen.has(dish.dishId))
+      .map(dish => ({ ...dish, orderCount: 0, totalAmount: 0, previousCount: dish.orderCount }));
     return [...current.map(dish => ({ ...dish, previousCount: before.get(dish.dishId)?.orderCount ?? 0 })), ...gone];
   }
 }

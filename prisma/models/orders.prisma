@@ -69,6 +69,7 @@ model Order {
   loyaltyEntries      LoyaltyEntry[]
   floor               Floor?               @relation(fields: [floorId], references: [id], onDelete: Restrict)
   items               OrderItem[]
+  kitchenTickets      KitchenTicket[]
   deliveryAssignments DeliveryAssignment[]
   deliverySettlements DeliverySettlement[]
   reviews             DishReview[]

@@ -11,6 +11,7 @@ import { RestaurantRepository } from "../../../../restaurants/domain/repositorie
 import { DiningTableRepository } from "../../../../tables/domain/repositories/dining-table.repository";
 import { ORDER_ERROR_MESSAGES } from "../../../domain/constants";
 import { OrderRepository } from "../../../domain/repositories/order.repository";
+import { KitchenTicketService } from "../../kitchen-ticket.service";
 import { AddOrderItemUsecase } from "../add-order-item.usecase";
 
 const authUser = buildAuthEntity();
@@ -55,6 +56,7 @@ describe("AddOrderItemUsecase", () => {
         { provide: DishVariantRepository, useValue: { findByDishId: jest.fn() } },
         { provide: RestaurantRepository, useValue: { findByIdForBranch: jest.fn() } },
         { provide: AuditLogService, useValue: { record: jest.fn() } },
+        { provide: KitchenTicketService, useValue: { reconcile: jest.fn().mockResolvedValue([]), announce: jest.fn() } },
       ],
     }).compile();
 

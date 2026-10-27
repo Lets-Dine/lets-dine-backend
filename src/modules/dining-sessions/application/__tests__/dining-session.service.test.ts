@@ -10,6 +10,7 @@ import { FloorRepository } from "../../../floors/domain/repositories/floor.repos
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
 import { DINING_SESSION_ERROR_MESSAGES } from "../../domain/constants";
 import { DiningSessionRepository } from "../../domain/repositories/dining-session.repository";
+import { KitchenTicketService } from "../../../orders/application/kitchen-ticket.service";
 import { DiningSessionService } from "../dining-session.service";
 
 const authUser = buildAuthEntity();
@@ -66,6 +67,7 @@ describe("DiningSessionService", () => {
         { provide: RestaurantRepository, useValue: { findByIdForBranch: jest.fn() } },
         { provide: AuditLogService, useValue: { record: jest.fn() } },
         { provide: EventEmitter2, useValue: { emit: jest.fn() } },
+        { provide: KitchenTicketService, useValue: { reconcile: jest.fn().mockResolvedValue([]), announce: jest.fn() } },
       ],
     }).compile();
 

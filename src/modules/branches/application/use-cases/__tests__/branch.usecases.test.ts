@@ -30,6 +30,7 @@ function buildBranch(overrides: Partial<IBranchWithHours> = {}): IBranchWithHour
     taxRate: null,
     deliveryFeeAmount: null,
     autoConsumeStock: null,
+    ackStations: [],
     isDefault: false,
     isActive: true,
     createdAt: new Date(),

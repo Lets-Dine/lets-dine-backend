@@ -14,14 +14,19 @@ import { Server, Socket } from "socket.io";
 import { can, StaffAccessPolicy } from "../../../../common/auth";
 import { ForbiddenException } from "../../../../common/exceptions";
 import { type AuthEntity } from "../../../../common/interfaces";
+import { KitchenStation } from "@prisma/client";
 import { SUBSCRIPTION_LOCKED_EVENT } from "../../../billing/domain/constants";
 import { DiningSessionService } from "../../../dining-sessions/application/dining-session.service";
 import { type IDiningSession, type IServiceRequest } from "../../../dining-sessions/domain/interfaces/dining-session.interface";
+import { KITCHEN_TICKET_CREATED, KITCHEN_TICKET_READY, KITCHEN_TICKET_UPDATED } from "../../application/kitchen-ticket.service";
 import { FetchSessionOrderUsecase } from "../../application/use-cases/fetch-session-order.usecase";
+import { type IKitchenTicket } from "../../domain/interfaces/kitchen-ticket.interface";
 import { type IOrderWithItems } from "../../domain/interfaces/order.interface";
 
 const orderRoom = (orderId: string) => `order:${orderId}`;
 const restaurantQueueRoom = (restaurantId: string, branchId: string) => `restaurant:${restaurantId}:branch:${branchId}:orders`;
+const stationRoom = (restaurantId: string, branchId: string, station: KitchenStation) =>
+  `restaurant:${restaurantId}:branch:${branchId}:station:${station}`;
 const sessionRoom = (sessionId: string) => `session:${sessionId}`;
 
 interface SubscribeOrderPayload {
@@ -31,6 +36,11 @@ interface SubscribeOrderPayload {
 
 interface SubscribeQueuePayload {
   token: string;
+}
+
+interface SubscribeStationPayload {
+  token: string;
+  station: KitchenStation;
 }
 
 interface SubscribeSessionPayload {
@@ -117,7 +127,7 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // A suspended restaurant gets no live pass — the token alone would still verify for days.
       await this.staffAccessPolicy.assertCanAccess(authEntity);
       // A socket watches one branch's pass at a time — switching branch must not keep the old one's tickets flowing.
-      for (const room of client.rooms) if (room.startsWith("restaurant:")) await client.leave(room);
+      for (const room of client.rooms) if (room.endsWith(":orders")) await client.leave(room);
       await client.join(restaurantQueueRoom(authEntity.restaurantId, authEntity.branchId));
       client.emit("subscribe:ok", { scope: "queue", restaurantId: authEntity.restaurantId, branchId: authEntity.branchId });
     } catch (error) {
@@ -126,6 +136,31 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
         return;
       }
       client.emit("subscribe:error", { scope: "queue", message: "Your session has ended. Please sign in again." });
+    }
+  }
+
+  /**
+   * A kitchen or bar screen, or a PC printing its slips: that station's tickets, behind the same staff credential
+   * as the pass. A socket may join both stations (one PC printing both), so clients ignore any other station's tickets.
+   */
+  @SubscribeMessage("subscribe:station")
+  async subscribeToStation(@ConnectedSocket() client: Socket, @MessageBody() payload: SubscribeStationPayload): Promise<void> {
+    try {
+      if (!Object.values(KitchenStation).includes(payload.station)) throw new Error("unknown station");
+      const authEntity = await this.jwtService.verifyAsync<AuthEntity>(payload.token);
+      if (!can(authEntity.role, "orders:view")) {
+        client.emit("subscribe:error", { scope: "station", message: "You do not have permission to view orders." });
+        return;
+      }
+      await this.staffAccessPolicy.assertCanAccess(authEntity);
+      await client.join(stationRoom(authEntity.restaurantId, authEntity.branchId, payload.station));
+      client.emit("subscribe:ok", { scope: "station", station: payload.station, branchId: authEntity.branchId });
+    } catch (error) {
+      if (error instanceof ForbiddenException) {
+        client.emit("subscribe:error", { scope: "station", message: error.message });
+        return;
+      }
+      client.emit("subscribe:error", { scope: "station", message: "Your session has ended. Please sign in again." });
     }
   }
 
@@ -154,6 +189,33 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @OnEvent("order.updated")
   handleOrderUpdated(order: IOrderWithItems): void {
     this.server.to(orderRoom(order.id)).to(restaurantQueueRoom(order.restaurantId, order.branchId)).emit("order.updated", order);
+  }
+
+  /** New work (or a void) for one station — only that station's screens hear it. */
+  @OnEvent(KITCHEN_TICKET_CREATED)
+  handleKitchenTicketCreated(ticket: IKitchenTicket): void {
+    this.emitToStation(ticket, KITCHEN_TICKET_CREATED);
+  }
+
+  /** Someone acknowledged it — every screen on that station drops its "unseen" marker. */
+  @OnEvent(KITCHEN_TICKET_UPDATED)
+  handleKitchenTicketUpdated(ticket: IKitchenTicket): void {
+    this.emitToStation(ticket, KITCHEN_TICKET_UPDATED);
+  }
+
+  /** The station finished it — the pass (waiters) hears it through the same fan-out, to come and get it. */
+  @OnEvent(KITCHEN_TICKET_READY)
+  handleKitchenTicketReady(ticket: IKitchenTicket): void {
+    this.emitToStation(ticket, KITCHEN_TICKET_READY);
+  }
+
+  private emitToStation(ticket: IKitchenTicket, event: string): void {
+    // A ticket row carries its branch, not its restaurant — the room name needs both. The pass
+    // (queue room) hears it too, to warn when the station never acknowledges.
+    const rooms = [...this.server.sockets.adapter.rooms.keys()].filter(
+      room => room.endsWith(`:branch:${ticket.branchId}:station:${ticket.station}`) || room.endsWith(`:branch:${ticket.branchId}:orders`)
+    );
+    for (const room of rooms) this.server.to(room).emit(event, ticket);
   }
 
   /** Staff closed the table out (or a payment settled it) — the diner on it can no longer place another order. */

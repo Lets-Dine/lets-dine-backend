@@ -2,6 +2,7 @@ import { IRestaurant } from "../interfaces/restaurant.interface";
 
 const TRACKED_FIELDS: (keyof IRestaurant)[] = [
   "name",
+  "legalName",
   "tagline",
   "description",
   "coverImageUrl",

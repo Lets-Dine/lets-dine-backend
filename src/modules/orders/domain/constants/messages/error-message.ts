@@ -1,5 +1,8 @@
 export const ORDER_ERROR_MESSAGES = {
   NOT_FOUND: { key: "ORDER_NOT_FOUND", message: "Order not found" },
+  PRINT_JOB_NOT_FOUND: { key: "ORDER_PRINT_JOB_NOT_FOUND", message: "Print job not found" },
+  TICKET_NOT_FOUND: { key: "ORDER_TICKET_NOT_FOUND", message: "Ticket not found" },
+  TICKET_NOTHING_TO_ADVANCE: { key: "ORDER_TICKET_NOTHING_TO_ADVANCE", message: "A cancellation ticket has nothing to start or finish" },
   EMPTY_CART: { key: "ORDER_EMPTY_CART", message: "Add something to the cart before ordering" },
   DISH_NOT_FOUND: { key: "ORDER_DISH_NOT_FOUND", message: "One of these dishes is no longer on the menu" },
   BRANCH_CLOSED: { key: "ORDER_BRANCH_CLOSED", message: "This branch is closed right now and is not taking orders" },

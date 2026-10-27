@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { OrderStatus, Prisma } from "@prisma/client";
+import { OrderItemStatus, OrderStatus, Prisma } from "@prisma/client";
 import { PrismaService } from "../../../../common/prisma";
 import {
   IAnalyticsRange,
@@ -244,16 +244,15 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
   }
 
   /**
-   * §31 — sourced from `payment_items`, not `order_items`: an order only
-   * counts as "sold" once it's actually been paid for, the same reasoning
-   * `fetchRevenueComparison` already applies to the `payments` table. Revenue
-   * is summed in memory for the same reason as `fetchDishPerformance` above.
+   * Units served in the range, ranked highest-first: a dish counts the moment it is handed over (its line goes
+   * SERVED), not when the bill is paid — a table's tab can stay open for an hour after the food has gone out.
+   * A line that was cancelled before it was served never counts.
    */
   async fetchTopSellingDishes(scope: IAnalyticsScope, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<ITopSellingDish[]> {
     const prisma = options?.tx ?? this.prisma;
 
-    const items = await prisma.paymentItem.findMany({
-      where: { payment: { ...this.scopeWhere(scope), createdAt: { gte: range.from, lt: range.to } } },
+    const items = await prisma.orderItem.findMany({
+      where: { status: OrderItemStatus.SERVED, statusUpdatedAt: { gte: range.from, lt: range.to }, order: this.scopeWhere(scope) },
       select: { dishId: true, dishNameSnapshot: true, unitPrice: true, quantity: true },
     });
 
@@ -327,7 +326,11 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
    * postings write, case-insensitive; a hand-typed variant like "stocks" would count as spend.
    * ponytail: a marker column on Expense would replace the string match.
    */
-  async fetchProfitLossFigures(scope: IAnalyticsScope, range: IAnalyticsRange, options?: AnalyticsFetchOptions): Promise<IProfitLossFigures> {
+  async fetchProfitLossFigures(
+    scope: IAnalyticsScope,
+    range: IAnalyticsRange,
+    options?: AnalyticsFetchOptions
+  ): Promise<IProfitLossFigures> {
     const prisma = options?.tx ?? this.prisma;
     const branchIds = scope.branchIds ?? null;
 

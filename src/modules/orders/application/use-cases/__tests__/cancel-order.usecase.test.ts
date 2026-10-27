@@ -7,6 +7,7 @@ import { AuditLogService } from "../../../../audit-logs/application/audit-log.se
 import { RestaurantRepository } from "../../../../restaurants/domain/repositories/restaurant.repository";
 import { ORDER_ERROR_MESSAGES } from "../../../domain/constants";
 import { OrderRepository } from "../../../domain/repositories/order.repository";
+import { KitchenTicketService } from "../../kitchen-ticket.service";
 import { CancelOrderUsecase } from "../cancel-order.usecase";
 
 const authUser = buildAuthEntity();
@@ -48,6 +49,7 @@ describe("CancelOrderUsecase", () => {
         },
         { provide: RestaurantRepository, useValue: { findByIdForBranch: jest.fn() } },
         { provide: AuditLogService, useValue: { record: jest.fn() } },
+        { provide: KitchenTicketService, useValue: { reconcile: jest.fn().mockResolvedValue([]), announce: jest.fn() } },
         { provide: EventEmitter2, useValue: { emit: jest.fn() } },
       ],
     }).compile();

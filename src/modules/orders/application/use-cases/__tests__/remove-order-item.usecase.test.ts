@@ -6,6 +6,7 @@ import { AuditLogService } from "../../../../audit-logs/application/audit-log.se
 import { RestaurantRepository } from "../../../../restaurants/domain/repositories/restaurant.repository";
 import { ORDER_ERROR_MESSAGES } from "../../../domain/constants";
 import { OrderRepository } from "../../../domain/repositories/order.repository";
+import { KitchenTicketService } from "../../kitchen-ticket.service";
 import { RemoveOrderItemUsecase } from "../remove-order-item.usecase";
 
 const authUser = buildAuthEntity();
@@ -25,6 +26,10 @@ describe("RemoveOrderItemUsecase", () => {
         { provide: OrderRepository, useValue: { $transaction: jest.fn(fn => fn(tx)), findById: jest.fn(), syncItems: jest.fn() } },
         { provide: RestaurantRepository, useValue: { findByIdForBranch: jest.fn() } },
         { provide: AuditLogService, useValue: { record: jest.fn() } },
+        {
+          provide: KitchenTicketService,
+          useValue: { reconcile: jest.fn().mockResolvedValue([]), detachItem: jest.fn(), announce: jest.fn() },
+        },
       ],
     }).compile();
 

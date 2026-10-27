@@ -12,17 +12,21 @@ import { IOrderWithItems } from "../../domain/interfaces/order.interface";
 import { OrderRepository } from "../../domain/repositories/order.repository";
 import { calculateOrderTotals } from "../../domain/utils/money.util";
 import { deriveOrderStatus } from "../../domain/utils/order-status.util";
+import { IKitchenTicket } from "../../domain/interfaces/kitchen-ticket.interface";
+import { KitchenTicketService } from "../kitchen-ticket.service";
 
 @Injectable()
 export class CancelOrderItemUsecase {
   constructor(
     private readonly orderRepository: OrderRepository,
     private readonly restaurantRepository: RestaurantRepository,
-    private readonly eventEmitter: EventEmitter2
+    private readonly eventEmitter: EventEmitter2,
+    private readonly kitchenTicketService: KitchenTicketService
   ) {}
 
   async execute(orderId: string, itemId: string, session: IDiningSession): Promise<IOrderWithItems> {
-    return this.orderRepository.$transaction(async tx => {
+    let tickets: IKitchenTicket[] = [];
+    const result = await this.orderRepository.$transaction(async tx => {
       const order = await this.orderRepository.findById(orderId, { tx });
       if (!order || !new Order(order).belongsToSession(session.id)) {
         throw new NotFoundException(ORDER_ERROR_MESSAGES.NOT_FOUND);
@@ -56,8 +60,11 @@ export class CancelOrderItemUsecase {
       );
 
       this.eventEmitter.emit("order.updated", updated);
+      tickets = await this.kitchenTicketService.reconcile(orderId, tx);
 
       return updated;
     });
+    this.kitchenTicketService.announce(tickets);
+    return result;
   }
 }

@@ -25,7 +25,19 @@ describe("FetchProfitLossUsecase", () => {
     analyticsRepository = module.get(AnalyticsRepository);
   });
 
-  const base = { sales: 0, tax: 0, refunds: 0, stockOpening: 0, stockClosing: 0, stockPurchases: 0, stockOut: 0, unpricedItems: 0, waste: 0, wasteUnpricedCount: 0, expenses: [] };
+  const base = {
+    sales: 0,
+    tax: 0,
+    refunds: 0,
+    stockOpening: 0,
+    stockClosing: 0,
+    stockPurchases: 0,
+    stockOut: 0,
+    unpricedItems: 0,
+    waste: 0,
+    wasteUnpricedCount: 0,
+    expenses: [],
+  };
 
   it("costs the food as what left the shelves, then takes refunds, cost and spend off in order", async () => {
     analyticsRepository.fetchProfitLossFigures.mockResolvedValue({
@@ -47,7 +59,14 @@ describe("FetchProfitLossUsecase", () => {
     const result = await usecase.execute({ from, to, branchId }, authUser);
 
     // food = 20k + 40k − 3k − 27k = 30k; waste is inside it, not taken off again
-    expect(result).toMatchObject({ revenue: 95_000, cogs: 30_000, grossProfit: 65_000, operatingExpenses: 45_000, netProfit: 20_000, tax: 13_000 });
+    expect(result).toMatchObject({
+      revenue: 95_000,
+      cogs: 30_000,
+      grossProfit: 65_000,
+      operatingExpenses: 45_000,
+      netProfit: 20_000,
+      tax: 13_000,
+    });
     expect(result.netMargin).toBeCloseTo(20_000 / 95_000);
   });
 

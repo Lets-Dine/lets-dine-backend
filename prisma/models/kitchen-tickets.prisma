@@ -1,0 +1,58 @@
+enum KitchenStation {
+  KITCHEN
+  BAR
+
+  @@schema("public")
+}
+
+/// What one pass (kitchen or bar) is told to make or stop making. Append-only: a repeat
+/// dish is a new ticket, and a removal or cancel is a void ticket (negative lines) —
+/// never an edit to a ticket the pass has already seen.
+model KitchenTicket {
+  id                 String         @id @default(uuid()) @map("id") @db.Uuid
+  branchId           String         @map("branch_id") @db.Uuid
+  orderId            String         @map("order_id") @db.Uuid
+  station            KitchenStation @map("station")
+  /// The number the pass calls it by (KOT #12). Unique per branch.
+  number             Int            @map("number")
+  createdAt          DateTime       @default(now()) @map("created_at")
+  /// Set by an explicit tap on the pass — an open screen alone doesn't prove anyone saw it.
+  acknowledgedAt     DateTime?      @map("acknowledged_at")
+  /// Set once a printer confirms the slip came out.
+  printedAt          DateTime?      @map("printed_at")
+  /// The front of house chose to stop warning about this ticket (told the kitchen another way). Only hides
+  /// the warning — the station still sees the ticket as unseen.
+  warningDismissedAt DateTime?      @map("warning_dismissed_at")
+
+  branch Branch              @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  order  Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  lines  KitchenTicketLine[]
+
+  @@unique([branchId, number])
+  @@index([branchId, station, createdAt])
+  @@index([orderId])
+  @@map("kitchen_tickets")
+  @@schema("public")
+}
+
+model KitchenTicketLine {
+  id                  String   @id @default(uuid()) @map("id") @db.Uuid
+  ticketId            String   @map("ticket_id") @db.Uuid
+  /// Deliberately not a foreign key: removing an order line deletes its row, and the
+  /// ticket must still show what was cancelled. Null once the line was removed *after*
+  /// being cooked — it stays on the ticket as history but no longer counts as outstanding.
+  orderItemId         String?  @map("order_item_id") @db.Uuid
+  /// Positive = make this many; negative = stop making this many.
+  qtyDelta            Int      @map("qty_delta")
+  dishNameSnapshot    String   @map("dish_name_snapshot")
+  variantNameSnapshot String?  @map("variant_name_snapshot")
+  addOnNames          String[] @map("add_on_names")
+  notes               String   @default("") @map("notes")
+
+  ticket KitchenTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+  @@index([orderItemId])
+  @@map("kitchen_ticket_lines")
+  @@schema("public")
+}

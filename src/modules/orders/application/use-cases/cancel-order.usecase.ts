@@ -11,6 +11,8 @@ import { Order } from "../../domain/entity/order.entity";
 import { IOrderWithItems } from "../../domain/interfaces/order.interface";
 import { OrderRepository } from "../../domain/repositories/order.repository";
 import { calculateOrderTotals } from "../../domain/utils/money.util";
+import { IKitchenTicket } from "../../domain/interfaces/kitchen-ticket.interface";
+import { KitchenTicketService } from "../kitchen-ticket.service";
 import { CancelOrderInput } from "../../interfaces/http/validations/cancel-order.validation";
 
 @Injectable()
@@ -19,11 +21,13 @@ export class CancelOrderUsecase {
     private readonly orderRepository: OrderRepository,
     private readonly restaurantRepository: RestaurantRepository,
     private readonly auditLogService: AuditLogService,
-    private readonly eventEmitter: EventEmitter2
+    private readonly eventEmitter: EventEmitter2,
+    private readonly kitchenTicketService: KitchenTicketService
   ) {}
 
   async execute(id: string, dto: CancelOrderInput, authEntity: AuthEntity): Promise<IOrderWithItems> {
-    return this.orderRepository.$transaction(async tx => {
+    let tickets: IKitchenTicket[] = [];
+    const result = await this.orderRepository.$transaction(async tx => {
       const existing = await this.orderRepository.findById(id, { tx });
       if (!existing || !isInActiveBranch(authEntity, existing)) {
         throw new NotFoundException(ORDER_ERROR_MESSAGES.NOT_FOUND);
@@ -66,8 +70,12 @@ export class CancelOrderUsecase {
       );
 
       this.eventEmitter.emit("order.updated", cancelled);
+      // Whatever the pass was already sent for this order is voided on its own ticket.
+      tickets = await this.kitchenTicketService.reconcile(id, tx);
 
       return cancelled;
     });
+    this.kitchenTicketService.announce(tickets);
+    return result;
   }
 }

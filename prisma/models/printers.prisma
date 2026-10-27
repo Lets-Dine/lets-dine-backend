@@ -1,0 +1,64 @@
+enum PaperWidth {
+  MM80
+  MM58
+
+  @@schema("public")
+}
+
+/// A thermal receipt printer on the branch's network. The branch keeps the list; which PC actually
+/// sends to it (through QZ Tray) is that PC's own choice, so only one prints a given job.
+model Printer {
+  id              String           @id @default(uuid()) @map("id") @db.Uuid
+  branchId        String           @map("branch_id") @db.Uuid
+  name            String           @map("name")
+  paperWidth      PaperWidth       @default(MM80) @map("paper_width")
+  ipAddress       String           @map("ip_address")
+  port            Int              @default(9100) @map("port")
+  /// The whole order on one slip, every station together (a pass or expo printer). Overrides `stations`.
+  fullKot         Boolean          @default(false) @map("full_kot")
+  /// Otherwise: only tickets for these stations (KITCHEN = KOT, BAR = BOT).
+  stations        KitchenStation[] @default([]) @map("stations")
+  /// When on, only orders for the tables / floors below print here. A delivery order has neither, so it never matches.
+  tableAssignment Boolean          @default(false) @map("table_assignment")
+  /// Plain id lists, not foreign keys: a table deleted later just stops matching.
+  tableIds        String[]         @default([]) @map("table_ids") @db.Uuid
+  floorIds        String[]         @default([]) @map("floor_ids") @db.Uuid
+  isActive        Boolean          @default(true) @map("is_active")
+  /// Tell the front of house when a slip for this printer sits unprinted. Off = it still prints whenever a PC is
+  /// on, but never nags (for a printer used only now and then).
+  warnIfUnprinted Boolean          @default(true) @map("warn_if_unprinted")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  branch Branch     @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  jobs   PrintJob[]
+
+  @@unique([branchId, name])
+  @@index([branchId])
+  @@map("printers")
+  @@schema("public")
+}
+
+/// One slip for one printer: a single ticket, or — for a full-KOT printer — every ticket one change produced.
+model PrintJob {
+  id        String    @id @default(uuid()) @map("id") @db.Uuid
+  branchId  String    @map("branch_id") @db.Uuid
+  printerId String    @map("printer_id") @db.Uuid
+  orderId   String    @map("order_id") @db.Uuid
+  ticketIds String[]  @map("ticket_ids") @db.Uuid
+  createdAt DateTime  @default(now()) @map("created_at")
+  /// Taken by the PC that is about to print it, so two PCs never print the same slip.
+  claimedAt DateTime? @map("claimed_at")
+  /// Which printing session holds the claim — only it may release the job as failed.
+  claimedBy String?   @map("claimed_by")
+  printedAt DateTime? @map("printed_at")
+  attempts  Int       @default(0) @map("attempts")
+  lastError String?   @map("last_error")
+
+  printer Printer @relation(fields: [printerId], references: [id], onDelete: Cascade)
+
+  @@index([branchId, printedAt])
+  @@index([printerId])
+  @@map("print_jobs")
+  @@schema("public")
+}

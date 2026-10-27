@@ -1,3 +1,4 @@
+import { KitchenStation } from "@prisma/client";
 import { z } from "zod";
 
 const rate = z.number().min(0).max(1);
@@ -14,6 +15,8 @@ export const createBranchSchema = z.object({
   deliveryFeeAmount: z.number().int().min(0).nullable().optional(),
   /** Null = follow the restaurant. */
   autoConsumeStock: z.boolean().nullable().optional(),
+  /** Stations that have a screen or printer in use. */
+  ackStations: z.array(z.nativeEnum(KitchenStation)).max(2).optional(),
   /** Start this branch's menu as a copy of another branch's. Without it the new branch has an empty menu. */
   copyMenuFrom: z.string().uuid().optional(),
 });

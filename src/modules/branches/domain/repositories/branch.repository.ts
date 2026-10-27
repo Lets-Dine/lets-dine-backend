@@ -1,4 +1,4 @@
-import { StaffRole } from "@prisma/client";
+import { KitchenStation, StaffRole } from "@prisma/client";
 import { IPaginationOptions, PaginatedResponse } from "../../../../common/interfaces";
 import { PrismaTransaction } from "../../../../common/prisma";
 import { IBranch, IBranchHours, IBranchWithHours } from "../interfaces/branch.interface";
@@ -16,6 +16,7 @@ export interface IBranchCreate {
   taxRate?: number | null;
   deliveryFeeAmount?: number | null;
   autoConsumeStock?: boolean | null;
+  ackStations?: KitchenStation[];
   isDefault?: boolean;
 }
 

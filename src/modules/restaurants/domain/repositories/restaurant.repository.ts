@@ -5,6 +5,7 @@ import { IRestaurant } from "../interfaces/restaurant.interface";
 
 export interface IRestaurantCreate {
   name: string;
+  legalName: string;
   slug: string;
   tagline?: string;
   description?: string;

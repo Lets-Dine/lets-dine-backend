@@ -9,6 +9,18 @@ import { DishVariantsModule } from "../dish-variants/dish-variants.module";
 import { InventoryModule } from "../inventory/inventory.module";
 import { RestaurantsModule } from "../restaurants/restaurants.module";
 import { TablesModule } from "../tables/tables.module";
+import { AcknowledgeKitchenTicketUsecase } from "./application/use-cases/acknowledge-kitchen-ticket.usecase";
+import { FetchUnacknowledgedTicketsUsecase } from "./application/use-cases/fetch-unacknowledged-tickets.usecase";
+import { AdvanceKitchenTicketUsecase } from "./application/use-cases/advance-kitchen-ticket.usecase";
+import {
+  ClaimPrintJobUsecase,
+  CompletePrintJobUsecase,
+  FailPrintJobUsecase,
+  FetchPendingPrintJobsUsecase,
+} from "./application/use-cases/print-jobs.usecases";
+import { DismissKitchenTicketWarningUsecase } from "./application/use-cases/dismiss-kitchen-ticket-warning.usecase";
+import { FetchKitchenTicketsUsecase } from "./application/use-cases/fetch-kitchen-tickets.usecase";
+import { KitchenTicketService } from "./application/kitchen-ticket.service";
 import { AddOrderItemUsecase } from "./application/use-cases/add-order-item.usecase";
 import { AdvanceOrderItemStatusUsecase } from "./application/use-cases/advance-order-item-status.usecase";
 import { CancelOrderItemUsecase } from "./application/use-cases/cancel-order-item.usecase";
@@ -23,8 +35,15 @@ import { RemoveOrderItemUsecase } from "./application/use-cases/remove-order-ite
 import { DeliverOrderUsecase } from "./application/use-cases/deliver-order.usecase";
 import { SettleTableUsecase } from "./application/use-cases/settle-table.usecase";
 import { UpdateOrderStatusUsecase } from "./application/use-cases/update-order-status.usecase";
+import { PrintJobRepository } from "./domain/repositories/print-job.repository";
+import PrintJobRepositoryImpl from "./infrastructure/repositories/print-job.repository.impl";
+import { PrintJobController } from "./interfaces/http/print-job.controller";
+import { PrintersModule } from "../printers/printers.module";
+import { KitchenTicketRepository } from "./domain/repositories/kitchen-ticket.repository";
 import { OrderRepository } from "./domain/repositories/order.repository";
+import KitchenTicketRepositoryImpl from "./infrastructure/repositories/kitchen-ticket.repository.impl";
 import OrderRepositoryImpl from "./infrastructure/repositories/order.repository.impl";
+import { KitchenTicketController } from "./interfaces/http/kitchen-ticket.controller";
 import { OrderController } from "./interfaces/http/order.controller";
 import { RestaurantOrderController } from "./interfaces/http/restaurant-order.controller";
 import { OrdersGateway } from "./interfaces/ws/orders.gateway";
@@ -45,8 +64,9 @@ import { BillingModule } from "../billing/billing.module";
     DishVariantsModule,
     CustomersModule,
     InventoryModule,
+    PrintersModule,
   ],
-  controllers: [OrderController, RestaurantOrderController],
+  controllers: [OrderController, RestaurantOrderController, KitchenTicketController, PrintJobController],
   providers: [
     CreateOrderUsecase,
     FetchSessionOrderUsecase,
@@ -62,10 +82,24 @@ import { BillingModule } from "../billing/billing.module";
     CancelOrderItemUsecase,
     SettleTableUsecase,
     DeliverOrderUsecase,
+    KitchenTicketService,
+    FetchKitchenTicketsUsecase,
+    DismissKitchenTicketWarningUsecase,
+    FetchPendingPrintJobsUsecase,
+    ClaimPrintJobUsecase,
+    CompletePrintJobUsecase,
+    FailPrintJobUsecase,
+    PrintJobRepositoryImpl,
+    { provide: PrintJobRepository, useExisting: PrintJobRepositoryImpl },
+    AdvanceKitchenTicketUsecase,
+    FetchUnacknowledgedTicketsUsecase,
+    AcknowledgeKitchenTicketUsecase,
+    KitchenTicketRepositoryImpl,
+    { provide: KitchenTicketRepository, useExisting: KitchenTicketRepositoryImpl },
     OrderRepositoryImpl,
     { provide: OrderRepository, useExisting: OrderRepositoryImpl },
     OrdersGateway,
   ],
-  exports: [{ provide: OrderRepository, useExisting: OrderRepositoryImpl }],
+  exports: [{ provide: OrderRepository, useExisting: OrderRepositoryImpl }, KitchenTicketService],
 })
 export class OrdersModule {}

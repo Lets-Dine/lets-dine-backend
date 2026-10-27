@@ -12,6 +12,8 @@ import { IDiningTable } from "../../tables/domain/interfaces/dining-table.interf
 import { IOrderWithItems } from "../../orders/domain/interfaces/order.interface";
 import { OrderRepository } from "../../orders/domain/repositories/order.repository";
 import { calculateOrderTotals } from "../../orders/domain/utils/money.util";
+import { IKitchenTicket } from "../../orders/domain/interfaces/kitchen-ticket.interface";
+import { KitchenTicketService } from "../../orders/application/kitchen-ticket.service";
 import { deriveOrderStatus } from "../../orders/domain/utils/order-status.util";
 import { RESTAURANT_ERROR_MESSAGES } from "../../restaurants/domain/constants";
 import { RestaurantRepository } from "../../restaurants/domain/repositories/restaurant.repository";
@@ -32,7 +34,8 @@ export class DiningSessionService {
     private readonly orderRepository: OrderRepository,
     private readonly restaurantRepository: RestaurantRepository,
     private readonly auditLogService: AuditLogService,
-    private readonly eventEmitter: EventEmitter2
+    private readonly eventEmitter: EventEmitter2,
+    private readonly kitchenTicketService: KitchenTicketService
   ) {}
 
   async resolveActive(token: string, options?: { tx?: PrismaTransaction }): Promise<IDiningSession> {
@@ -69,7 +72,7 @@ export class DiningSessionService {
   }
 
   async endSession(session: IDiningSession, authEntity: AuthEntity, tx: PrismaTransaction): Promise<IDiningTable | null> {
-    const closed = await this.closeOpenOrders(session, authEntity, tx);
+    const { closed, tickets } = await this.closeOpenOrders(session, authEntity, tx);
     const ended = await this.diningSessionRepository.update(session.id, { endedAt: new Date(), waiterCalledAt: null, billRequestedAt: null }, tx);
     // A delivery or floor session has no table to free up.
     const table = session.tableId ? await this.diningTableRepository.update(session.tableId, { currentSessionId: null }, { tx }) : null;
@@ -110,6 +113,7 @@ export class DiningSessionService {
       });
     }
     for (const order of closed) this.eventEmitter.emit("order.updated", order);
+    this.kitchenTicketService.announce(tickets);
 
     return table;
   }
@@ -126,14 +130,19 @@ export class DiningSessionService {
    * pace (`OrderItemEntity.canTransitionTo`) — it is not simulating the
    * kitchen, it is closing the books on a visit that has already ended.
    */
-  private async closeOpenOrders(session: IDiningSession, authEntity: AuthEntity, tx: PrismaTransaction): Promise<IOrderWithItems[]> {
+  private async closeOpenOrders(
+    session: IDiningSession,
+    authEntity: AuthEntity,
+    tx: PrismaTransaction
+  ): Promise<{ closed: IOrderWithItems[]; tickets: IKitchenTicket[] }> {
     const open = await this.orderRepository.findOpenBySessionId(session.id, authEntity.restaurantId, { tx });
-    if (open.length === 0) return [];
+    if (open.length === 0) return { closed: [], tickets: [] };
 
     const restaurant = await this.restaurantRepository.findByIdForBranch(authEntity.restaurantId, session.branchId, { tx });
     if (!restaurant) throw new NotFoundException(RESTAURANT_ERROR_MESSAGES.NOT_FOUND);
 
     const closed: IOrderWithItems[] = [];
+    const tickets: IKitchenTicket[] = [];
     for (const order of open) {
       let items = order.items;
       for (const item of items) {
@@ -165,9 +174,11 @@ export class DiningSessionService {
           { tx, actorId: authEntity.sub }
         )
       );
+      // Lines dropped above were already sent to the pass if the order had been accepted — void them.
+      tickets.push(...(await this.kitchenTicketService.reconcile(order.id, tx)));
     }
 
-    return closed;
+    return { closed, tickets };
   }
 }
 

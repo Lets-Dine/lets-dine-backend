@@ -10,6 +10,7 @@ function buildDish(id: string, price: number, stats: Partial<IDishStats>, overri
     categoryId: "category-1",
     name: id,
     slug: id,
+    station: "KITCHEN",
     description: "",
     imageUrl: null,
     price,

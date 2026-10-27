@@ -1,4 +1,4 @@
-import { DishDietaryType } from "@prisma/client";
+import { DishDietaryType, KitchenStation } from "@prisma/client";
 import { z } from "zod";
 
 export const createDishSchema = z.object({
@@ -15,6 +15,8 @@ export const createDishSchema = z.object({
   sortOrder: z.number().int().min(0).optional(),
   spiceLevel: z.number().int().min(0).max(3).optional(),
   dietaryType: z.nativeEnum(DishDietaryType).optional(),
+  /** Which pass cooks it — KITCHEN or BAR. */
+  station: z.nativeEnum(KitchenStation).optional(),
 });
 
 export type CreateDishInput = z.infer<typeof createDishSchema>;

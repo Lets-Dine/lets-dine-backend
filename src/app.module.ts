@@ -20,6 +20,7 @@ import { BillingModule } from "./modules/billing/billing.module";
 import { BranchesModule } from "./modules/branches/branches.module";
 import { FeedbackModule } from "./modules/feedback/feedback.module";
 import { FloorsModule } from "./modules/floors/floors.module";
+import { PrintersModule } from "./modules/printers/printers.module";
 import { InventoryModule } from "./modules/inventory/inventory.module";
 import { SuppliersModule } from "./modules/suppliers/suppliers.module";
 import { LedgerModule } from "./modules/ledger/ledger.module";
@@ -56,6 +57,7 @@ import { AppController } from "./app.controller";
     TablesModule,
     BranchesModule,
     FloorsModule,
+    PrintersModule,
     MenuCategoriesModule,
     DishesModule,
     DishVariantsModule,

@@ -14,6 +14,8 @@ import { DiningTableRepository } from "../../../tables/domain/repositories/dinin
 import { ORDER_ERROR_MESSAGES } from "../../domain/constants";
 import { IOrderItemAddOn, IOrderWithItems } from "../../domain/interfaces/order.interface";
 import { OrderRepository } from "../../domain/repositories/order.repository";
+import { IKitchenTicket } from "../../domain/interfaces/kitchen-ticket.interface";
+import { KitchenTicketService } from "../kitchen-ticket.service";
 import { calculateOrderTotals } from "../../domain/utils/money.util";
 import { isOrderOpen } from "../../domain/utils/order-status.util";
 import { AddOrderItemInput } from "../../interfaces/http/validations/add-order-item.validation";
@@ -62,11 +64,13 @@ export class AddOrderItemUsecase {
     private readonly addOnRepository: AddOnRepository,
     private readonly dishVariantRepository: DishVariantRepository,
     private readonly restaurantRepository: RestaurantRepository,
-    private readonly auditLogService: AuditLogService
+    private readonly auditLogService: AuditLogService,
+    private readonly kitchenTicketService: KitchenTicketService
   ) {}
 
   async execute(tableId: string, dto: AddOrderItemInput, authEntity: AuthEntity): Promise<IOrderWithItems> {
-    return this.orderRepository.$transaction(async tx => {
+    let tickets: IKitchenTicket[] = [];
+    const result = await this.orderRepository.$transaction(async tx => {
       const table = await this.diningTableRepository.findById(tableId, { tx });
       if (!table || !isInActiveBranch(authEntity, table)) {
         throw new NotFoundException(ORDER_ERROR_MESSAGES.TABLE_NOT_FOUND);
@@ -211,7 +215,12 @@ export class AddOrderItemUsecase {
         tx
       );
 
+      // A PENDING order sends nothing yet (accepting it will) — only an accepted tab gets a ticket for the new plate.
+      tickets = await this.kitchenTicketService.reconcile(order.id, tx);
+
       return updated;
     });
+    this.kitchenTicketService.announce(tickets);
+    return result;
   }
 }

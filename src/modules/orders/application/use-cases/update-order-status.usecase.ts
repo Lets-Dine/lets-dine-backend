@@ -8,6 +8,8 @@ import { ORDER_ERROR_MESSAGES } from "../../domain/constants";
 import { Order } from "../../domain/entity/order.entity";
 import { IOrderWithItems } from "../../domain/interfaces/order.interface";
 import { IOrderUpdate, OrderRepository } from "../../domain/repositories/order.repository";
+import { IKitchenTicket } from "../../domain/interfaces/kitchen-ticket.interface";
+import { KitchenTicketService } from "../kitchen-ticket.service";
 import { UpdateOrderStatusInput } from "../../interfaces/http/validations/update-order-status.validation";
 
 /**
@@ -29,7 +31,8 @@ export class UpdateOrderStatusUsecase {
   constructor(
     private readonly orderRepository: OrderRepository,
     private readonly auditLogService: AuditLogService,
-    private readonly eventEmitter: EventEmitter2
+    private readonly eventEmitter: EventEmitter2,
+    private readonly kitchenTicketService: KitchenTicketService
   ) {}
 
   async execute(id: string, dto: UpdateOrderStatusInput, authEntity: AuthEntity): Promise<IOrderWithItems> {
@@ -55,18 +58,26 @@ export class UpdateOrderStatusUsecase {
     if (dto.status === OrderStatus.ACCEPTED) patch.acceptedAt = new Date();
     if (dto.status === OrderStatus.COMPLETED) patch.completedAt = new Date();
 
-    const updated = await this.orderRepository.update(id, patch, { actorId: authEntity.sub });
-
-    await this.auditLogService.record(
-      {
-        action: AuditAction.order_status_changed,
-        subject: `Order ${existing.reference}`,
-        detail: `${existing.status} → ${updated.status}`,
-      },
-      authEntity
-    );
+    // Accepting is what sends the order to the kitchen and bar, so the status change and
+    // its tickets commit together or not at all.
+    let tickets: IKitchenTicket[] = [];
+    const updated = await this.orderRepository.$transaction(async tx => {
+      const saved = await this.orderRepository.update(id, patch, { tx, actorId: authEntity.sub });
+      await this.auditLogService.record(
+        {
+          action: AuditAction.order_status_changed,
+          subject: `Order ${existing.reference}`,
+          detail: `${existing.status} → ${saved.status}`,
+        },
+        authEntity,
+        tx
+      );
+      tickets = await this.kitchenTicketService.reconcile(id, tx);
+      return saved;
+    });
 
     this.eventEmitter.emit("order.updated", updated);
+    this.kitchenTicketService.announce(tickets);
 
     return updated;
   }

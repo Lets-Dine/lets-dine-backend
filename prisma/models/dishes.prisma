@@ -21,6 +21,8 @@ model Dish {
   imageUrl         String?         @map("image_url")
   price            Int             @map("price")
   isAvailable      Boolean         @default(true) @map("is_available")
+  /// Which pass cooks this dish — decides whether it lands on the kitchen or the bar ticket.
+  station          KitchenStation  @default(KITCHEN) @map("station")
   /// Null = inherit from the branch, then the restaurant. False = starting this dish never touches stock.
   autoConsumeStock Boolean?        @map("auto_consume_stock")
   /// Set when stock, not a person, switched `isAvailable` off — only then may a restock switch it back on.

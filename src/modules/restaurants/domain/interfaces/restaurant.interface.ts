@@ -3,6 +3,8 @@ import { DeliveryChannel } from "@prisma/client";
 export interface IRestaurant {
   id: string;
   name: string;
+  /** Registered business name printed on receipts. */
+  legalName: string;
   slug: string;
   tagline: string;
   description: string;

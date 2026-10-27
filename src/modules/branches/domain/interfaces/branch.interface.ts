@@ -1,3 +1,5 @@
+import { KitchenStation } from "@prisma/client";
+
 export interface IBranchHours {
   id: string;
   branchId: string;
@@ -25,6 +27,8 @@ export interface IBranch {
   deliveryFeeAmount: number | null;
   /** Null = inherit from the restaurant. */
   autoConsumeStock: boolean | null;
+  /** Stations with a screen or printer — an unacknowledged ticket for one of them raises a warning. */
+  ackStations: KitchenStation[];
   isDefault: boolean;
   isActive: boolean;
   createdAt: Date;

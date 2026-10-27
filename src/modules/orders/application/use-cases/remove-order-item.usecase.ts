@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { AuditAction } from "@prisma/client";
+import { AuditAction, OrderItemStatus, OrderStatus } from "@prisma/client";
 import { NotFoundException } from "../../../../common/exceptions";
 import { AuthEntity, isInActiveBranch } from "../../../../common/interfaces";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
@@ -9,6 +9,8 @@ import { ORDER_ERROR_MESSAGES } from "../../domain/constants";
 import { IOrderWithItems } from "../../domain/interfaces/order.interface";
 import { OrderRepository } from "../../domain/repositories/order.repository";
 import { calculateOrderTotals } from "../../domain/utils/money.util";
+import { IKitchenTicket } from "../../domain/interfaces/kitchen-ticket.interface";
+import { KitchenTicketService } from "../kitchen-ticket.service";
 
 /**
  * Drops a line entirely, or takes one off — whichever the quantity allows.
@@ -22,11 +24,13 @@ export class RemoveOrderItemUsecase {
   constructor(
     private readonly orderRepository: OrderRepository,
     private readonly restaurantRepository: RestaurantRepository,
-    private readonly auditLogService: AuditLogService
+    private readonly auditLogService: AuditLogService,
+    private readonly kitchenTicketService: KitchenTicketService
   ) {}
 
   async execute(orderId: string, itemId: string, authEntity: AuthEntity): Promise<IOrderWithItems> {
-    return this.orderRepository.$transaction(async tx => {
+    let tickets: IKitchenTicket[] = [];
+    const result = await this.orderRepository.$transaction(async tx => {
       const order = await this.orderRepository.findById(orderId, { tx });
       if (!order || !isInActiveBranch(authEntity, order)) {
         throw new NotFoundException(ORDER_ERROR_MESSAGES.NOT_FOUND);
@@ -63,7 +67,17 @@ export class RemoveOrderItemUsecase {
         tx
       );
 
+      // Fixing a charge on a settled order, or removing food already cooked, is a bill
+      // correction — the kitchen is never told about it.
+      const cooked = item.status === OrderItemStatus.READY || item.status === OrderItemStatus.SERVED;
+      if (item.quantity <= 1 && (cooked || order.status === OrderStatus.COMPLETED)) {
+        await this.kitchenTicketService.detachItem(item.id, tx);
+      }
+      if (order.status !== OrderStatus.COMPLETED) tickets = await this.kitchenTicketService.reconcile(order.id, tx);
+
       return updated;
     });
+    this.kitchenTicketService.announce(tickets);
+    return result;
   }
 }

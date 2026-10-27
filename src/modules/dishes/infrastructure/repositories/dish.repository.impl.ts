@@ -137,6 +137,7 @@ class DishRepositoryImpl implements DishRepository {
         d.sort_order     AS "sortOrder",
         d.spice_level    AS "spiceLevel",
         d.dietary_type   AS "dietaryType",
+        d.station        AS "station",
         d.created_at     AS "createdAt",
         d.updated_at     AS "updatedAt",
         json_build_object(
