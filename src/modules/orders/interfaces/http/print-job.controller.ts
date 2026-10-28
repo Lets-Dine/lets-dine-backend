@@ -5,6 +5,8 @@ import { ParseUuidPipe } from "../../../../common/pipes";
 import { buildHttpResponse } from "../../../../common/utils";
 import { ClaimPrintJobDto } from "../../application/dto/claim-print-job.dto";
 import { FailPrintJobDto } from "../../application/dto/fail-print-job.dto";
+import { SignQzRequestDto } from "../../application/dto/sign-qz-request.dto";
+import { qzCertificate, signQzRequest } from "../../application/qz-signing";
 import {
   ClaimPrintJobUsecase,
   CompletePrintJobUsecase,
@@ -23,6 +25,21 @@ export class PrintJobController {
     private readonly complete: CompletePrintJobUsecase,
     private readonly fail: FailPrintJobUsecase
   ) {}
+
+  /** Same public certificate for every restaurant. The laptop installs it once as override.crt. */
+  @Get("/qz-certificate")
+  @UseGuards(AuthGuard, AbilityGuard)
+  @CheckPolicies(checkPermissionRules([["orders:advance"]]))
+  async certificate(): Promise<IHttpResponse<{ certificate: string }>> {
+    return buildHttpResponse({ certificate: qzCertificate() }, ORDER_SUCCESS_MESSAGES.QZ_CERTIFICATE_FETCHED);
+  }
+
+  @Post("/qz-sign")
+  @UseGuards(AuthGuard, AbilityGuard)
+  @CheckPolicies(checkPermissionRules([["orders:advance"]]))
+  async sign(@Body() dto: SignQzRequestDto): Promise<IHttpResponse<{ signature: string }>> {
+    return buildHttpResponse({ signature: signQzRequest(dto.request) }, ORDER_SUCCESS_MESSAGES.QZ_REQUEST_SIGNED);
+  }
 
   @Get("/pending")
   @UseGuards(AuthGuard, AbilityGuard)

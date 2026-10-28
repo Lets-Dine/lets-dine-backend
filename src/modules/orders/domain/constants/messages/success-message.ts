@@ -7,6 +7,8 @@ export const ORDER_SUCCESS_MESSAGES = {
   KITCHEN_TICKETS_FETCHED: { key: "KITCHEN_TICKETS_FETCHED", message: "Kitchen tickets fetched successfully" },
   PRINT_JOBS_FETCHED: { key: "PRINT_JOBS_FETCHED", message: "Print jobs fetched successfully" },
   PRINT_JOB_UPDATED: { key: "PRINT_JOB_UPDATED", message: "Print job updated" },
+  QZ_CERTIFICATE_FETCHED: { key: "QZ_CERTIFICATE_FETCHED", message: "Certificate fetched" },
+  QZ_REQUEST_SIGNED: { key: "QZ_REQUEST_SIGNED", message: "Request signed" },
   KITCHEN_TICKET_WARNING_DISMISSED: { key: "KITCHEN_TICKET_WARNING_DISMISSED", message: "Warning dismissed" },
   KITCHEN_TICKET_ADVANCED: { key: "KITCHEN_TICKET_ADVANCED", message: "Ticket updated" },
   KITCHEN_TICKET_ACKNOWLEDGED: { key: "KITCHEN_TICKET_ACKNOWLEDGED", message: "Ticket acknowledged" },

@@ -36,4 +36,5 @@ export const ORDER_ERROR_MESSAGES = {
     message: "We couldn't find your delivery details — start your order again",
   },
   NOT_DELIVERY_ORDER: { key: "ORDER_NOT_DELIVERY_ORDER", message: "This isn't a delivery order" },
+  QZ_NOT_CONFIGURED: { key: "ORDER_QZ_NOT_CONFIGURED", message: "Printing certificate is not set up yet" },
 };
