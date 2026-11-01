@@ -132,3 +132,38 @@ describe("resolveSubscriptionState", () => {
     expect(result.status).toBe("CANCELLED");
   });
 });
+
+describe("resolveSubscriptionState cancelAtPeriodEnd", () => {
+  it("should cancel instead of going past due once the paid period ends", () => {
+    // Act
+    const result = resolveSubscriptionState(
+      { status: "ACTIVE", trialEndsAt: null, currentPeriodEnd: daysAgo(1), pastDueSince: null, cancelAtPeriodEnd: true },
+      NOW
+    );
+
+    // Assert
+    expect(result).toEqual({ status: "CANCELLED", pastDueSince: null, changed: true });
+  });
+
+  it("should cancel at the end of a trial instead of restricting", () => {
+    // Act
+    const result = resolveSubscriptionState(
+      { status: "TRIAL", trialEndsAt: daysAgo(1), currentPeriodEnd: daysAgo(1), pastDueSince: null, cancelAtPeriodEnd: true },
+      NOW
+    );
+
+    // Assert
+    expect(result.status).toBe("CANCELLED");
+  });
+
+  it("should leave a flagged subscription alone while its period is still running", () => {
+    // Act
+    const result = resolveSubscriptionState(
+      { status: "ACTIVE", trialEndsAt: null, currentPeriodEnd: daysAhead(3), pastDueSince: null, cancelAtPeriodEnd: true },
+      NOW
+    );
+
+    // Assert
+    expect(result.changed).toBe(false);
+  });
+});

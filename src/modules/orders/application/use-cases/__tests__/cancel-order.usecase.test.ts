@@ -45,6 +45,7 @@ describe("CancelOrderUsecase", () => {
             findById: jest.fn(),
             update: jest.fn(),
             updateItemStatus: jest.fn(),
+            hasBilledItems: jest.fn().mockResolvedValue(false),
           },
         },
         { provide: RestaurantRepository, useValue: { findByIdForBranch: jest.fn() } },

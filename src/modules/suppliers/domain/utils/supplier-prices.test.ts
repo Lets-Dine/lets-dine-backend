@@ -29,11 +29,14 @@ describe("ingredientPrices", () => {
 describe("withCheaper", () => {
   it("names the cheapest other supplier, only when it beats this one", () => {
     const [rice] = ingredientPrices([d("rice", 1, 1000, 500)]);
-    const [cheaper] = withCheaper([rice], [
-      { ingredientId: "rice", supplier: "Hari", unitCost: 0.4 },
-      { ingredientId: "rice", supplier: "Sita", unitCost: 0.45 },
-      { ingredientId: "rice", supplier: "Dear", unitCost: 0.6 },
-    ]);
+    const [cheaper] = withCheaper(
+      [rice],
+      [
+        { ingredientId: "rice", supplier: "Hari", unitCost: 0.4 },
+        { ingredientId: "rice", supplier: "Sita", unitCost: 0.45 },
+        { ingredientId: "rice", supplier: "Dear", unitCost: 0.6 },
+      ]
+    );
     expect(cheaper.cheaper).toEqual({ supplier: "Hari", unitCost: 0.4 });
     expect(withCheaper([rice], [{ ingredientId: "rice", supplier: "Dear", unitCost: 0.6 }])[0].cheaper).toBeNull();
   });

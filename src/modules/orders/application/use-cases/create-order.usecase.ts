@@ -44,7 +44,12 @@ export class CreateOrderUsecase {
     private readonly entitlementService: EntitlementService
   ) {}
 
-  async execute(dto: CreateOrderInput, session: IDiningSession, options?: { idempotencyKey?: string }): Promise<IOrderWithItems> {
+  /** `placedByStaff` — an order typed in at the till; WhatsApp-channel delivery is exactly what staff key in, so the app-only check doesn't apply. */
+  async execute(
+    dto: CreateOrderInput,
+    session: IDiningSession,
+    options?: { idempotencyKey?: string; placedByStaff?: boolean }
+  ): Promise<IOrderWithItems> {
     if (options?.idempotencyKey) {
       const alreadyPlaced = await this.orderRepository.findByIdempotencyKey(options.idempotencyKey);
       // A replayed retry, not a new ticket — the pass has already been told once.
@@ -55,7 +60,7 @@ export class CreateOrderUsecase {
       const restaurant = await this.restaurantRepository.findByIdForBranch(session.restaurantId, session.branchId, { tx });
       if (!restaurant || !restaurant.isActive) throw new NotFoundException(RESTAURANT_ERROR_MESSAGES.NOT_FOUND);
       if (session.customerId && !restaurant.deliveryEnabled) throw new BadRequestException(RESTAURANT_ERROR_MESSAGES.DELIVERY_DISABLED);
-      if (session.customerId && restaurant.deliveryChannel !== DeliveryChannel.APP) {
+      if (session.customerId && !options?.placedByStaff && restaurant.deliveryChannel !== DeliveryChannel.APP) {
         throw new BadRequestException(RESTAURANT_ERROR_MESSAGES.DELIVERY_VIA_WHATSAPP);
       }
 

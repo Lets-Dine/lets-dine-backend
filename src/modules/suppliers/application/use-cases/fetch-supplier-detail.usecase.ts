@@ -33,7 +33,11 @@ export class FetchSupplierDetailUsecase {
     const shown = saved?.name ?? st.name;
     const prices = ingredientPrices(deliveries);
     const shownPrices = prices.slice(0, PREVIEW);
-    const others = await this.suppliersRepository.findOtherPrices(branchId, shownPrices.map(p => p.ingredientId), shown);
+    const others = await this.suppliersRepository.findOtherPrices(
+      branchId,
+      shownPrices.map(p => p.ingredientId),
+      shown
+    );
     const [issues, counts, returns] = await Promise.all([
       this.suppliersRepository.findIssues(restaurantId, shown, RECENT),
       this.suppliersRepository.countIssues(restaurantId, shown),

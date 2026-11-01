@@ -33,7 +33,8 @@ export class FloorController {
 
   @Get()
   @UseGuards(AuthGuard, AbilityGuard)
-  @CheckPolicies(checkPermissionRules([["tables:view"]]))
+  // Staff placing an order at the till pick the table/floor from this list — reading it is service, not configuration.
+  @CheckPolicies(checkPermissionRules([["tables:view"], ["orders:advance"]]))
   async fetchAll(@Query() query: FetchFloorsDto, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<PaginatedResponse<IFloor>>> {
     const floors = await this.fetchAllFloorsUsecase.execute(query, authEntity);
     return buildHttpResponse(floors, FLOOR_SUCCESS_MESSAGES.FLOORS_FETCHED);

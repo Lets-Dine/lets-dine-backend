@@ -110,3 +110,24 @@ describe("buildInvoiceNumber", () => {
     expect(first).not.toBe(second);
   });
 });
+
+describe("buildInvoiceLines discount", () => {
+  const periodStart = new Date("2026-04-01T00:00:00.000Z");
+
+  it("should take the percent off the plan and extras as a negative line", () => {
+    // Act
+    const lines = buildInvoiceLines(buildPlan(), { ...monthly, extraBranches: 2, discountPercent: 20 }, periodStart);
+
+    // Assert
+    expect(lines[2]).toEqual({ description: "Discount (20%)", quantity: 1, unitAmount: -112000, amount: -112000 });
+    expect(sumLines(lines)).toBe(448000);
+  });
+
+  it("should stop discounting once the discount has ended by the invoice's period start", () => {
+    // Act
+    const lines = buildInvoiceLines(buildPlan(), { ...monthly, discountPercent: 20, discountEndsAt: periodStart }, periodStart);
+
+    // Assert
+    expect(lines).toHaveLength(1);
+  });
+});

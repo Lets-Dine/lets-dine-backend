@@ -1,6 +1,19 @@
 import { shapeMargin } from "../margin.util";
 
-const base = { dishId: "d", name: "Momo", price: 300, units: 10, revenue: 3000, costedUnits: 10, costedRevenue: 3000, cost: 1200, recipeCost: 118.6, ratingCount: 0, avgRating: null, againCount: null };
+const base = {
+  dishId: "d",
+  name: "Momo",
+  price: 300,
+  units: 10,
+  revenue: 3000,
+  costedUnits: 10,
+  costedRevenue: 3000,
+  cost: 1200,
+  recipeCost: 118.6,
+  ratingCount: 0,
+  avgRating: null,
+  againCount: null,
+};
 
 describe("shapeMargin", () => {
   it("works out margin over the costed units", () => {

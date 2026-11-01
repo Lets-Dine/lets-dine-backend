@@ -102,6 +102,16 @@ export abstract class OrderRepository {
   abstract update(id: string, data: IOrderUpdate, options?: { tx?: PrismaTransaction; actorId?: string }): Promise<IOrderWithItems>;
   abstract fetchAll(query: IOrdersFetchQuery, options?: IOrdersFetchOptions): Promise<PaginatedResponse<IOrderWithItems>>;
   /** §21 — every order a table placed during one visit, items and all, in a single round trip. */
+  /** Whether a split-by-item bill already covers this order's lines (or just one line). Those must stay as billed. */
+  abstract hasBilledItems(where: { orderId?: string; itemId?: string }, options?: { tx?: PrismaTransaction }): Promise<boolean>;
+  /** Takes the table's row lock — the one end/start-session already use — so a payment and an order edit on the same table never interleave. */
+  abstract lockTable(tableId: string, options: { tx: PrismaTransaction }): Promise<void>;
+  /** Re-seats every order of one visit: onto another visit's bill, or just under another table when the visit itself moves. */
+  abstract moveToSession(
+    fromSessionId: string,
+    to: { sessionId: string; tableId: string },
+    options: { tx: PrismaTransaction }
+  ): Promise<void>;
   abstract findBySessionId(sessionId: string, restaurantId: string, branchId: string): Promise<IOrderWithItems[]>;
   /** The order a table's bill gets adjusted against — its most recent, whatever status it's in. */
   abstract findLatestByTableId(tableId: string, restaurantId: string, options?: OrderFetchOptions): Promise<IOrderWithItems | null>;

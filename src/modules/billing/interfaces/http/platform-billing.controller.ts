@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Put, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post, Put, Query, UseGuards } from "@nestjs/common";
 import { PlatformGuard } from "../../../../common/auth";
 import { IHttpResponse, PaginatedResponse } from "../../../../common/interfaces";
 import { ParseUuidPipe } from "../../../../common/pipes";
@@ -7,6 +7,11 @@ import { FetchPlatformTenantsDto } from "../../application/dto/fetch-platform-te
 import { FetchPlatformTenantCountsUsecase } from "../../application/use-cases/fetch-platform-tenant-counts.usecase";
 import { FetchPlatformTenantsUsecase } from "../../application/use-cases/fetch-platform-tenants.usecase";
 import { UpdatePlansDto } from "../../application/dto/update-plans.dto";
+import { AdjustSubscriptionDto, CancelSubscriptionDto, ReactivateSubscriptionDto } from "../../application/dto/subscription-edit.dto";
+import { AdjustSubscriptionUsecase } from "../../application/use-cases/adjust-subscription.usecase";
+import { CancelSubscriptionUsecase } from "../../application/use-cases/cancel-subscription.usecase";
+import { FetchSubscriptionChangesUsecase } from "../../application/use-cases/fetch-subscription-changes.usecase";
+import { ReactivateSubscriptionUsecase } from "../../application/use-cases/reactivate-subscription.usecase";
 import { AssignPlanDto } from "../../application/dto/assign-plan.dto";
 import { FetchPlatformInvoicesDto } from "../../application/dto/fetch-platform-invoices.dto";
 import { GenerateInvoicesDto } from "../../application/dto/generate-invoices.dto";
@@ -20,7 +25,14 @@ import { RecordRenewalPaymentUsecase } from "../../application/use-cases/record-
 import { MarkInvoicePaidUsecase } from "../../application/use-cases/mark-invoice-paid.usecase";
 import { IRunLifecycleResult, RunLifecycleUsecase } from "../../application/use-cases/run-lifecycle.usecase";
 import { BILLING_SUCCESS_MESSAGES, INVOICE_LEAD_DAYS } from "../../domain/constants";
-import { IInvoice, IPlatformPlans, ISubscriptionView, ITenantListItem, ITenantViewCounts } from "../../domain/interfaces/billing.interface";
+import {
+  IInvoice,
+  IPlatformPlans,
+  ISubscriptionChange,
+  ISubscriptionView,
+  ITenantListItem,
+  ITenantViewCounts,
+} from "../../domain/interfaces/billing.interface";
 
 /**
  * Operator-side billing, behind the platform key like restaurant onboarding.
@@ -31,6 +43,10 @@ import { IInvoice, IPlatformPlans, ISubscriptionView, ITenantListItem, ITenantVi
 @UseGuards(PlatformGuard)
 export class PlatformBillingController {
   constructor(
+    private readonly adjustSubscriptionUsecase: AdjustSubscriptionUsecase,
+    private readonly cancelSubscriptionUsecase: CancelSubscriptionUsecase,
+    private readonly reactivateSubscriptionUsecase: ReactivateSubscriptionUsecase,
+    private readonly fetchSubscriptionChangesUsecase: FetchSubscriptionChangesUsecase,
     private readonly fetchPlatformInvoicesUsecase: FetchPlatformInvoicesUsecase,
     private readonly rollComplimentaryPeriodsUsecase: RollComplimentaryPeriodsUsecase,
     private readonly recordRenewalPaymentUsecase: RecordRenewalPaymentUsecase,
@@ -110,5 +126,42 @@ export class PlatformBillingController {
   ): Promise<IHttpResponse<ISubscriptionView>> {
     const subscription = await this.assignPlanUsecase.execute(restaurantId, dto);
     return buildHttpResponse(subscription, BILLING_SUCCESS_MESSAGES.PLAN_ASSIGNED);
+  }
+
+  @Patch("subscriptions/:restaurantId")
+  async adjustSubscription(
+    @Param("restaurantId", ParseUuidPipe) restaurantId: string,
+    @Body() dto: AdjustSubscriptionDto
+  ): Promise<IHttpResponse<ISubscriptionView>> {
+    const subscription = await this.adjustSubscriptionUsecase.execute(restaurantId, dto);
+    return buildHttpResponse(subscription, BILLING_SUCCESS_MESSAGES.SUBSCRIPTION_ADJUSTED);
+  }
+
+  @Post("subscriptions/:restaurantId/cancel")
+  @HttpCode(HttpStatus.OK)
+  async cancelSubscription(
+    @Param("restaurantId", ParseUuidPipe) restaurantId: string,
+    @Body() dto: CancelSubscriptionDto
+  ): Promise<IHttpResponse<ISubscriptionView>> {
+    const subscription = await this.cancelSubscriptionUsecase.execute(restaurantId, dto);
+    return buildHttpResponse(subscription, BILLING_SUCCESS_MESSAGES.SUBSCRIPTION_CANCELLED);
+  }
+
+  @Post("subscriptions/:restaurantId/reactivate")
+  @HttpCode(HttpStatus.OK)
+  async reactivateSubscription(
+    @Param("restaurantId", ParseUuidPipe) restaurantId: string,
+    @Body() dto: ReactivateSubscriptionDto
+  ): Promise<IHttpResponse<ISubscriptionView>> {
+    const subscription = await this.reactivateSubscriptionUsecase.execute(restaurantId, dto);
+    return buildHttpResponse(subscription, BILLING_SUCCESS_MESSAGES.SUBSCRIPTION_REACTIVATED);
+  }
+
+  @Get("subscriptions/:restaurantId/changes")
+  async fetchSubscriptionChanges(
+    @Param("restaurantId", ParseUuidPipe) restaurantId: string
+  ): Promise<IHttpResponse<ISubscriptionChange[]>> {
+    const changes = await this.fetchSubscriptionChangesUsecase.execute(restaurantId);
+    return buildHttpResponse(changes, BILLING_SUCCESS_MESSAGES.SUBSCRIPTION_CHANGES_FETCHED);
   }
 }

@@ -4,6 +4,8 @@ export interface IPaymentItem {
   id: string;
   paymentId: string;
   dishId: string;
+  /** The order line a split-by-item bill covers; null on a whole-table bill. */
+  orderItemId: string | null;
   dishNameSnapshot: string;
   unitPrice: number;
   quantity: number;

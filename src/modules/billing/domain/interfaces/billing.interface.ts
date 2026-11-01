@@ -12,6 +12,7 @@ export interface IBillingSubscription {
   pastDueSince: Date | null;
   extraBranches: number;
   extraSeats: number;
+  featureOverrides: unknown;
   plan: { id: string; key: string; limits: unknown; features: unknown };
 }
 
@@ -106,6 +107,10 @@ export interface ISubscriptionDetail {
   extraBranches: number;
   extraSeats: number;
   cancelledAt: Date | null;
+  discountPercent: number | null;
+  discountEndsAt: Date | null;
+  cancelAtPeriodEnd: boolean;
+  featureOverrides: unknown;
   plan: IPlan;
   /** The downgrade queued for the end of the period, if any. */
   pendingPlan: IPlan | null;
@@ -139,6 +144,16 @@ export interface ILifecycleSubscription {
   trialEndsAt: Date | null;
   currentPeriodEnd: Date;
   pastDueSince: Date | null;
+  cancelAtPeriodEnd: boolean;
+}
+
+/** One row of what an operator changed on a subscription. */
+export interface ISubscriptionChange {
+  id: string;
+  action: string;
+  reason: string;
+  detail: string;
+  createdAt: Date;
 }
 
 export interface IInvoiceLine {
@@ -192,6 +207,11 @@ export interface ITenantListItem {
   seats: number;
   extraBranches: number;
   extraSeats: number;
+  discountPercent: number | null;
+  discountEndsAt: Date | null;
+  cancelAtPeriodEnd: boolean;
+  /** Plan features switched for this restaurant only; null when it simply follows the plan. */
+  featureOverrides: Record<string, boolean | string> | null;
   limits: PlanLimitsConfig;
   ordersThisMonth: number;
   ordersLastMonth: number;

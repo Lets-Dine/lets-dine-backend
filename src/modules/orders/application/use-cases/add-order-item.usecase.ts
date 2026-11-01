@@ -75,6 +75,8 @@ export class AddOrderItemUsecase {
       if (!table || !isInActiveBranch(authEntity, table)) {
         throw new NotFoundException(ORDER_ERROR_MESSAGES.TABLE_NOT_FOUND);
       }
+      // Same lock a payment takes, so a dish added while the last share is paid is either on that bill or after it.
+      await this.diningTableRepository.lockById(table.id, { tx });
 
       const dish = await this.dishRepository.findById(dto.dishId, { tx });
       // A dish belongs to one branch's menu; the table's branch decides which menu it must come from.

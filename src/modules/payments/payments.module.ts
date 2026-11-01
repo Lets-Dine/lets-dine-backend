@@ -12,6 +12,7 @@ import { RestaurantsModule } from "../restaurants/restaurants.module";
 import { CollectPaymentUsecase } from "./application/use-cases/collect-payment.usecase";
 import { RefundPaymentUsecase } from "./application/use-cases/refund-payment.usecase";
 import { CompletePaymentUsecase } from "./application/use-cases/complete-payment.usecase";
+import { FetchBilledItemsUsecase } from "./application/use-cases/fetch-billed-items.usecase";
 import { FetchSessionPaymentUsecase } from "./application/use-cases/fetch-session-payment.usecase";
 import { GetPaymentUsecase } from "./application/use-cases/get-payment.usecase";
 import { SummarizePaymentsUsecase } from "./application/use-cases/summarize-payments.usecase";
@@ -45,6 +46,7 @@ import { PublicPaymentController } from "./interfaces/http/public-payment.contro
     SummarizePaymentsUsecase,
     GetPaymentUsecase,
     FetchSessionPaymentUsecase,
+    FetchBilledItemsUsecase,
     FonepayService,
     PaymentRepositoryImpl,
     { provide: PaymentRepository, useExisting: PaymentRepositoryImpl },

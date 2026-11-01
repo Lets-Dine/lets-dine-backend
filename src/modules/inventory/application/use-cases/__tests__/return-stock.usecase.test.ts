@@ -36,17 +36,15 @@ describe("ReturnStockUsecase", () => {
           provide: InventoryRepository,
           useValue: {
             $transaction: jest.fn(async (fn: any) => fn(tx)),
-            findIngredient: jest
-              .fn()
-              .mockResolvedValue({
-                id: "i1",
-                name: "Chicken",
-                quantity: 20,
-                isArchived: false,
-                restaurantId: authUser.restaurantId,
-                branchId: authUser.branchId,
-                ...ingredient,
-              }),
+            findIngredient: jest.fn().mockResolvedValue({
+              id: "i1",
+              name: "Chicken",
+              quantity: 20,
+              isArchived: false,
+              restaurantId: authUser.restaurantId,
+              branchId: authUser.branchId,
+              ...ingredient,
+            }),
             findLot: jest.fn().mockResolvedValue(found),
             applyMovement: jest.fn().mockResolvedValue({ id: "i1" }),
             reduceLot: jest.fn().mockResolvedValue(true),

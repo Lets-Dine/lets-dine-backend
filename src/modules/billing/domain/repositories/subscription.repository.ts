@@ -1,6 +1,6 @@
 import { BillingInterval, SubscriptionStatus } from "@prisma/client";
 import { PrismaTransaction } from "../../../../common/prisma";
-import { IBillingSubscription, ILifecycleSubscription, ISubscriptionDetail } from "../interfaces/billing.interface";
+import { IBillingSubscription, ILifecycleSubscription, ISubscriptionChange, ISubscriptionDetail } from "../interfaces/billing.interface";
 
 export interface ISubscriptionTrialCreate {
   restaurantId: string;
@@ -21,6 +21,11 @@ export interface ISubscriptionUpdate {
   extraBranches?: number;
   extraSeats?: number;
   cancelledAt?: Date | null;
+  discountPercent?: number | null;
+  discountEndsAt?: Date | null;
+  cancelAtPeriodEnd?: boolean;
+  /** Null clears every override. */
+  featureOverrides?: Record<string, boolean | string> | null;
 }
 
 export interface ISubscriptionOptions {
@@ -39,6 +44,13 @@ export abstract class SubscriptionRepository {
   /** Every subscription the lifecycle sweep still has to watch (anything not cancelled). */
   abstract findAllLive(): Promise<ILifecycleSubscription[]>;
   abstract update(id: string, data: ISubscriptionUpdate, options?: ISubscriptionOptions): Promise<void>;
+  abstract addChange(
+    subscriptionId: string,
+    change: { action: string; reason: string; detail: string },
+    options?: ISubscriptionOptions
+  ): Promise<void>;
+  /** Newest first, at most 50. */
+  abstract findChanges(subscriptionId: string): Promise<ISubscriptionChange[]>;
   /** Throws if the plan does not exist — a restaurant must never be left without a subscription silently. */
   abstract createTrial(data: ISubscriptionTrialCreate, options?: ISubscriptionOptions): Promise<void>;
 }

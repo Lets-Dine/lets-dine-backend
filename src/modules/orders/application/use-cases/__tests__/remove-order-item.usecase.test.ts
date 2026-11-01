@@ -23,7 +23,15 @@ describe("RemoveOrderItemUsecase", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RemoveOrderItemUsecase,
-        { provide: OrderRepository, useValue: { $transaction: jest.fn(fn => fn(tx)), findById: jest.fn(), syncItems: jest.fn() } },
+        {
+          provide: OrderRepository,
+          useValue: {
+            $transaction: jest.fn(fn => fn(tx)),
+            findById: jest.fn(),
+            syncItems: jest.fn(),
+            hasBilledItems: jest.fn().mockResolvedValue(false),
+          },
+        },
         { provide: RestaurantRepository, useValue: { findByIdForBranch: jest.fn() } },
         { provide: AuditLogService, useValue: { record: jest.fn() } },
         {

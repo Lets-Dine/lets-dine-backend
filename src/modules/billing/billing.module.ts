@@ -5,6 +5,10 @@ import { EsewaCheckoutService } from "./application/esewa-checkout.service";
 import { InvoiceSettlementService } from "./application/invoice-settlement.service";
 import { SubscriptionStaffAccessPolicy } from "./application/subscription-staff-access.policy";
 import { SubscriptionService } from "./application/subscription.service";
+import { AdjustSubscriptionUsecase } from "./application/use-cases/adjust-subscription.usecase";
+import { CancelSubscriptionUsecase } from "./application/use-cases/cancel-subscription.usecase";
+import { FetchSubscriptionChangesUsecase } from "./application/use-cases/fetch-subscription-changes.usecase";
+import { ReactivateSubscriptionUsecase } from "./application/use-cases/reactivate-subscription.usecase";
 import { AssignPlanUsecase } from "./application/use-cases/assign-plan.usecase";
 import { ChangePlanUsecase } from "./application/use-cases/change-plan.usecase";
 import { FetchInvoicesUsecase } from "./application/use-cases/fetch-invoices.usecase";
@@ -80,6 +84,10 @@ import { PlatformBillingController } from "./interfaces/http/platform-billing.co
     MarkInvoicePaidUsecase,
     RunLifecycleUsecase,
     AssignPlanUsecase,
+    AdjustSubscriptionUsecase,
+    CancelSubscriptionUsecase,
+    ReactivateSubscriptionUsecase,
+    FetchSubscriptionChangesUsecase,
     BillingScheduler,
     SubscriptionRepositoryImpl,
     { provide: SubscriptionRepository, useExisting: SubscriptionRepositoryImpl },

@@ -5,6 +5,7 @@ import { IPaymentRefund, IPaymentsSummary, IPaymentTender, IPaymentWithItems } f
 
 export interface IPaymentItemCreate {
   dishId: string;
+  orderItemId?: string | null;
   dishNameSnapshot: string;
   unitPrice: number;
   quantity: number;
@@ -108,5 +109,13 @@ export abstract class PaymentRepository {
     options: { tx: PrismaTransaction }
   ): Promise<IPaymentRefund | null>;
   abstract findRefundByKey(restaurantId: string, key: string, options?: { tx?: PrismaTransaction }): Promise<IPaymentRefund | null>;
+  /**
+   * What this session's bills already cover, per order line. `orderItemId` is null for a line charged on a
+   * whole-table bill, which names no order line — its presence means the session was not billed by item.
+   */
+  abstract billedItems(
+    sessionId: string,
+    options?: { tx?: PrismaTransaction }
+  ): Promise<{ orderItemId: string | null; quantity: number }[]>;
   abstract findBySessionId(sessionId: string): Promise<IPaymentWithItems | null>;
 }

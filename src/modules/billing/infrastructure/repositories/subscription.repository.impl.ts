@@ -1,7 +1,12 @@
 import { Injectable } from "@nestjs/common";
-import { SubscriptionStatus } from "@prisma/client";
+import { Prisma, SubscriptionStatus } from "@prisma/client";
 import { PrismaService, PrismaTransaction } from "../../../../common/prisma";
-import { IBillingSubscription, ILifecycleSubscription, ISubscriptionDetail } from "../../domain/interfaces/billing.interface";
+import {
+  IBillingSubscription,
+  ILifecycleSubscription,
+  ISubscriptionChange,
+  ISubscriptionDetail,
+} from "../../domain/interfaces/billing.interface";
 import {
   ISubscriptionOptions,
   ISubscriptionTrialCreate,
@@ -32,6 +37,7 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
         pastDueSince: true,
         extraBranches: true,
         extraSeats: true,
+        featureOverrides: true,
         plan: { select: { id: true, key: true, limits: true, features: true } },
       },
     });
@@ -56,6 +62,8 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
     return this.prisma.subscription.findMany({
       where: {
         status: { not: "CANCELLED" },
+        // An operator-scheduled cancellation is never billed again.
+        cancelAtPeriodEnd: false,
         currentPeriodEnd: { lte: periodEndBy },
         // An open upgrade invoice is a one-off charge; it must not hold back the renewal.
         invoices: { none: { status: "OPEN", kind: "RENEWAL" } },
@@ -68,13 +76,43 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
   findAllLive(): Promise<ILifecycleSubscription[]> {
     return this.prisma.subscription.findMany({
       where: { status: { not: "CANCELLED" } },
-      select: { id: true, restaurantId: true, status: true, trialEndsAt: true, currentPeriodEnd: true, pastDueSince: true },
+      select: {
+        id: true,
+        restaurantId: true,
+        status: true,
+        trialEndsAt: true,
+        currentPeriodEnd: true,
+        pastDueSince: true,
+        cancelAtPeriodEnd: true,
+      },
     });
   }
 
   async update(id: string, data: ISubscriptionUpdate, options?: ISubscriptionOptions): Promise<void> {
     const prisma = options?.tx ?? this.prisma;
-    await prisma.subscription.update({ where: { id }, data });
+    const { featureOverrides, ...rest } = data;
+    await prisma.subscription.update({
+      where: { id },
+      data: { ...rest, ...(featureOverrides !== undefined && { featureOverrides: featureOverrides ?? Prisma.DbNull }) },
+    });
+  }
+
+  async addChange(
+    subscriptionId: string,
+    change: { action: string; reason: string; detail: string },
+    options?: ISubscriptionOptions
+  ): Promise<void> {
+    const prisma = options?.tx ?? this.prisma;
+    await prisma.subscriptionChange.create({ data: { subscriptionId, ...change } });
+  }
+
+  findChanges(subscriptionId: string): Promise<ISubscriptionChange[]> {
+    return this.prisma.subscriptionChange.findMany({
+      where: { subscriptionId },
+      select: { id: true, action: true, reason: true, detail: true, createdAt: true },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
   }
 
   async createTrial(data: ISubscriptionTrialCreate, options?: ISubscriptionOptions): Promise<void> {

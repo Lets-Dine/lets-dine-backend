@@ -18,7 +18,13 @@ export abstract class SuppliersRepository {
   abstract findSupplier(id: string, restaurantId: string): Promise<ISupplierRecord | null>;
   /** Matched without regard to case. */
   abstract findSupplierByName(restaurantId: string, name: string): Promise<ISupplierRecord | null>;
-  abstract createSupplier(data: { restaurantId: string; name: string; phone: string; note: string; createdBy: string }): Promise<ISupplierRecord>;
+  abstract createSupplier(data: {
+    restaurantId: string;
+    name: string;
+    phone: string;
+    note: string;
+    createdBy: string;
+  }): Promise<ISupplierRecord>;
   abstract updateSupplier(id: string, data: Partial<Pick<ISupplierRecord, "phone" | "note" | "isArchived">>): Promise<ISupplierRecord>;
   /** Every supplier this branch's deliveries mention, keyed by lower-cased name. Transferred-in stock is not a delivery. */
   abstract findDeliveryStats(branchId: string): Promise<Map<string, INamedStats>>;

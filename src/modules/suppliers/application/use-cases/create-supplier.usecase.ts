@@ -14,7 +14,12 @@ export class CreateSupplierUsecase {
   async execute(dto: CreateSupplierInput, authEntity: AuthEntity): Promise<ISupplierRecord> {
     const existing = await this.suppliersRepository.findSupplierByName(authEntity.restaurantId, dto.name);
     if (existing && !existing.isArchived) throw new ConflictException(SUPPLIERS_ERROR_MESSAGES.EXISTS);
-    if (existing) return this.suppliersRepository.updateSupplier(existing.id, { phone: dto.phone || existing.phone, note: dto.note || existing.note, isArchived: false });
+    if (existing)
+      return this.suppliersRepository.updateSupplier(existing.id, {
+        phone: dto.phone || existing.phone,
+        note: dto.note || existing.note,
+        isArchived: false,
+      });
     try {
       return await this.suppliersRepository.createSupplier({ ...dto, restaurantId: authEntity.restaurantId, createdBy: authEntity.sub });
     } catch (error) {

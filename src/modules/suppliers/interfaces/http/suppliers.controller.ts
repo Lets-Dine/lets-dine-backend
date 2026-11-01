@@ -2,7 +2,13 @@ import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from "@ne
 import { AbilityGuard, AuthGuard, AuthUser, CheckPolicies, checkPermissionRules } from "../../../../common/auth";
 import { type AuthEntity, IHttpResponse } from "../../../../common/interfaces";
 import { buildHttpResponse } from "../../../../common/utils";
-import { CreateSupplierDto, FetchSupplierPageDto, LogIssueDto, RecordPaymentDto, UpdateSupplierDto } from "../../application/dto/suppliers.dto";
+import {
+  CreateSupplierDto,
+  FetchSupplierPageDto,
+  LogIssueDto,
+  RecordPaymentDto,
+  UpdateSupplierDto,
+} from "../../application/dto/suppliers.dto";
 import { CreateSupplierUsecase } from "../../application/use-cases/create-supplier.usecase";
 import { FetchSupplierDetailUsecase } from "../../application/use-cases/fetch-supplier-detail.usecase";
 import { FetchSupplierDeliveriesUsecase } from "../../application/use-cases/fetch-supplier-deliveries.usecase";
@@ -12,7 +18,16 @@ import { RecordSupplierPaymentUsecase } from "../../application/use-cases/record
 import { ListSuppliersUsecase } from "../../application/use-cases/list-suppliers.usecase";
 import { UpdateSupplierUsecase } from "../../application/use-cases/update-supplier.usecase";
 import { SUPPLIERS_SUCCESS_MESSAGES } from "../../domain/constants";
-import { IDelivery, IIngredientPrice, IIssue, IPage, IPayment, ISupplierDetail, ISupplierListItem, ISupplierRecord } from "../../domain/interfaces/suppliers.interface";
+import {
+  IDelivery,
+  IIngredientPrice,
+  IIssue,
+  IPage,
+  IPayment,
+  ISupplierDetail,
+  ISupplierListItem,
+  ISupplierRecord,
+} from "../../domain/interfaces/suppliers.interface";
 
 const VIEW = [AuthGuard, AbilityGuard] as const;
 
@@ -41,14 +56,20 @@ export class SuppliersController {
   @UseGuards(...VIEW)
   @CheckPolicies(checkPermissionRules([["inventory:view"]]))
   async detail(@Query("name") name: unknown, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<ISupplierDetail>> {
-    return buildHttpResponse(await this.fetchSupplierDetailUsecase.execute(typeof name === "string" ? name.trim() : "", authEntity), SUPPLIERS_SUCCESS_MESSAGES.DETAIL_FETCHED);
+    return buildHttpResponse(
+      await this.fetchSupplierDetailUsecase.execute(typeof name === "string" ? name.trim() : "", authEntity),
+      SUPPLIERS_SUCCESS_MESSAGES.DETAIL_FETCHED
+    );
   }
 
   @Get("deliveries")
   @UseGuards(...VIEW)
   @CheckPolicies(checkPermissionRules([["inventory:view"]]))
   async deliveries(@Query() query: FetchSupplierPageDto, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IPage<IDelivery>>> {
-    return buildHttpResponse(await this.fetchSupplierDeliveriesUsecase.execute(query, authEntity), SUPPLIERS_SUCCESS_MESSAGES.DETAIL_FETCHED);
+    return buildHttpResponse(
+      await this.fetchSupplierDeliveriesUsecase.execute(query, authEntity),
+      SUPPLIERS_SUCCESS_MESSAGES.DETAIL_FETCHED
+    );
   }
 
   @Get("prices")
@@ -82,7 +103,11 @@ export class SuppliersController {
   @Patch(":id")
   @UseGuards(...VIEW)
   @CheckPolicies(checkPermissionRules([["inventory:manage"]]))
-  async update(@Param("id") id: string, @Body() dto: UpdateSupplierDto, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<ISupplierRecord>> {
+  async update(
+    @Param("id") id: string,
+    @Body() dto: UpdateSupplierDto,
+    @AuthUser() authEntity: AuthEntity
+  ): Promise<IHttpResponse<ISupplierRecord>> {
     return buildHttpResponse(await this.updateSupplierUsecase.execute(id, dto, authEntity), SUPPLIERS_SUCCESS_MESSAGES.UPDATED);
   }
 }

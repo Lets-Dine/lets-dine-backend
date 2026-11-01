@@ -101,6 +101,9 @@ model PaymentItem {
   id               String   @id @default(uuid()) @map("id") @db.Uuid
   paymentId        String   @map("payment_id") @db.Uuid
   dishId           String   @map("dish_id") @db.Uuid
+  /// Set only on a split-by-item bill: the order line this charge covers, so what is still unbilled can be
+  /// worked out. No FK — a line the kitchen drops later must never be blocked by a bill that once covered it.
+  orderItemId      String?  @map("order_item_id") @db.Uuid
   dishNameSnapshot String   @map("dish_name_snapshot")
   unitPrice        Int      @map("unit_price")
   quantity         Int      @map("quantity")
@@ -109,6 +112,7 @@ model PaymentItem {
   payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
 
   @@index([paymentId])
+  @@index([orderItemId])
   @@map("payment_items")
   @@schema("public")
 }

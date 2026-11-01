@@ -253,6 +253,26 @@ class OrderRepositoryImpl implements OrderRepository {
     return orders.map(order => this.toOrder(order));
   }
 
+  async moveToSession(
+    fromSessionId: string,
+    to: { sessionId: string; tableId: string },
+    options: { tx: PrismaTransaction }
+  ): Promise<void> {
+    await options.tx.order.updateMany({ where: { sessionId: fromSessionId }, data: { sessionId: to.sessionId, tableId: to.tableId } });
+  }
+
+  async lockTable(tableId: string, options: { tx: PrismaTransaction }): Promise<void> {
+    await options.tx.$queryRaw`SELECT id FROM dining_tables WHERE id = ${tableId}::uuid FOR UPDATE`;
+  }
+
+  async hasBilledItems(where: { orderId?: string; itemId?: string }, options?: { tx?: PrismaTransaction }): Promise<boolean> {
+    const prisma = options?.tx ?? this.prisma;
+    const ids = where.itemId
+      ? [where.itemId]
+      : (await prisma.orderItem.findMany({ where: { orderId: where.orderId }, select: { id: true } })).map(item => item.id);
+    return (await prisma.paymentItem.count({ where: { orderItemId: { in: ids } } })) > 0;
+  }
+
   async findOpenBySessionId(sessionId: string, restaurantId: string, options?: OrderFetchOptions): Promise<IOrderWithItems[]> {
     const prisma = options?.tx ?? this.prisma;
     const orders = await prisma.order.findMany({

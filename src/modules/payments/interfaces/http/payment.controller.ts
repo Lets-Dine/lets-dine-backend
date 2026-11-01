@@ -9,6 +9,7 @@ import { FetchPaymentsDto } from "../../application/dto/fetch-payments.dto";
 import { CollectPaymentUsecase } from "../../application/use-cases/collect-payment.usecase";
 import { RefundPaymentUsecase } from "../../application/use-cases/refund-payment.usecase";
 import { CompletePaymentUsecase } from "../../application/use-cases/complete-payment.usecase";
+import { FetchBilledItemsUsecase } from "../../application/use-cases/fetch-billed-items.usecase";
 import { GetPaymentUsecase } from "../../application/use-cases/get-payment.usecase";
 import { FetchPaymentsSummaryDto } from "../../application/dto/fetch-payments-summary.dto";
 import { SummarizePaymentsUsecase } from "../../application/use-cases/summarize-payments.usecase";
@@ -24,7 +25,8 @@ export class PaymentController {
     private readonly summarizePaymentsUsecase: SummarizePaymentsUsecase,
     private readonly getPaymentUsecase: GetPaymentUsecase,
     private readonly collectPaymentUsecase: CollectPaymentUsecase,
-    private readonly refundPaymentUsecase: RefundPaymentUsecase
+    private readonly refundPaymentUsecase: RefundPaymentUsecase,
+    private readonly fetchBilledItemsUsecase: FetchBilledItemsUsecase
   ) {}
 
   @Post()
@@ -74,7 +76,21 @@ export class PaymentController {
   @UseGuards(AuthGuard, AbilityGuard)
   @CheckPolicies(checkPermissionRules([["payments:view"]]))
   async summarize(@Query() query: FetchPaymentsSummaryDto, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IPaymentsSummary>> {
-    return buildHttpResponse(await this.summarizePaymentsUsecase.execute(query, authEntity), PAYMENT_SUCCESS_MESSAGES.PAYMENTS_SUMMARY_FETCHED);
+    return buildHttpResponse(
+      await this.summarizePaymentsUsecase.execute(query, authEntity),
+      PAYMENT_SUCCESS_MESSAGES.PAYMENTS_SUMMARY_FETCHED
+    );
+  }
+
+  /** Declared before `:id`. Which order lines split bills already cover on a session. */
+  @Get("billed")
+  @UseGuards(AuthGuard, AbilityGuard)
+  @CheckPolicies(checkPermissionRules([["payments:view"]]))
+  async billed(
+    @Query("sessionId", ParseUuidPipe) sessionId: string,
+    @AuthUser() authEntity: AuthEntity
+  ): Promise<IHttpResponse<{ orderItemId: string; quantity: number }[]>> {
+    return buildHttpResponse(await this.fetchBilledItemsUsecase.execute(sessionId, authEntity), PAYMENT_SUCCESS_MESSAGES.PAYMENTS_FETCHED);
   }
 
   @Get(":id")

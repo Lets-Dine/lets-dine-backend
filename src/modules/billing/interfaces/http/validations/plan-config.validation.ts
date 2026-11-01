@@ -22,5 +22,19 @@ export const planFeaturesSchema = z.object({
   auditRetentionDays: z.number().int().positive().optional(),
 });
 
+/** What an operator may switch for one restaurant; undefined keeps the plan's value. */
+export const featureOverridesSchema = z.object({
+  analyticsTier: z.enum(["basic", "full"]).optional(),
+  exports: z.boolean().optional(),
+  autoStockConsumption: z.boolean().optional(),
+});
+
+/** An edit to those overrides: a null key clears that override. */
+export const featureOverridesPatchSchema = z.object({
+  analyticsTier: z.enum(["basic", "full"]).nullable().optional(),
+  exports: z.boolean().nullable().optional(),
+  autoStockConsumption: z.boolean().nullable().optional(),
+});
+
 export type PlanLimitsConfig = z.infer<typeof planLimitsSchema>;
 export type PlanFeaturesConfig = z.infer<typeof planFeaturesSchema>;

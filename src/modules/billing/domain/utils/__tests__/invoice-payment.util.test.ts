@@ -66,3 +66,13 @@ describe("applyInvoicePayment", () => {
     expect(result).not.toHaveProperty("planId");
   });
 });
+
+describe("applyInvoicePayment cancellation", () => {
+  it("should withdraw a scheduled cancellation when the subscription is paid", () => {
+    // Act
+    const result = applyInvoicePayment(target(), invoice("2026-04-01T00:00:00.000Z", "2026-05-01T00:00:00.000Z"), NOW);
+
+    // Assert
+    expect(result.cancelAtPeriodEnd).toBe(false);
+  });
+});

@@ -8,7 +8,13 @@ import { CustomerController } from "./interfaces/http/customer.controller";
 
 @Module({
   controllers: [CustomerController],
-  providers: [ListCustomersUsecase, GetCustomerUsecase, UpdateCustomerUsecase, CustomerRepositoryImpl, { provide: CustomerRepository, useExisting: CustomerRepositoryImpl }],
+  providers: [
+    ListCustomersUsecase,
+    GetCustomerUsecase,
+    UpdateCustomerUsecase,
+    CustomerRepositoryImpl,
+    { provide: CustomerRepository, useExisting: CustomerRepositoryImpl },
+  ],
   exports: [{ provide: CustomerRepository, useExisting: CustomerRepositoryImpl }],
 })
 export class CustomersModule {}

@@ -5,6 +5,7 @@ import { BranchesModule } from "../branches/branches.module";
 import { CustomersModule } from "../customers/customers.module";
 import { DiningSessionsModule } from "../dining-sessions/dining-sessions.module";
 import { DishesModule } from "../dishes/dishes.module";
+import { FloorsModule } from "../floors/floors.module";
 import { DishVariantsModule } from "../dish-variants/dish-variants.module";
 import { InventoryModule } from "../inventory/inventory.module";
 import { RestaurantsModule } from "../restaurants/restaurants.module";
@@ -26,6 +27,7 @@ import { AdvanceOrderItemStatusUsecase } from "./application/use-cases/advance-o
 import { CancelOrderItemUsecase } from "./application/use-cases/cancel-order-item.usecase";
 import { CancelOrderUsecase } from "./application/use-cases/cancel-order.usecase";
 import { CreateOrderUsecase } from "./application/use-cases/create-order.usecase";
+import { CreateStaffOrderUsecase } from "./application/use-cases/create-staff-order.usecase";
 import { FetchAllOrdersUsecase } from "./application/use-cases/fetch-all-orders.usecase";
 import { FetchOrderByIdUsecase } from "./application/use-cases/fetch-order-by-id.usecase";
 import { FetchOrdersBySessionUsecase } from "./application/use-cases/fetch-orders-by-session.usecase";
@@ -59,6 +61,7 @@ import { BillingModule } from "../billing/billing.module";
     RestaurantsModule,
     DishesModule,
     TablesModule,
+    FloorsModule,
     AuditLogsModule,
     AddOnsModule,
     DishVariantsModule,
@@ -69,6 +72,7 @@ import { BillingModule } from "../billing/billing.module";
   controllers: [OrderController, RestaurantOrderController, KitchenTicketController, PrintJobController],
   providers: [
     CreateOrderUsecase,
+    CreateStaffOrderUsecase,
     FetchSessionOrderUsecase,
     FetchSessionOrdersUsecase,
     FetchAllOrdersUsecase,

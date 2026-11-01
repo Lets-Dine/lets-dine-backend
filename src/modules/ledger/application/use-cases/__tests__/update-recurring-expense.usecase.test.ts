@@ -24,9 +24,18 @@ const row = {
 };
 
 function build(found: unknown = row) {
-  const recurring = { findById: jest.fn().mockResolvedValue(found), update: jest.fn().mockImplementation(async (_id: string, data: object) => ({ ...(found as object), ...data })) };
+  const recurring = {
+    findById: jest.fn().mockResolvedValue(found),
+    update: jest.fn().mockImplementation(async (_id: string, data: object) => ({ ...(found as object), ...data })),
+  };
   const restaurants = { findById: jest.fn().mockResolvedValue({ timezone: "UTC" }) };
-  return { recurring, usecase: new UpdateRecurringExpenseUsecase(recurring as unknown as RecurringExpenseRepository, restaurants as unknown as RestaurantRepository) };
+  return {
+    recurring,
+    usecase: new UpdateRecurringExpenseUsecase(
+      recurring as unknown as RecurringExpenseRepository,
+      restaurants as unknown as RestaurantRepository
+    ),
+  };
 }
 
 describe("UpdateRecurringExpenseUsecase", () => {
@@ -56,7 +65,10 @@ describe("UpdateRecurringExpenseUsecase", () => {
 
     const result = await usecase.execute("rec-1", { isActive: true }, authUser);
 
-    expect(recurring.update).toHaveBeenCalledWith("rec-1", expect.objectContaining({ isActive: true, handledThrough: new Date("2026-10-20") }));
+    expect(recurring.update).toHaveBeenCalledWith(
+      "rec-1",
+      expect.objectContaining({ isActive: true, handledThrough: new Date("2026-10-20") })
+    );
     expect(result.due).toEqual([]);
   });
 

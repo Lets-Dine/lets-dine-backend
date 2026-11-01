@@ -26,7 +26,8 @@ export class RecordSupplierPaymentUsecase {
     const name = saved?.name ?? seen?.name;
     if (!name) throw new NotFoundException(SUPPLIERS_ERROR_MESSAGES.NOT_FOUND);
     // ponytail: read-then-write, so two payments at the same instant could both pass; add a row lock if it ever matters.
-    if (dto.amount > owedOf(seen?.credit ?? 0, paid.get(name.toLowerCase()) ?? 0)) throw new BadRequestException(SUPPLIERS_ERROR_MESSAGES.PAYMENT_EXCEEDS_OWED);
+    if (dto.amount > owedOf(seen?.credit ?? 0, paid.get(name.toLowerCase()) ?? 0))
+      throw new BadRequestException(SUPPLIERS_ERROR_MESSAGES.PAYMENT_EXCEEDS_OWED);
     return this.suppliersRepository.createPayment({
       restaurantId,
       branchId,

@@ -115,6 +115,38 @@ describe("ChangePlanUsecase", () => {
       );
     });
 
+    it("should take an active discount off the prorated upgrade charge and show it as its own line", async () => {
+      // Arrange — the same half-period upgrade (125000) with 20% off
+      subscriptionRepository.findDetailByRestaurantId.mockResolvedValue({ ...onStarter(), discountPercent: 20, discountEndsAt: null });
+      planRepository.findByKey.mockResolvedValue(growth);
+
+      // Act
+      const result = await usecase.execute({ planKey: "growth" }, authUser, new Date("2026-03-16T12:00:00.000Z"));
+
+      // Assert
+      expect(result.invoice).toMatchObject({ amount: 100000 });
+      expect(result.invoice?.lines).toEqual([
+        expect.objectContaining({ amount: 125000 }),
+        { description: "Discount (20%)", quantity: 1, unitAmount: -25000, amount: -25000 },
+      ]);
+    });
+
+    it("should ignore a discount that has already ended", async () => {
+      // Arrange
+      subscriptionRepository.findDetailByRestaurantId.mockResolvedValue({
+        ...onStarter(),
+        discountPercent: 20,
+        discountEndsAt: new Date("2026-03-10T00:00:00.000Z"),
+      });
+      planRepository.findByKey.mockResolvedValue(growth);
+
+      // Act
+      const result = await usecase.execute({ planKey: "growth" }, authUser, new Date("2026-03-16T12:00:00.000Z"));
+
+      // Assert
+      expect(result.invoice).toMatchObject({ amount: 125000 });
+    });
+
     it("should queue a downgrade for the end of the paid period instead of applying it", async () => {
       // Arrange — on Growth, ACTIVE, moving to Starter
       planRepository.findByKey.mockResolvedValue(starter);

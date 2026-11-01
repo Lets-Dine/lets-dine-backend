@@ -53,7 +53,15 @@ describe("SettleRecurringExpenseUsecase", () => {
 
     expect(recurring.advance).toHaveBeenCalledWith("rec-1", null, new Date("2026-08-05"), expect.anything());
     expect(ledger.createExpense).toHaveBeenCalledWith(
-      expect.objectContaining({ kind: "EXPENSE", amount: 50_000, method: "CARD", category: "Rent", note: "Recurring · due 2026-08-05 · Shop", recurringExpenseId: "rec-1", recurringDueOn: new Date("2026-08-05") }),
+      expect.objectContaining({
+        kind: "EXPENSE",
+        amount: 50_000,
+        method: "CARD",
+        category: "Rent",
+        note: "Recurring · due 2026-08-05 · Shop",
+        recurringExpenseId: "rec-1",
+        recurringDueOn: new Date("2026-08-05"),
+      }),
       expect.anything()
     );
   });

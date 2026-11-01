@@ -33,6 +33,9 @@ export class CancelOrderUsecase {
         throw new NotFoundException(ORDER_ERROR_MESSAGES.NOT_FOUND);
       }
 
+      if (existing.tableId) await this.orderRepository.lockTable(existing.tableId, { tx });
+      if (await this.orderRepository.hasBilledItems({ orderId: id }, { tx })) throw new ConflictException(ORDER_ERROR_MESSAGES.ITEM_BILLED);
+
       if (existing.status === OrderStatus.CANCELLED) {
         throw new ConflictException(ORDER_ERROR_MESSAGES.ALREADY_CANCELLED);
       }

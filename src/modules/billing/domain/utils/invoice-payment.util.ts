@@ -17,6 +17,8 @@ export interface ISubscriptionAfterPayment {
   trialEndsAt: null;
   pastDueSince: null;
   cancelledAt: null;
+  /** Paying means they are staying, so a scheduled cancellation is withdrawn. */
+  cancelAtPeriodEnd: false;
   currentPeriodStart: Date;
   currentPeriodEnd: Date;
   /** Set only when a queued downgrade takes effect with this payment. */
@@ -50,6 +52,7 @@ export function applyInvoicePayment(subscription: IPaymentTarget, invoice: IPaid
     trialEndsAt: null,
     pastDueSince: null,
     cancelledAt: null,
+    cancelAtPeriodEnd: false,
     currentPeriodStart,
     currentPeriodEnd,
     ...(subscription.pendingPlanId && { planId: subscription.pendingPlanId }),

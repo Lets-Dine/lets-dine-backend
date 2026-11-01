@@ -1,10 +1,12 @@
-import { Controller, Delete, Get, Param, ParseEnumPipe, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, ParseEnumPipe, Post, UseGuards } from "@nestjs/common";
 import { AbilityGuard, AuthGuard, AuthUser, CheckPolicies, checkPermissionRules } from "../../../../common/auth";
 import { type AuthEntity, IHttpResponse } from "../../../../common/interfaces";
 import { ParseUuidPipe } from "../../../../common/pipes";
 import { buildHttpResponse } from "../../../../common/utils";
 import { IDiningTable } from "../../../tables/domain/interfaces/dining-table.interface";
 import { ServiceRequestUsecase, type ServiceRequestKind } from "../../application/use-cases/service-request.usecase";
+import { MergeTableSessionDto } from "../../application/dto/merge-table-session.dto";
+import { MergeTableSessionUsecase } from "../../application/use-cases/merge-table-session.usecase";
 import { EndDiningSessionUsecase } from "../../application/use-cases/end-dining-session.usecase";
 import { StartTableSessionUsecase } from "../../application/use-cases/start-table-session.usecase";
 import { DINING_SESSION_SUCCESS_MESSAGES } from "../../domain/constants";
@@ -14,7 +16,8 @@ import { type IServiceRequest } from "../../domain/interfaces/dining-session.int
 export class RestaurantDiningSessionController {
   constructor(
     private readonly startTableSessionUsecase: StartTableSessionUsecase,
-    private readonly endDiningSessionUsecase: EndDiningSessionUsecase
+    private readonly endDiningSessionUsecase: EndDiningSessionUsecase,
+    private readonly mergeTableSessionUsecase: MergeTableSessionUsecase
   ) {}
 
   /**
@@ -36,6 +39,19 @@ export class RestaurantDiningSessionController {
   async endSession(@Param("id", ParseUuidPipe) id: string, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IDiningTable>> {
     const table = await this.endDiningSessionUsecase.execute(id, authEntity);
     return buildHttpResponse(table, DINING_SESSION_SUCCESS_MESSAGES.DINING_SESSION_ENDED);
+  }
+
+  /** Moves this table's visit onto another table — merging the two bills if that table is occupied. Manager and up. */
+  @Post("/:id/merge-session")
+  @UseGuards(AuthGuard, AbilityGuard)
+  @CheckPolicies(checkPermissionRules([["tables:edit"]]))
+  async mergeSession(
+    @Param("id", ParseUuidPipe) id: string,
+    @Body() dto: MergeTableSessionDto,
+    @AuthUser() authEntity: AuthEntity
+  ): Promise<IHttpResponse<IDiningTable>> {
+    const table = await this.mergeTableSessionUsecase.execute(id, dto.targetTableId, authEntity);
+    return buildHttpResponse(table, DINING_SESSION_SUCCESS_MESSAGES.DINING_SESSION_MERGED);
   }
 }
 

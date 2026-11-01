@@ -24,6 +24,9 @@ export class FetchSessionPaymentUsecase {
     const session = await this.diningSessionRepository.findByToken(token);
     if (!session) throw new UnauthorizedException(DINING_SESSION_ERROR_MESSAGES.NOT_FOUND);
 
+    // A table being paid share by share is not settled until the last share ends the visit; one share isn't "the" receipt.
+    if (!session.endedAt && (await this.paymentRepository.billedItems(session.id)).some(row => row.orderItemId)) return null;
+
     return this.paymentRepository.findBySessionId(session.id);
   }
 }

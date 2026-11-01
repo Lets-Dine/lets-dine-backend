@@ -1,9 +1,10 @@
 import { Injectable } from "@nestjs/common";
-import { AuditAction, OrderStatus, PaymentMethod } from "@prisma/client";
+import { AuditAction, OrderItemStatus, OrderStatus, PaymentMethod } from "@prisma/client";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { can } from "../../../../common/auth";
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from "../../../../common/exceptions";
 import { AuthEntity, isInActiveBranch } from "../../../../common/interfaces";
+import { PrismaTransaction } from "../../../../common/prisma";
 import { CustomerRepository } from "../../../customers/domain/repositories/customer.repository";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
 import { LoyaltyService } from "../../../loyalty/application/loyalty.service";
@@ -69,55 +70,19 @@ export class CompletePaymentUsecase {
         if (order.paidAt) throw new ConflictException(PAYMENT_ERROR_MESSAGES.ORDER_ALREADY_PAID);
       }
 
-      const dishes = await this.dishRepository.findManyByIds(
-        dto.items.map(line => line.dishId),
-        { tx }
-      );
+      // One table is billed one payment at a time, and never while an order edit on it is half-done.
+      if (session.tableId) await tx.$queryRaw`SELECT id FROM dining_tables WHERE id = ${session.tableId}::uuid FOR UPDATE`;
 
-      // A line is a dish plus the variant and add-ons that were ordered with it. Looked up by id even if
-      // archived since: the diner already has the food, and a dish going off the menu mid-meal must not
-      // stop the bill being settled.
-      const variantIds = [...new Set(dto.items.flatMap(line => (line.variantId ? [line.variantId] : [])))];
-      const addOnIds = [...new Set(dto.items.flatMap(line => line.addOnIds ?? []))];
-      const [variants, addOns] = await Promise.all([
-        Promise.all(variantIds.map(id => this.dishVariantRepository.findById(id, { tx }))),
-        addOnIds.length ? this.addOnRepository.findManyByIds(addOnIds, { tx }) : Promise.resolve([]),
-      ]);
+      // A split-by-item bill never touches the menu: each line is an order line, priced by the order's own snapshot.
+      const split = dto.split ? await this.splitLines(dto.split, session, authEntity, tx) : null;
+      // Once part of a table was billed by item, billing "everything" would charge those lines twice.
+      if (!split && !dto.orderId && (await this.paymentRepository.billedItems(session.id, { tx })).some(row => row.orderItemId)) {
+        throw new ConflictException(PAYMENT_ERROR_MESSAGES.SPLIT_IN_PROGRESS);
+      }
+      const items = split ? split.items : await this.pricedItems(dto.items ?? [], session, tx);
 
-      const items: IPaymentItemCreate[] = dto.items.map(line => {
-        const dish = dishes.find(candidate => candidate.id === line.dishId);
-        if (!dish || dish.branchId !== session.branchId) {
-          throw new NotFoundException({ ...PAYMENT_ERROR_MESSAGES.DISH_NOT_FOUND, detail: { dishId: line.dishId } });
-        }
-
-        // §36 — the variant must be this dish's own; a variant id is never taken to price a different dish.
-        const variant = line.variantId ? variants.find(candidate => candidate?.id === line.variantId) : undefined;
-        if (line.variantId && (!variant || variant.dishId !== dish.id)) {
-          throw new NotFoundException({
-            ...PAYMENT_ERROR_MESSAGES.VARIANT_NOT_FOUND,
-            detail: { variantId: line.variantId, dishId: dish.id },
-          });
-        }
-
-        const lineAddOns = (line.addOnIds ?? []).map(id => {
-          const addOn = addOns.find(candidate => candidate.id === id);
-          if (!addOn || addOn.branchId !== session.branchId) {
-            throw new NotFoundException({ ...PAYMENT_ERROR_MESSAGES.ADD_ON_NOT_FOUND, detail: { addOnId: id, dishId: dish.id } });
-          }
-          return addOn;
-        });
-
-        // Same rule an order is priced by: the variant's own price replaces the dish's, add-ons stack on top.
-        const unitPrice = (variant ? variant.price : dish.price) + lineAddOns.reduce((sum, addOn) => sum + addOn.price, 0);
-        const name = [
-          dish.name,
-          variant ? ` · ${variant.name}` : "",
-          lineAddOns.length ? ` + ${lineAddOns.map(addOn => addOn.name).join(", ")}` : "",
-        ].join("");
-        return { dishId: dish.id, dishNameSnapshot: name, unitPrice, quantity: line.quantity };
-      });
-
-      const resolvedCustomerId = await this.resolveCustomerId(session, order, authEntity.restaurantId);
+      // A split bill never defaults to the table's customer — every split would then credit them the same visit's points.
+      const resolvedCustomerId = split ? null : await this.resolveCustomerId(session, order, authEntity.restaurantId);
       // The cashier may name someone else (or nobody). Points follow this id, so it must be one of this restaurant's own customers.
       let customerId = resolvedCustomerId;
       let pickedName: string | null = null;
@@ -183,7 +148,7 @@ export class CompletePaymentUsecase {
         {
           action: AuditAction.payment_completed,
           subject: order ? `Order ${order.reference}` : `Session ${session.id}`,
-          detail: `Charged ${payment.total} ${payment.currency} via ${payment.method}${payment.paymentStatus === "PAID" ? "" : ` (${payment.paymentStatus}, ${payment.total - payment.paidAmount} owed)`}${discount > 0 ? ` (${discount} discount)` : ""}${dto.redeemPoints ? ` (${dto.redeemPoints} points redeemed, ${loyaltyDiscount} off)` : ""}${dto.customerId !== undefined && customerId !== resolvedCustomerId ? ` (customer changed to ${pickedName ?? "none"})` : ""}`,
+          detail: `${split ? "Split by item: " : ""}Charged ${payment.total} ${payment.currency} via ${payment.method}${payment.paymentStatus === "PAID" ? "" : ` (${payment.paymentStatus}, ${payment.total - payment.paidAmount} owed)`}${discount > 0 ? ` (${discount} discount)` : ""}${dto.redeemPoints ? ` (${dto.redeemPoints} points redeemed, ${loyaltyDiscount} off)` : ""}${dto.customerId !== undefined && customerId !== resolvedCustomerId ? ` (customer changed to ${pickedName ?? "none"})` : ""}`,
         },
         authEntity,
         tx
@@ -216,11 +181,117 @@ export class CompletePaymentUsecase {
           { tx, actorId: authEntity.sub }
         );
         this.eventEmitter.emit("order.updated", updatedOrder);
-      } else if (dto.endSession) {
-        await this.diningSessionService.endSession(session, authEntity, tx);
+      } else if (dto.endSession && (!split || split.left === 0)) {
+        // A split bill ends the visit only with the last share; until then the table stays open for the rest.
+        await this.diningSessionService.endSession(session, authEntity, tx, { paid: true });
       }
 
       return payment;
+    });
+  }
+
+  /**
+   * A split-by-item bill: manager-only, table sessions only. Locks the session so two cashiers cannot bill the same
+   * line at once, then takes each chosen order line at the order's own price. `left` is what stays unbilled after this one.
+   */
+  private async splitLines(
+    split: NonNullable<CompletePaymentInput["split"]>,
+    session: { id: string; branchId: string; tableId: string | null },
+    authEntity: AuthEntity,
+    tx: PrismaTransaction
+  ): Promise<{ items: IPaymentItemCreate[]; left: number }> {
+    if (!can(authEntity.role, "payments:split")) throw new ForbiddenException(PAYMENT_ERROR_MESSAGES.SPLIT_NOT_ALLOWED);
+    if (!session.tableId) throw new ConflictException(PAYMENT_ERROR_MESSAGES.SPLIT_TABLE_ONLY);
+    const [orders, billedRows] = await Promise.all([
+      this.orderRepository.findBySessionId(session.id, authEntity.restaurantId, session.branchId),
+      this.paymentRepository.billedItems(session.id, { tx }),
+    ]);
+    // A whole-table bill with no order lines named can't be told apart from these lines, so billing by item on top of it would charge them twice.
+    if (billedRows.some(row => !row.orderItemId)) throw new ConflictException(PAYMENT_ERROR_MESSAGES.SPLIT_AFTER_WHOLE_BILL);
+    const billed = new Map(billedRows.map(row => [row.orderItemId, row.quantity]));
+    const open = new Map<string, { item: (typeof orders)[number]["items"][number]; left: number }>();
+    for (const order of orders) {
+      if (order.status === OrderStatus.CANCELLED) continue;
+      for (const item of order.items) {
+        if (item.status !== OrderItemStatus.CANCELLED) open.set(item.id, { item, left: item.quantity - (billed.get(item.id) ?? 0) });
+      }
+    }
+
+    const wanted = new Map<string, number>();
+    for (const line of split) wanted.set(line.orderItemId, (wanted.get(line.orderItemId) ?? 0) + line.quantity);
+
+    const items: IPaymentItemCreate[] = [];
+    for (const [orderItemId, quantity] of wanted) {
+      const entry = open.get(orderItemId);
+      if (!entry) throw new NotFoundException({ ...PAYMENT_ERROR_MESSAGES.SPLIT_ITEM_NOT_FOUND, detail: { orderItemId } });
+      if (quantity > entry.left) {
+        throw new ConflictException({ ...PAYMENT_ERROR_MESSAGES.SPLIT_OVER_REMAINING, detail: { orderItemId, left: entry.left } });
+      }
+      const { item } = entry;
+      const name = [
+        item.dishNameSnapshot,
+        item.variantNameSnapshot ? ` · ${item.variantNameSnapshot}` : "",
+        item.addOns.length ? ` + ${item.addOns.map(addOn => addOn.nameSnapshot).join(", ")}` : "",
+      ].join("");
+      items.push({ dishId: item.dishId, orderItemId, dishNameSnapshot: name, unitPrice: item.unitPrice, quantity });
+    }
+
+    const unbilled = [...open.values()].reduce((sum, entry) => sum + Math.max(entry.left, 0), 0);
+    return { items, left: unbilled - items.reduce((sum, line) => sum + line.quantity, 0) };
+  }
+
+  /** Prices cashier-chosen lines fresh from the menu. */
+  private async pricedItems(
+    lines: NonNullable<CompletePaymentInput["items"]>,
+    session: { branchId: string },
+    tx: PrismaTransaction
+  ): Promise<IPaymentItemCreate[]> {
+    const dishes = await this.dishRepository.findManyByIds(
+      lines.map(line => line.dishId),
+      { tx }
+    );
+
+    // A line is a dish plus the variant and add-ons that were ordered with it. Looked up by id even if
+    // archived since: the diner already has the food, and a dish going off the menu mid-meal must not
+    // stop the bill being settled.
+    const variantIds = [...new Set(lines.flatMap(line => (line.variantId ? [line.variantId] : [])))];
+    const addOnIds = [...new Set(lines.flatMap(line => line.addOnIds ?? []))];
+    const [variants, addOns] = await Promise.all([
+      Promise.all(variantIds.map(id => this.dishVariantRepository.findById(id, { tx }))),
+      addOnIds.length ? this.addOnRepository.findManyByIds(addOnIds, { tx }) : Promise.resolve([]),
+    ]);
+
+    return lines.map(line => {
+      const dish = dishes.find(candidate => candidate.id === line.dishId);
+      if (!dish || dish.branchId !== session.branchId) {
+        throw new NotFoundException({ ...PAYMENT_ERROR_MESSAGES.DISH_NOT_FOUND, detail: { dishId: line.dishId } });
+      }
+
+      // §36 — the variant must be this dish's own; a variant id is never taken to price a different dish.
+      const variant = line.variantId ? variants.find(candidate => candidate?.id === line.variantId) : undefined;
+      if (line.variantId && (!variant || variant.dishId !== dish.id)) {
+        throw new NotFoundException({
+          ...PAYMENT_ERROR_MESSAGES.VARIANT_NOT_FOUND,
+          detail: { variantId: line.variantId, dishId: dish.id },
+        });
+      }
+
+      const lineAddOns = (line.addOnIds ?? []).map(id => {
+        const addOn = addOns.find(candidate => candidate.id === id);
+        if (!addOn || addOn.branchId !== session.branchId) {
+          throw new NotFoundException({ ...PAYMENT_ERROR_MESSAGES.ADD_ON_NOT_FOUND, detail: { addOnId: id, dishId: dish.id } });
+        }
+        return addOn;
+      });
+
+      // Same rule an order is priced by: the variant's own price replaces the dish's, add-ons stack on top.
+      const unitPrice = (variant ? variant.price : dish.price) + lineAddOns.reduce((sum, addOn) => sum + addOn.price, 0);
+      const name = [
+        dish.name,
+        variant ? ` · ${variant.name}` : "",
+        lineAddOns.length ? ` + ${lineAddOns.map(addOn => addOn.name).join(", ")}` : "",
+      ].join("");
+      return { dishId: dish.id, dishNameSnapshot: name, unitPrice, quantity: line.quantity };
     });
   }
 

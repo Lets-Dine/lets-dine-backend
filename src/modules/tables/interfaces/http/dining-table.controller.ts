@@ -33,7 +33,8 @@ export class DiningTableController {
 
   @Get()
   @UseGuards(AuthGuard, AbilityGuard)
-  @CheckPolicies(checkPermissionRules([["tables:view"]]))
+  // Staff placing an order at the till pick the table/floor from this list — reading it is service, not configuration.
+  @CheckPolicies(checkPermissionRules([["tables:view"], ["orders:advance"]]))
   async fetchAll(
     @Query() query: FetchTablesDto,
     @AuthUser() authEntity: AuthEntity

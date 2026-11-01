@@ -12,6 +12,11 @@ export const DINING_SESSION_ERROR_MESSAGES = {
     key: "DINING_SESSION_JOIN_MISMATCH",
     message: "That session code does not match this table's active visit.",
   },
+  MERGE_SAME_TABLE: { key: "DINING_SESSION_MERGE_SAME_TABLE", message: "Pick a different table to merge into" },
+  MERGE_HAS_PAYMENTS: {
+    key: "DINING_SESSION_MERGE_HAS_PAYMENTS",
+    message: "A table that has already been paid, even in part, can't be merged or moved",
+  },
   NO_ACTIVE_SESSION: { key: "DINING_SESSION_NO_ACTIVE_SESSION", message: "This table has no active visit to end" },
   BRANCH_NOT_FOUND: { key: "DINING_SESSION_BRANCH_NOT_FOUND", message: "This branch is not available for delivery" },
   SERVICE_NOT_AVAILABLE: {

@@ -62,7 +62,12 @@ describe("DiningSessionService", () => {
         { provide: FloorRepository, useValue: { findById: jest.fn() } },
         {
           provide: OrderRepository,
-          useValue: { findOpenBySessionId: jest.fn(), updateItemStatus: jest.fn(), update: jest.fn() },
+          useValue: {
+            findOpenBySessionId: jest.fn(),
+            updateItemStatus: jest.fn(),
+            update: jest.fn(),
+            hasBilledItems: jest.fn().mockResolvedValue(false),
+          },
         },
         { provide: RestaurantRepository, useValue: { findByIdForBranch: jest.fn() } },
         { provide: AuditLogService, useValue: { record: jest.fn() } },
@@ -228,6 +233,29 @@ describe("DiningSessionService", () => {
       );
     });
 
+    it("should serve, not drop, a not-yet-started line that a split share already paid for", async () => {
+      const items = [item({ id: "item-1", status: OrderItemStatus.PENDING, unitPrice: 100 })];
+      orderRepository.findOpenBySessionId.mockResolvedValue([order({ items })]);
+      orderRepository.updateItemStatus.mockImplementation(trackingUpdateItemStatus(items));
+      orderRepository.hasBilledItems.mockResolvedValue(true);
+
+      await service.endSession(session as any, authUser, tx);
+
+      expect(orderRepository.updateItemStatus).toHaveBeenCalledWith("item-1", OrderItemStatus.SERVED, { tx });
+      expect(orderRepository.updateItemStatus).not.toHaveBeenCalledWith("item-1", OrderItemStatus.CANCELLED, { tx });
+    });
+
+    it("should serve a not-yet-started line when the visit ends through a payment", async () => {
+      const items = [item({ id: "item-1", status: OrderItemStatus.PENDING, unitPrice: 100 })];
+      orderRepository.findOpenBySessionId.mockResolvedValue([order({ acceptedAt: null, items })]);
+      orderRepository.updateItemStatus.mockImplementation(trackingUpdateItemStatus(items));
+
+      await service.endSession(session as any, authUser, tx, { paid: true });
+
+      expect(orderRepository.updateItemStatus).toHaveBeenCalledWith("item-1", OrderItemStatus.SERVED, { tx });
+      expect(orderRepository.update).toHaveBeenCalledWith("order-1", expect.objectContaining({ status: OrderStatus.COMPLETED, cancelledAt: null }), { tx, actorId: authUser.sub });
+    });
+
     it("should cancel an order outright when every line was still untouched", async () => {
       // Arrange
       const items = [item({ id: "item-1", status: OrderItemStatus.PENDING })];
@@ -277,7 +305,11 @@ describe("DiningSessionService", () => {
 
       // Assert
       expect(result).toEqual({ id: "table-1", name: "T1" });
-      expect(diningSessionRepository.update).toHaveBeenCalledWith("session-1", { endedAt: expect.any(Date), waiterCalledAt: null, billRequestedAt: null }, tx);
+      expect(diningSessionRepository.update).toHaveBeenCalledWith(
+        "session-1",
+        { endedAt: expect.any(Date), waiterCalledAt: null, billRequestedAt: null },
+        tx
+      );
       expect(diningTableRepository.update).toHaveBeenCalledWith("table-1", { currentSessionId: null }, { tx });
       expect(auditLogService.record).toHaveBeenCalledWith(
         expect.objectContaining({

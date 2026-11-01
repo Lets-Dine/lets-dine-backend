@@ -51,6 +51,10 @@ interface TenantRow {
   pastDueSince: Date | null;
   extraBranches: number;
   extraSeats: number;
+  discountPercent: number | null;
+  discountEndsAt: Date | null;
+  cancelAtPeriodEnd: boolean;
+  featureOverrides: ITenantListItem["featureOverrides"];
   mrr: number;
   branches: number;
   seats: number;
@@ -113,6 +117,10 @@ class TenantRepositoryImpl implements TenantRepository {
           s.past_due_since,
           s.extra_branches,
           s.extra_seats,
+          s.discount_percent,
+          s.discount_ends_at,
+          s.cancel_at_period_end,
+          s.feature_overrides,
           p.key  AS plan_key,
           p.name AS plan_name,
           p.limits,
@@ -177,6 +185,10 @@ class TenantRepositoryImpl implements TenantRepository {
         pg.past_due_since      AS "pastDueSince",
         pg.extra_branches      AS "extraBranches",
         pg.extra_seats         AS "extraSeats",
+        pg.discount_percent    AS "discountPercent",
+        pg.discount_ends_at    AS "discountEndsAt",
+        pg.cancel_at_period_end AS "cancelAtPeriodEnd",
+        pg.feature_overrides   AS "featureOverrides",
         pg.mrr,
         pg.total,
         (SELECT COUNT(*)::int FROM branches b WHERE b.restaurant_id = pg.id AND b.is_active)            AS branches,
@@ -222,6 +234,10 @@ class TenantRepositoryImpl implements TenantRepository {
         seats: row.seats,
         extraBranches: row.extraBranches,
         extraSeats: row.extraSeats,
+        discountPercent: row.discountPercent,
+        discountEndsAt: row.discountEndsAt,
+        cancelAtPeriodEnd: row.cancelAtPeriodEnd,
+        featureOverrides: row.featureOverrides,
         limits: planLimitsSchema.parse(row.limits),
         ordersThisMonth: row.ordersThisMonth ?? 0,
         ordersLastMonth: row.ordersLastMonth ?? 0,

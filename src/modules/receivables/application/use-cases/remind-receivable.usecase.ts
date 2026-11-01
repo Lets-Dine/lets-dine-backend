@@ -11,7 +11,13 @@ export class RemindReceivableUsecase {
   async execute(customerId: string, authEntity: AuthEntity) {
     const amount = await this.repository.owedBy(authEntity.restaurantId, authEntity.branchId, customerId);
     if (amount <= 0) throw new ConflictException({ key: "NOTHING_OWED", message: "This customer owes nothing here" });
-    const row = await this.repository.addReminder({ restaurantId: authEntity.restaurantId, customerId, amount, createdBy: authEntity.sub, createdByName: authEntity.name });
+    const row = await this.repository.addReminder({
+      restaurantId: authEntity.restaurantId,
+      customerId,
+      amount,
+      createdBy: authEntity.sub,
+      createdByName: authEntity.name,
+    });
     return { id: row.id, amount, createdAt: row.createdAt };
   }
 }

@@ -25,7 +25,13 @@ class SuppliersRepositoryImpl implements SuppliersRepository {
     return this.prisma.supplier.findFirst({ where: { restaurantId, name: same(name) }, select: SELECT });
   }
 
-  async createSupplier(data: { restaurantId: string; name: string; phone: string; note: string; createdBy: string }): Promise<ISupplierRecord> {
+  async createSupplier(data: {
+    restaurantId: string;
+    name: string;
+    phone: string;
+    note: string;
+    createdBy: string;
+  }): Promise<ISupplierRecord> {
     return this.prisma.supplier.create({ data, select: SELECT });
   }
 
@@ -59,7 +65,11 @@ class SuppliersRepositoryImpl implements SuppliersRepository {
       merged.set(key, into);
     }
     // What returns gave back comes off the totals (and off what is owed, for credit deliveries).
-    const returned = await this.prisma.supplierReturn.groupBy({ by: ["supplier"], where: { branchId }, _sum: { amount: true, owedOffset: true } });
+    const returned = await this.prisma.supplierReturn.groupBy({
+      by: ["supplier"],
+      where: { branchId },
+      _sum: { amount: true, owedOffset: true },
+    });
     for (const g of returned) {
       const into = merged.get(g.supplier.toLowerCase());
       if (!into) continue;
@@ -82,9 +92,21 @@ class SuppliersRepositoryImpl implements SuppliersRepository {
       orderBy: [{ receivedAt: "desc" }, { id: "desc" }],
       skip: offset,
       take: limit,
-      select: { id: true, receivedAt: true, quantity: true, remaining: true, cost: true, onCredit: true, ingredient: { select: { id: true, name: true, unit: true } } },
+      select: {
+        id: true,
+        receivedAt: true,
+        quantity: true,
+        remaining: true,
+        cost: true,
+        onCredit: true,
+        ingredient: { select: { id: true, name: true, unit: true } },
+      },
     });
-    const refunds = await this.prisma.supplierReturn.groupBy({ by: ["lotId"], where: { lotId: { in: lots.map(l => l.id) } }, _sum: { amount: true } });
+    const refunds = await this.prisma.supplierReturn.groupBy({
+      by: ["lotId"],
+      where: { lotId: { in: lots.map(l => l.id) } },
+      _sum: { amount: true },
+    });
     const refunded = new Map(refunds.map(r => [r.lotId, r._sum.amount ?? 0]));
     return lots.map(l => ({
       remaining: l.remaining,
@@ -104,7 +126,14 @@ class SuppliersRepositoryImpl implements SuppliersRepository {
     if (ingredientIds.length === 0) return [];
     // Newest first, so `distinct` keeps each supplier's latest priced lot per ingredient.
     const lots = await this.prisma.stockLot.findMany({
-      where: { ingredientId: { in: ingredientIds }, supplier: { not: null }, cost: { gt: 0 }, quantity: { gt: 0 }, fromTransfer: false, ingredient: { branchId } },
+      where: {
+        ingredientId: { in: ingredientIds },
+        supplier: { not: null },
+        cost: { gt: 0 },
+        quantity: { gt: 0 },
+        fromTransfer: false,
+        ingredient: { branchId },
+      },
       orderBy: { receivedAt: "desc" },
       distinct: ["ingredientId", "supplier"],
       select: { ingredientId: true, supplier: true, cost: true, quantity: true },
@@ -130,7 +159,10 @@ class SuppliersRepositoryImpl implements SuppliersRepository {
       take: limit,
       select: { id: true, ingredientId: true, quantity: true, amount: true, owedOffset: true, note: true, createdAt: true },
     });
-    const ingredients = await this.prisma.ingredient.findMany({ where: { id: { in: rows.map(r => r.ingredientId) } }, select: { id: true, name: true, unit: true } });
+    const ingredients = await this.prisma.ingredient.findMany({
+      where: { id: { in: rows.map(r => r.ingredientId) } },
+      select: { id: true, name: true, unit: true },
+    });
     const byId = new Map(ingredients.map(i => [i.id, i]));
     return rows.map(r => ({
       id: r.id,
@@ -156,7 +188,15 @@ class SuppliersRepositoryImpl implements SuppliersRepository {
   async createPayment(data: IPaymentCreate): Promise<IPayment> {
     return this.prisma.$transaction(async tx => {
       const payment = await tx.supplierPayment.create({
-        data: { restaurantId: data.restaurantId, branchId: data.branchId, supplier: data.supplier, amount: data.amount, method: data.method, note: data.note, createdBy: data.createdBy },
+        data: {
+          restaurantId: data.restaurantId,
+          branchId: data.branchId,
+          supplier: data.supplier,
+          amount: data.amount,
+          method: data.method,
+          note: data.note,
+          createdBy: data.createdBy,
+        },
         select: { id: true, amount: true, method: true, note: true, createdAt: true },
       });
       // The money leaves now, so the cash book hears about it now (the delivery itself booked nothing).
@@ -188,7 +228,11 @@ class SuppliersRepositoryImpl implements SuppliersRepository {
   }
 
   async countIssues(restaurantId: string, supplier: string): Promise<Partial<Record<SupplierIssueKind, number>>> {
-    const groups = await this.prisma.supplierIssue.groupBy({ by: ["kind"], where: { restaurantId, supplier: same(supplier) }, _count: { _all: true } });
+    const groups = await this.prisma.supplierIssue.groupBy({
+      by: ["kind"],
+      where: { restaurantId, supplier: same(supplier) },
+      _count: { _all: true },
+    });
     return Object.fromEntries(groups.map(g => [g.kind, g._count._all]));
   }
 

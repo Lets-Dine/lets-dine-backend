@@ -15,7 +15,11 @@ export class FetchSupplierPricesUsecase {
     // ponytail: prices come from the latest PRICE_HISTORY deliveries, worked out in memory; move to SQL if a supplier outgrows that.
     const prices = ingredientPrices(await this.suppliersRepository.findDeliveries(authEntity.branchId, query.name, PRICE_HISTORY));
     const rows = prices.slice(query.offset, query.offset + query.limit);
-    const others = await this.suppliersRepository.findOtherPrices(authEntity.branchId, rows.map(p => p.ingredientId), query.name);
+    const others = await this.suppliersRepository.findOtherPrices(
+      authEntity.branchId,
+      rows.map(p => p.ingredientId),
+      query.name
+    );
     return { rows: withCheaper(rows, others), count: prices.length };
   }
 }

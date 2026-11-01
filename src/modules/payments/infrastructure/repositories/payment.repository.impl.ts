@@ -96,7 +96,11 @@ class PaymentRepositoryImpl implements PaymentRepository {
   }
 
   async summarize(query: IPaymentsFetchQuery): Promise<IPaymentsSummary> {
-    const sum = await this.prisma.payment.aggregate({ where: this.whereOf(query), _count: { _all: true }, _sum: { total: true, paidAmount: true, refundedAmount: true } });
+    const sum = await this.prisma.payment.aggregate({
+      where: this.whereOf(query),
+      _count: { _all: true },
+      _sum: { total: true, paidAmount: true, refundedAmount: true },
+    });
     const sold = sum._sum.total ?? 0;
     const collected = sum._sum.paidAmount ?? 0;
     return { count: sum._count._all, sold, collected, refunded: sum._sum.refundedAmount ?? 0, owed: sold - collected };
@@ -214,6 +218,15 @@ class PaymentRepositoryImpl implements PaymentRepository {
       },
     });
     return created;
+  }
+
+  async billedItems(sessionId: string, options?: { tx?: PrismaTransaction }): Promise<{ orderItemId: string | null; quantity: number }[]> {
+    const rows = await (options?.tx ?? this.prisma).paymentItem.groupBy({
+      by: ["orderItemId"],
+      where: { payment: { sessionId } },
+      _sum: { quantity: true },
+    });
+    return rows.map(row => ({ orderItemId: row.orderItemId, quantity: row._sum.quantity ?? 0 }));
   }
 
   async findBySessionId(sessionId: string): Promise<IPaymentWithItems | null> {

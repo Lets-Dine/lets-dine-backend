@@ -55,6 +55,7 @@ enum AuditAction {
   table_enabled
   table_session_started
   table_session_ended
+  table_merged
   qr_regenerated
   floor_created
   floor_renamed

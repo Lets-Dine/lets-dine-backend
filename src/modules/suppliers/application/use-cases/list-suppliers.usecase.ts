@@ -34,7 +34,9 @@ export class ListSuppliersUsecase {
     });
     const items = [
       // An archived supplier is hidden until it has deliveries, so its history never shows as an unsaved name.
-      ...saved.filter(s => !s.isArchived || stats.has(s.name.toLowerCase())).map(s => item(s.id, s.name, s.phone, s.note, stats.get(s.name.toLowerCase()) ?? NONE)),
+      ...saved
+        .filter(s => !s.isArchived || stats.has(s.name.toLowerCase()))
+        .map(s => item(s.id, s.name, s.phone, s.note, stats.get(s.name.toLowerCase()) ?? NONE)),
       ...[...stats].filter(([key]) => !known.has(key)).map(([, st]) => item(null, st.name, "", "", st)),
     ];
     return items.sort((a, b) => (b.lastDeliveryAt?.getTime() ?? 0) - (a.lastDeliveryAt?.getTime() ?? 0) || a.name.localeCompare(b.name));

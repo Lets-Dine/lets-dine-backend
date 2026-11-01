@@ -94,6 +94,7 @@ class CustomerRepositoryImpl implements CustomerRepository {
       notes: link.notes,
       offersOk: link.offersOk,
       favourites: top.map(t => t.dishNameSnapshot),
+      defaultAddress: link.defaultAddress,
     };
   }
 

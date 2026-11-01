@@ -19,6 +19,8 @@ export interface ILifecycleInput {
   trialEndsAt: Date | null;
   currentPeriodEnd: Date;
   pastDueSince: Date | null;
+  /** An operator asked for it to end with the paid period (or trial) instead of going past due. */
+  cancelAtPeriodEnd?: boolean;
 }
 
 export interface ILifecycleResult {
@@ -59,10 +61,12 @@ export function resolveSubscriptionState(
 
   if (status === "TRIAL") {
     if (!input.trialEndsAt || now < input.trialEndsAt) return unchanged;
+    if (input.cancelAtPeriodEnd) return { status: "CANCELLED", pastDueSince: input.pastDueSince, changed: true };
     status = "RESTRICTED";
     since = input.trialEndsAt;
   } else if (status === "ACTIVE") {
     if (now <= input.currentPeriodEnd) return unchanged;
+    if (input.cancelAtPeriodEnd) return { status: "CANCELLED", pastDueSince: input.pastDueSince, changed: true };
     status = "PAST_DUE";
     since = input.currentPeriodEnd;
   }

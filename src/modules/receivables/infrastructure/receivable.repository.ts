@@ -25,7 +25,14 @@ export class ReceivableRepository {
    * A bill with no due date counts as due the day it was made. Timestamps hold UTC, so `now()` is converted
    * before comparing. Bucket totals come from the same CTE, so they cover every customer, not just this page.
    */
-  async list(q: { restaurantId: string; branchId: string; bucket?: ReceivableBucket; sortBy: string; offset: number; limit: number }): Promise<IReceivables> {
+  async list(q: {
+    restaurantId: string;
+    branchId: string;
+    bucket?: ReceivableBucket;
+    sortBy: string;
+    offset: number;
+    limit: number;
+  }): Promise<IReceivables> {
     const byBucket = q.bucket ? Prisma.sql`WHERE bucket = ${q.bucket}` : Prisma.empty;
     const base = Prisma.sql`
       WITH owing AS (

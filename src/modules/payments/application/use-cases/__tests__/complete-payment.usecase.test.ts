@@ -18,7 +18,7 @@ import { PaymentRepository } from "../../../domain/repositories/payment.reposito
 import { CompletePaymentUsecase } from "../complete-payment.usecase";
 
 const authUser = buildAuthEntity();
-const tx = {} as any;
+const tx = { $queryRaw: jest.fn() } as any;
 const session = { id: "session-1", restaurantId: authUser.restaurantId, branchId: authUser.branchId, tableId: "table-1", endedAt: null };
 const restaurant = { id: authUser.restaurantId, serviceChargeRate: 0.1, taxRate: 0.13, currency: "NPR" };
 const dish = { id: "dish-1", restaurantId: authUser.restaurantId, branchId: authUser.branchId, name: "Momo", price: 200 };
@@ -57,7 +57,10 @@ describe("CompletePaymentUsecase", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CompletePaymentUsecase,
-        { provide: PaymentRepository, useValue: { $transaction: jest.fn(fn => fn(tx)), create: jest.fn() } },
+        {
+          provide: PaymentRepository,
+          useValue: { $transaction: jest.fn(fn => fn(tx)), create: jest.fn(), billedItems: jest.fn().mockResolvedValue([]) },
+        },
         { provide: DiningSessionRepository, useValue: { findById: jest.fn() } },
         { provide: DiningSessionService, useValue: { endSession: jest.fn() } },
         { provide: DishRepository, useValue: { findManyByIds: jest.fn() } },
@@ -281,7 +284,7 @@ describe("CompletePaymentUsecase", () => {
       await usecase.execute({ sessionId: "session-1", items: requestItems, method, endSession: true }, authUser);
 
       // Assert
-      expect(diningSessionService.endSession).toHaveBeenCalledWith(session, authUser, tx);
+      expect(diningSessionService.endSession).toHaveBeenCalledWith(session, authUser, tx, { paid: true });
     });
 
     it("should throw NotFoundException when the session isn't this restaurant's", async () => {

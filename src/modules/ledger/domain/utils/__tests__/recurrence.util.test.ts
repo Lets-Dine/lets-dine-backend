@@ -1,8 +1,18 @@
 import { RecurrenceFrequency } from "@prisma/client";
 import { dueDates, nextDue } from "../recurrence.util";
 
-const monthly = (dueDay: number, startsOn: string, handledThrough: string | null = null) => ({ frequency: RecurrenceFrequency.MONTHLY, dueDay, startsOn, handledThrough });
-const weekly = (dueDay: number, startsOn: string, handledThrough: string | null = null) => ({ frequency: RecurrenceFrequency.WEEKLY, dueDay, startsOn, handledThrough });
+const monthly = (dueDay: number, startsOn: string, handledThrough: string | null = null) => ({
+  frequency: RecurrenceFrequency.MONTHLY,
+  dueDay,
+  startsOn,
+  handledThrough,
+});
+const weekly = (dueDay: number, startsOn: string, handledThrough: string | null = null) => ({
+  frequency: RecurrenceFrequency.WEEKLY,
+  dueDay,
+  startsOn,
+  handledThrough,
+});
 
 describe("dueDates", () => {
   it("lists every month's due date from the start up to today, oldest first", () => {

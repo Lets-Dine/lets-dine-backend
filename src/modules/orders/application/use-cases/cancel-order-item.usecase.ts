@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { OrderItemStatus, OrderStatus } from "@prisma/client";
 import { EventEmitter2 } from "@nestjs/event-emitter";
-import { BadRequestException, NotFoundException } from "../../../../common/exceptions";
+import { BadRequestException, ConflictException, NotFoundException } from "../../../../common/exceptions";
 import { type IDiningSession } from "../../../dining-sessions/domain/interfaces/dining-session.interface";
 import { RESTAURANT_ERROR_MESSAGES } from "../../../restaurants/domain/constants";
 import { RestaurantRepository } from "../../../restaurants/domain/repositories/restaurant.repository";
@@ -34,6 +34,9 @@ export class CancelOrderItemUsecase {
 
       const item = order.items.find(candidate => candidate.id === itemId);
       if (!item) throw new NotFoundException(ORDER_ERROR_MESSAGES.ITEM_NOT_FOUND);
+
+      if (order.tableId) await this.orderRepository.lockTable(order.tableId, { tx });
+      if (await this.orderRepository.hasBilledItems({ itemId }, { tx })) throw new ConflictException(ORDER_ERROR_MESSAGES.ITEM_BILLED);
 
       if (!new OrderItemEntity(item).isCancellable()) {
         throw new BadRequestException({ ...ORDER_ERROR_MESSAGES.ITEM_NOT_CANCELLABLE, detail: { status: item.status } });

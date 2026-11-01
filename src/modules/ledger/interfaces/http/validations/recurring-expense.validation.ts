@@ -11,7 +11,12 @@ const day = z
 const reservedCategory = (v: string) => !["stock", "refund"].includes(v.trim().toLowerCase());
 
 const fields = {
-  category: z.string().trim().min(1).max(60).refine(reservedCategory, "Stock and refunds are tracked from inventory and sales — pick another name"),
+  category: z
+    .string()
+    .trim()
+    .min(1)
+    .max(60)
+    .refine(reservedCategory, "Stock and refunds are tracked from inventory and sales — pick another name"),
   amount: z.number().int().min(1).max(2_000_000_000),
   method: z.nativeEnum(PaymentMethod),
   note: z.string().trim().max(300),

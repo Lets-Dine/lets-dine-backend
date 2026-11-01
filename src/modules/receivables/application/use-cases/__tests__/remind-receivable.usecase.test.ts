@@ -12,7 +12,13 @@ describe("RemindReceivableUsecase", () => {
     const { repo, usecase } = make(1500);
     const out = await usecase.execute("c1", auth);
     expect(out.amount).toBe(1500);
-    expect(repo.addReminder).toHaveBeenCalledWith({ restaurantId: "r1", customerId: "c1", amount: 1500, createdBy: "u1", createdByName: "Asha" });
+    expect(repo.addReminder).toHaveBeenCalledWith({
+      restaurantId: "r1",
+      customerId: "c1",
+      amount: 1500,
+      createdBy: "u1",
+      createdByName: "Asha",
+    });
   });
 
   it("refuses a customer who owes nothing, and logs nothing", async () => {

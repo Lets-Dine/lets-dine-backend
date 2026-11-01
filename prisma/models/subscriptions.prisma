@@ -27,6 +27,13 @@ model Subscription {
   extraBranches      Int                @default(0) @map("extra_branches")
   extraSeats         Int                @default(0) @map("extra_seats")
   cancelledAt        DateTime?          @map("cancelled_at")
+  /// Operator-granted percent off the plan fee and extras; ends at `discountEndsAt` when set.
+  discountPercent    Int?               @map("discount_percent")
+  discountEndsAt     DateTime?          @map("discount_ends_at")
+  /// Set by an operator: moves to CANCELLED when the paid period (or trial) ends instead of going past due.
+  cancelAtPeriodEnd  Boolean            @default(false) @map("cancel_at_period_end")
+  /// Partial plan features switched on or off for this restaurant only; a missing key follows the plan.
+  featureOverrides   Json?              @map("feature_overrides")
   createdAt          DateTime           @default(now()) @map("created_at")
   updatedAt          DateTime           @updatedAt @map("updated_at")
   createdBy          String?            @map("created_by") @db.Uuid
@@ -37,6 +44,7 @@ model Subscription {
   /// The downgrade queued for the end of the period — a plan being retired clears it rather than blocking.
   pendingPlan Plan?      @relation("SubscriptionPendingPlan", fields: [pendingPlanId], references: [id], onDelete: SetNull)
   invoices    Invoice[]
+  changes     SubscriptionChange[]
 
   // The lifecycle job scans by status and period end.
   @@index([status, currentPeriodEnd])

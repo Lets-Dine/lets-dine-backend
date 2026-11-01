@@ -6,7 +6,8 @@ import { RecordSupplierPaymentUsecase } from "../record-supplier-payment.usecase
 
 const authUser = buildAuthEntity();
 const input = (over = {}) => ({ supplier: "ram traders", amount: 3000, method: "CASH" as const, note: "", ...over });
-const stats = (credit: number) => new Map([["ram traders", { name: "Ram Traders", deliveries: 2, spent: 9000, credit, lastDeliveryAt: null }]]);
+const stats = (credit: number) =>
+  new Map([["ram traders", { name: "Ram Traders", deliveries: 2, spent: 9000, credit, lastDeliveryAt: null }]]);
 
 describe("RecordSupplierPaymentUsecase", () => {
   let usecase: RecordSupplierPaymentUsecase;

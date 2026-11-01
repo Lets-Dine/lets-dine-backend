@@ -57,8 +57,9 @@ export class ChangePlanUsecase {
     if (!samePlan) await this.assertFitsPlan(plan, subscription, authEntity.restaurantId);
 
     // Moving up mid-period is paid for before it starts: the price difference for the days left.
-    const prorated = subscription.status === "ACTIVE" && !samePlan ? this.upgradeCharge(plan, subscription, now) : 0;
-    if (prorated > 0) return this.requestUpgrade(plan, subscription, interval, prorated, now);
+    const gross = subscription.status === "ACTIVE" && !samePlan ? this.upgradeCharge(plan, subscription, now) : 0;
+    const discount = this.upgradeDiscount(gross, subscription, now);
+    if (gross - discount > 0) return this.requestUpgrade(plan, subscription, interval, gross, discount, now);
 
     // Going back to the current plan costs the same, so it lands here too — which is how a queued downgrade gets cancelled.
     const immediate = plan.monthlyPrice >= subscription.plan.monthlyPrice;
@@ -87,14 +88,22 @@ export class ChangePlanUsecase {
     );
   }
 
+  /** The operator's discount, if still running, applies to the prorated charge too. */
+  private upgradeDiscount(gross: number, subscription: ISubscriptionDetail, now: Date): number {
+    const { discountPercent, discountEndsAt } = subscription;
+    return discountPercent && (!discountEndsAt || discountEndsAt > now) ? Math.round((gross * discountPercent) / 100) : 0;
+  }
+
   /** The plan only changes when this invoice is paid (see InvoiceSettlementService); until then the subscription is untouched but for the interval. */
   private async requestUpgrade(
     plan: IPlan,
     subscription: ISubscriptionDetail,
     interval: BillingInterval,
-    amount: number,
+    gross: number,
+    discount: number,
     now: Date
   ): Promise<IChangePlanResult> {
+    const amount = gross - discount;
     const daysLeft = Math.ceil((subscription.currentPeriodEnd.getTime() - now.getTime()) / DAY_MS);
     const invoice = await this.subscriptionRepository.$transaction(async tx => {
       await this.invoiceRepository.voidOpenForSubscription(subscription.id, { tx, kind: "UPGRADE" });
@@ -108,9 +117,12 @@ export class ChangePlanUsecase {
             {
               description: `Upgrade ${subscription.plan.name} → ${plan.name}, ${daysLeft} days left in this period`,
               quantity: 1,
-              unitAmount: amount,
-              amount,
+              unitAmount: gross,
+              amount: gross,
             },
+            ...(discount > 0
+              ? [{ description: `Discount (${subscription.discountPercent}%)`, quantity: 1, unitAmount: -discount, amount: -discount }]
+              : []),
           ],
           amount,
           currency: plan.currency,

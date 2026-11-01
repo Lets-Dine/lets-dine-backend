@@ -23,6 +23,7 @@ export const ORDER_ERROR_MESSAGES = {
     message: "Seat this table before adding an order",
   },
   ITEM_NOT_FOUND: { key: "ORDER_ITEM_NOT_FOUND", message: "That item is no longer on the bill" },
+  ITEM_BILLED: { key: "ORDER_ITEM_BILLED", message: "That item is already on a paid part of a split bill" },
   NO_OPEN_ORDERS: { key: "ORDER_NO_OPEN_ORDERS", message: "This table has no open orders to settle" },
   /** §20 — once an order is accepted, its status only ever moves by advancing items. */
   STATUS_FOLLOWS_ITEMS: {
@@ -35,6 +36,8 @@ export const ORDER_ERROR_MESSAGES = {
     key: "ORDER_CUSTOMER_NOT_FOUND",
     message: "We couldn't find your delivery details — start your order again",
   },
+  IDEMPOTENCY_KEY_REUSED: { key: "ORDER_IDEMPOTENCY_KEY_REUSED", message: "That request was already used for another order" },
+  DELIVERY_ADDRESS_REQUIRED: { key: "ORDER_DELIVERY_ADDRESS_REQUIRED", message: "Add an address to deliver to" },
   NOT_DELIVERY_ORDER: { key: "ORDER_NOT_DELIVERY_ORDER", message: "This isn't a delivery order" },
   QZ_NOT_CONFIGURED: { key: "ORDER_QZ_NOT_CONFIGURED", message: "Printing certificate is not set up yet" },
 };

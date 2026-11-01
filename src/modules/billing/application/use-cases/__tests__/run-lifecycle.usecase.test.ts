@@ -16,6 +16,7 @@ const live = (overrides: Partial<ILifecycleSubscription> = {}): ILifecycleSubscr
   trialEndsAt: null,
   currentPeriodEnd: new Date("2026-04-15T00:00:00.000Z"),
   pastDueSince: null,
+  cancelAtPeriodEnd: false,
   ...overrides,
 });
 

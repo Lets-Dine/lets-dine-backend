@@ -32,9 +32,7 @@ function qrToken(): string {
 
 async function seedReviewTags(): Promise<void> {
   await Promise.all(
-    REVIEW_TAGS.map((label, sortOrder) =>
-      prisma.dishTag.upsert({ where: { label }, update: { sortOrder }, create: { label, sortOrder } })
-    )
+    REVIEW_TAGS.map((label, sortOrder) => prisma.dishTag.upsert({ where: { label }, update: { sortOrder }, create: { label, sortOrder } }))
   );
   console.info(`Seeded ${REVIEW_TAGS.length} review tags`);
 }
@@ -52,26 +50,74 @@ const MENU: MenuSection[] = [
     category: "From the grill",
     emoji: "🔥",
     dishes: [
-      { name: "Chicken Sekuwa", description: "Charcoal-grilled, marinated overnight in timur and mustard oil.", price: 45000, dietaryType: "NON_VEG", spiceLevel: 2 },
-      { name: "Paneer Sekuwa", description: "Smoked cottage cheese skewers with roasted tomato achar.", price: 39000, dietaryType: "VEG", spiceLevel: 1 },
-      { name: "Buff Choila", description: "Grilled buffalo, ginger, garlic and mustard oil. A Newari classic.", price: 42000, dietaryType: "NON_VEG", spiceLevel: 3 },
+      {
+        name: "Chicken Sekuwa",
+        description: "Charcoal-grilled, marinated overnight in timur and mustard oil.",
+        price: 45000,
+        dietaryType: "NON_VEG",
+        spiceLevel: 2,
+      },
+      {
+        name: "Paneer Sekuwa",
+        description: "Smoked cottage cheese skewers with roasted tomato achar.",
+        price: 39000,
+        dietaryType: "VEG",
+        spiceLevel: 1,
+      },
+      {
+        name: "Buff Choila",
+        description: "Grilled buffalo, ginger, garlic and mustard oil. A Newari classic.",
+        price: 42000,
+        dietaryType: "NON_VEG",
+        spiceLevel: 3,
+      },
     ],
   },
   {
     category: "Momo",
     emoji: "🥟",
     dishes: [
-      { name: "Buff Steam Momo", description: "Ten hand-pleated momo with sesame tomato achar.", price: 28000, dietaryType: "NON_VEG", spiceLevel: 1 },
-      { name: "Veg Jhol Momo", description: "Steamed veg momo swimming in a sour, hot soybean broth.", price: 26000, dietaryType: "VEG", spiceLevel: 2 },
-      { name: "Chicken C Momo", description: "Pan-tossed with onion, capsicum and chilli sauce.", price: 32000, dietaryType: "NON_VEG", spiceLevel: 3 },
+      {
+        name: "Buff Steam Momo",
+        description: "Ten hand-pleated momo with sesame tomato achar.",
+        price: 28000,
+        dietaryType: "NON_VEG",
+        spiceLevel: 1,
+      },
+      {
+        name: "Veg Jhol Momo",
+        description: "Steamed veg momo swimming in a sour, hot soybean broth.",
+        price: 26000,
+        dietaryType: "VEG",
+        spiceLevel: 2,
+      },
+      {
+        name: "Chicken C Momo",
+        description: "Pan-tossed with onion, capsicum and chilli sauce.",
+        price: 32000,
+        dietaryType: "NON_VEG",
+        spiceLevel: 3,
+      },
     ],
   },
   {
     category: "Rice & noodles",
     emoji: "🍚",
     dishes: [
-      { name: "Dal Bhat Set", description: "Lentils, seasonal tarkari, saag, pickle and papad. Free refills.", price: 35000, dietaryType: "VEG", spiceLevel: 1 },
-      { name: "Chicken Thukpa", description: "Himalayan noodle soup with sliced chicken and greens.", price: 30000, dietaryType: "NON_VEG", spiceLevel: 2 },
+      {
+        name: "Dal Bhat Set",
+        description: "Lentils, seasonal tarkari, saag, pickle and papad. Free refills.",
+        price: 35000,
+        dietaryType: "VEG",
+        spiceLevel: 1,
+      },
+      {
+        name: "Chicken Thukpa",
+        description: "Himalayan noodle soup with sliced chicken and greens.",
+        price: 30000,
+        dietaryType: "NON_VEG",
+        spiceLevel: 2,
+      },
       { name: "Veg Chowmein", description: "Wok-fired noodles with crunchy vegetables.", price: 22000, dietaryType: "VEG", spiceLevel: 1 },
     ],
   },
@@ -79,8 +125,20 @@ const MENU: MenuSection[] = [
     category: "Drinks & sweets",
     emoji: "🍵",
     dishes: [
-      { name: "Masala Chiya", description: "Milk tea simmered with cardamom, ginger and clove.", price: 6000, dietaryType: "VEG", spiceLevel: 0 },
-      { name: "Mango Lassi", description: "Thick yoghurt, ripe mango, a pinch of cardamom.", price: 15000, dietaryType: "VEG", spiceLevel: 0 },
+      {
+        name: "Masala Chiya",
+        description: "Milk tea simmered with cardamom, ginger and clove.",
+        price: 6000,
+        dietaryType: "VEG",
+        spiceLevel: 0,
+      },
+      {
+        name: "Mango Lassi",
+        description: "Thick yoghurt, ripe mango, a pinch of cardamom.",
+        price: 15000,
+        dietaryType: "VEG",
+        spiceLevel: 0,
+      },
       { name: "Juju Dhau", description: "Bhaktapur king curd, set in a clay pot.", price: 12000, dietaryType: "VEG", spiceLevel: 0 },
     ],
   },
@@ -216,7 +274,9 @@ async function seedDemoRestaurant(): Promise<void> {
     }
   }
 
-  console.info(`Seeded demo restaurant "${restaurant.name}" — sign in with any of ${staff.map(member => member.email).join(", ")} and PIN ${DEMO_PIN}`);
+  console.info(
+    `Seeded demo restaurant "${restaurant.name}" — sign in with any of ${staff.map(member => member.email).join(", ")} and PIN ${DEMO_PIN}`
+  );
 }
 
 /* ── Trading history ───────────────────────────────────────────
@@ -372,9 +432,7 @@ async function seedTradingHistory(): Promise<void> {
   let orders = 0;
   let reviews = 0;
 
-  const profiles = dishes.map(
-    dish => DISH_HISTORY.find(profile => profile.slug === dish.slug) ?? quietProfile(dish.slug, random)
-  );
+  const profiles = dishes.map(dish => DISH_HISTORY.find(profile => profile.slug === dish.slug) ?? quietProfile(dish.slug, random));
 
   for (const profile of profiles) {
     const dish = dishes.find(candidate => candidate.slug === profile.slug);
@@ -468,12 +526,27 @@ async function seedTradingHistory(): Promise<void> {
           // Paid in full, the way a till takes it: one collection for the whole bill.
           paidAmount: order.total,
           paymentStatus: "PAID",
-          tenders: { create: { restaurantId: restaurant.id, branchId: branch.id, amount: order.total, method, paidAt: completedAt, createdAt: completedAt } },
+          tenders: {
+            create: {
+              restaurantId: restaurant.id,
+              branchId: branch.id,
+              amount: order.total,
+              method,
+              paidAt: completedAt,
+              createdAt: completedAt,
+            },
+          },
           currency: restaurant.currency,
           createdAt: completedAt,
           createdByName: "Sunita Tamang",
           items: {
-            create: { dishId: dish.id, dishNameSnapshot: dish.name, unitPrice: dish.price, quantity: placement.quantity, createdAt: completedAt },
+            create: {
+              dishId: dish.id,
+              dishNameSnapshot: dish.name,
+              unitPrice: dish.price,
+              quantity: placement.quantity,
+              createdAt: completedAt,
+            },
           },
         },
       });
@@ -542,18 +615,66 @@ const INGREDIENTS: [string, string, number, number, number][] = [
 
 /** dish slug → [ingredient, grams/ml per serving] */
 const RECIPES: Record<string, [string, number][]> = {
-  "chicken-sekuwa": [["Chicken", 250], ["Mustard oil", 20], ["Spice mix", 15]],
-  "paneer-sekuwa": [["Paneer", 200], ["Mustard oil", 20], ["Tomato", 60]],
-  "buff-choila": [["Buffalo meat", 250], ["Onion", 40], ["Mustard oil", 25], ["Spice mix", 15]],
-  "buff-steam-momo": [["Buffalo meat", 120], ["Maida flour", 100], ["Onion", 40], ["Tomato", 50]],
-  "veg-jhol-momo": [["Mixed vegetables", 150], ["Maida flour", 100], ["Tomato", 80]],
-  "chicken-c-momo": [["Chicken", 120], ["Maida flour", 100], ["Onion", 50], ["Mustard oil", 15]],
-  "dal-bhat-set": [["Rice", 250], ["Lentils", 100], ["Mixed vegetables", 120]],
-  "chicken-thukpa": [["Chicken", 100], ["Noodles", 120], ["Mixed vegetables", 60]],
-  "veg-chowmein": [["Noodles", 150], ["Mixed vegetables", 100], ["Onion", 30]],
-  "masala-chiya": [["Milk", 150], ["Tea leaves", 4]],
-  "mango-lassi": [["Yoghurt", 200], ["Mango pulp", 100]],
-  "juju-dhau": [["Yoghurt", 250], ["Milk", 50]],
+  "chicken-sekuwa": [
+    ["Chicken", 250],
+    ["Mustard oil", 20],
+    ["Spice mix", 15],
+  ],
+  "paneer-sekuwa": [
+    ["Paneer", 200],
+    ["Mustard oil", 20],
+    ["Tomato", 60],
+  ],
+  "buff-choila": [
+    ["Buffalo meat", 250],
+    ["Onion", 40],
+    ["Mustard oil", 25],
+    ["Spice mix", 15],
+  ],
+  "buff-steam-momo": [
+    ["Buffalo meat", 120],
+    ["Maida flour", 100],
+    ["Onion", 40],
+    ["Tomato", 50],
+  ],
+  "veg-jhol-momo": [
+    ["Mixed vegetables", 150],
+    ["Maida flour", 100],
+    ["Tomato", 80],
+  ],
+  "chicken-c-momo": [
+    ["Chicken", 120],
+    ["Maida flour", 100],
+    ["Onion", 50],
+    ["Mustard oil", 15],
+  ],
+  "dal-bhat-set": [
+    ["Rice", 250],
+    ["Lentils", 100],
+    ["Mixed vegetables", 120],
+  ],
+  "chicken-thukpa": [
+    ["Chicken", 100],
+    ["Noodles", 120],
+    ["Mixed vegetables", 60],
+  ],
+  "veg-chowmein": [
+    ["Noodles", 150],
+    ["Mixed vegetables", 100],
+    ["Onion", 30],
+  ],
+  "masala-chiya": [
+    ["Milk", 150],
+    ["Tea leaves", 4],
+  ],
+  "mango-lassi": [
+    ["Yoghurt", 200],
+    ["Mango pulp", 100],
+  ],
+  "juju-dhau": [
+    ["Yoghurt", 250],
+    ["Milk", 50],
+  ],
 };
 
 async function seedInventory(): Promise<void> {
@@ -657,10 +778,27 @@ async function seedDelivery(): Promise<void> {
     },
   });
   const staffRider = await prisma.deliveryRider.create({
-    data: { restaurantId: restaurant.id, branchId: branch.id, name: "Prakash Gurung", phone: "9801000001", kind: "STAFF", vehicle: "Honda Dio", payModel: "SALARIED" },
+    data: {
+      restaurantId: restaurant.id,
+      branchId: branch.id,
+      name: "Prakash Gurung",
+      phone: "9801000001",
+      kind: "STAFF",
+      vehicle: "Honda Dio",
+      payModel: "SALARIED",
+    },
   });
   const freelancer = await prisma.deliveryRider.create({
-    data: { restaurantId: restaurant.id, branchId: branch.id, name: "Dipesh Karki", phone: "9801000002", kind: "FREELANCE", vehicle: "Pulsar 150", payModel: "PER_DELIVERY", payValue: 8000 },
+    data: {
+      restaurantId: restaurant.id,
+      branchId: branch.id,
+      name: "Dipesh Karki",
+      phone: "9801000002",
+      kind: "FREELANCE",
+      vehicle: "Pulsar 150",
+      payModel: "PER_DELIVERY",
+      payValue: 8000,
+    },
   });
 
   const customers: ((typeof CUSTOMERS)[number] & { id: string })[] = [];
@@ -802,11 +940,28 @@ async function seedDelivery(): Promise<void> {
           method: "CASH",
           paidAmount: total,
           paymentStatus: "PAID",
-          tenders: { create: { restaurantId: restaurant.id, branchId: branch.id, amount: total, method: "CASH", paidAt: completedAt, createdAt: completedAt } },
+          tenders: {
+            create: {
+              restaurantId: restaurant.id,
+              branchId: branch.id,
+              amount: total,
+              method: "CASH",
+              paidAt: completedAt,
+              createdAt: completedAt,
+            },
+          },
           currency: restaurant.currency,
           createdAt: completedAt,
           createdByName: "Sunita Tamang",
-          items: { create: lines.map(line => ({ dishId: line.dish.id, dishNameSnapshot: line.dish.name, unitPrice: line.dish.price, quantity: line.quantity, createdAt: completedAt })) },
+          items: {
+            create: lines.map(line => ({
+              dishId: line.dish.id,
+              dishNameSnapshot: line.dish.name,
+              unitPrice: line.dish.price,
+              quantity: line.quantity,
+              createdAt: completedAt,
+            })),
+          },
         },
       });
     }
@@ -918,7 +1073,11 @@ async function seedLotQuality(): Promise<void> {
 
   // Live orders also consume lots, so "already seeded" means these story suppliers, not any consumption.
   const seededLots = await prisma.stockLot.count({
-    where: { ingredient: { branchId: branch.id }, supplier: { in: LOT_STORIES.flatMap(story => story.lots.map(lot => lot.supplier)) }, remaining: 0 },
+    where: {
+      ingredient: { branchId: branch.id },
+      supplier: { in: LOT_STORIES.flatMap(story => story.lots.map(lot => lot.supplier)) },
+      remaining: 0,
+    },
   });
   if (seededLots > 0) {
     console.info("Delivery quality already seeded — skipping");
@@ -949,7 +1108,9 @@ async function seedLotQuality(): Promise<void> {
       if (group.length === 0) continue;
 
       // Poor reviews spread evenly through the group, the way a bad batch actually shows up.
-      const poorAt = new Set(Array.from({ length: Math.min(plan.poor, group.length) }, (_, k) => Math.floor(((k + 0.5) * group.length) / plan.poor)));
+      const poorAt = new Set(
+        Array.from({ length: Math.min(plan.poor, group.length) }, (_, k) => Math.floor(((k + 0.5) * group.length) / plan.poor))
+      );
 
       const uses = group.flatMap(review => review.order.items.map(item => ({ review, item, quantity: perServing * item.quantity })));
       const quantity = uses.reduce((sum, use) => sum + use.quantity, 0);
@@ -957,7 +1118,14 @@ async function seedLotQuality(): Promise<void> {
 
       // Fully used up already — the stock on the shelf is the newer opening lot.
       const lot = await prisma.stockLot.create({
-        data: { ingredientId: ingredient.id, supplier: plan.supplier, cost: Math.round(quantity * plan.perUnit), quantity, remaining: 0, receivedAt },
+        data: {
+          ingredientId: ingredient.id,
+          supplier: plan.supplier,
+          cost: Math.round(quantity * plan.perUnit),
+          quantity,
+          remaining: 0,
+          receivedAt,
+        },
       });
       await prisma.lotConsumption.createMany({
         data: uses.map(use => ({ lotId: lot.id, orderItemId: use.item.id, quantity: use.quantity, createdAt: use.review.order.createdAt })),

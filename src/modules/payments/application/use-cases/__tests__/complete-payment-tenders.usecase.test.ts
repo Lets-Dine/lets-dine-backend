@@ -3,7 +3,7 @@ import { buildAuthEntity } from "../../../../../common/testing";
 import { CompletePaymentUsecase } from "../complete-payment.usecase";
 
 const authUser = buildAuthEntity();
-const tx = {} as any;
+const tx = { $queryRaw: jest.fn() } as any;
 // Rs 2,000 net: price 2000, no service charge or tax so the totals read plainly.
 const restaurant = { id: authUser.restaurantId, serviceChargeRate: 0, taxRate: 0, currency: "NPR" };
 const session = {
@@ -22,6 +22,7 @@ function build() {
     $transaction: jest.fn(fn => fn(tx)),
     create: jest.fn(async data => ({ id: "pay-1", ...data })),
     findByIdempotencyKey: jest.fn().mockResolvedValue(null),
+    billedItems: jest.fn().mockResolvedValue([]),
   };
   const customerRepository = { findById: jest.fn().mockResolvedValue({ id: "cust-1", name: "Sita" }) };
   const usecase = new CompletePaymentUsecase(

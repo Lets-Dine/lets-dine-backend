@@ -35,13 +35,9 @@ export class RenewalChargeService {
       this.usageRepository.countActiveBranches(subscription.restaurantId),
       this.usageRepository.countActiveSeats(subscription.restaurantId),
     ]);
-    const lines = buildInvoiceLines(plan, { ...subscription, usedBranches, usedSeats });
-    return {
-      lines,
-      amount: sumLines(lines),
-      currency: plan.currency,
-      period: resolveInvoicePeriod(subscription.currentPeriodEnd, subscription.interval, now),
-    };
+    const period = resolveInvoicePeriod(subscription.currentPeriodEnd, subscription.interval, now);
+    const lines = buildInvoiceLines(plan, { ...subscription, usedBranches, usedSeats }, period.periodStart);
+    return { lines, amount: sumLines(lines), currency: plan.currency, period };
   }
 
   async findOpenRenewal(restaurantId: string): Promise<IInvoice | null> {

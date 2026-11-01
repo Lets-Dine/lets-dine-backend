@@ -22,7 +22,17 @@ export const completePaymentSchema = z
           quantity: z.number().int().min(1).max(50),
         })
       )
-      .min(1),
+      .min(1)
+      .optional(),
+    /**
+     * A split-by-item bill (manager only): which order lines, and how many of each, this payer takes. Instead of `items`,
+     * never with it. The server prices each line from the order's own snapshot and refuses more than is still unbilled.
+     */
+    split: z
+      .array(z.object({ orderItemId: z.string().uuid(), quantity: z.number().int().min(1).max(50) }))
+      .min(1)
+      .max(100)
+      .optional(),
     /** How a bill paid in full is settled. Optional when `tenders` spell the collections out. */
     method: z.nativeEnum(PaymentMethod).optional(),
     /**
@@ -60,6 +70,8 @@ export const completePaymentSchema = z
     /** Also ends the visit — every order still on the session gets marked completed in the same motion. */
     endSession: z.boolean().optional(),
   })
+  .refine(body => !!body.items !== !!body.split, { message: "Give either items or a split, not both", path: ["items"] })
+  .refine(body => !body.split || !body.orderId, { message: "A floor order can't be split by item", path: ["split"] })
   .refine(body => body.method || body.tenders?.length || body.credit, {
     message: "Give a method, tenders, or mark the bill as credit",
     path: ["method"],

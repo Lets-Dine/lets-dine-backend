@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { AbilityGuard, AuthGuard, AuthUser, CheckPolicies, checkPermissionRules } from "../../../../common/auth";
 import { type AuthEntity, IHttpResponse, PaginatedResponse } from "../../../../common/interfaces";
 import { ParseUuidPipe } from "../../../../common/pipes";
@@ -6,11 +6,13 @@ import { buildHttpResponse } from "../../../../common/utils";
 import { AddOrderItemDto } from "../../application/dto/add-order-item.dto";
 import { AdvanceOrderItemStatusDto } from "../../application/dto/advance-order-item-status.dto";
 import { CancelOrderDto } from "../../application/dto/cancel-order.dto";
+import { CreateStaffOrderDto } from "../../application/dto/create-staff-order.dto";
 import { FetchOrdersDto } from "../../application/dto/fetch-orders.dto";
 import { UpdateOrderStatusDto } from "../../application/dto/update-order-status.dto";
 import { AddOrderItemUsecase } from "../../application/use-cases/add-order-item.usecase";
 import { AdvanceOrderItemStatusUsecase } from "../../application/use-cases/advance-order-item-status.usecase";
 import { CancelOrderUsecase } from "../../application/use-cases/cancel-order.usecase";
+import { CreateStaffOrderUsecase } from "../../application/use-cases/create-staff-order.usecase";
 import { FetchAllOrdersUsecase } from "../../application/use-cases/fetch-all-orders.usecase";
 import { FetchOrderByIdUsecase } from "../../application/use-cases/fetch-order-by-id.usecase";
 import { FetchOrdersBySessionUsecase } from "../../application/use-cases/fetch-orders-by-session.usecase";
@@ -33,8 +35,22 @@ export class RestaurantOrderController {
     private readonly removeOrderItemUsecase: RemoveOrderItemUsecase,
     private readonly advanceOrderItemStatusUsecase: AdvanceOrderItemStatusUsecase,
     private readonly settleTableUsecase: SettleTableUsecase,
-    private readonly deliverOrderUsecase: DeliverOrderUsecase
+    private readonly deliverOrderUsecase: DeliverOrderUsecase,
+    private readonly createStaffOrderUsecase: CreateStaffOrderUsecase
   ) {}
+
+  /** Staff placing an order at the till — for a table (seating it if needed), a floor, or a delivery. */
+  @Post()
+  @UseGuards(AuthGuard, AbilityGuard)
+  @CheckPolicies(checkPermissionRules([["orders:advance"]]))
+  async create(
+    @Body() dto: CreateStaffOrderDto,
+    @AuthUser() authEntity: AuthEntity,
+    @Headers("idempotency-key") idempotencyKey?: string
+  ): Promise<IHttpResponse<IOrderWithItems>> {
+    const order = await this.createStaffOrderUsecase.execute(dto, authEntity, { idempotencyKey });
+    return buildHttpResponse(order, ORDER_SUCCESS_MESSAGES.ORDER_CREATED);
+  }
 
   @Get()
   @UseGuards(AuthGuard, AbilityGuard)

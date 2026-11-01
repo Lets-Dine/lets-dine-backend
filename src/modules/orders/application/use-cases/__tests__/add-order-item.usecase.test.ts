@@ -49,7 +49,7 @@ describe("AddOrderItemUsecase", () => {
           provide: OrderRepository,
           useValue: { $transaction: jest.fn(fn => fn(tx)), findLatestByTableId: jest.fn(), syncItems: jest.fn(), create: jest.fn() },
         },
-        { provide: DiningTableRepository, useValue: { findById: jest.fn() } },
+        { provide: DiningTableRepository, useValue: { findById: jest.fn(), lockById: jest.fn() } },
         { provide: DiningSessionRepository, useValue: { findOpenByTableId: jest.fn() } },
         { provide: DishRepository, useValue: { findById: jest.fn() } },
         { provide: AddOnRepository, useValue: { findLinkedToDish: jest.fn() } },

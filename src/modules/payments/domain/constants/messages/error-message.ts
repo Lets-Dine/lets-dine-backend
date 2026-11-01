@@ -24,5 +24,17 @@ export const PAYMENT_ERROR_MESSAGES = {
     message: "That refund doesn't fit the collection it points at — use the same method and no more than it took",
   },
   TENDER_NOT_FOUND: { key: "PAYMENT_TENDER_NOT_FOUND", message: "That collection doesn't belong to this bill" },
+  SPLIT_NOT_ALLOWED: { key: "PAYMENT_SPLIT_NOT_ALLOWED", message: "Only a manager can split a bill by item" },
+  SPLIT_TABLE_ONLY: { key: "PAYMENT_SPLIT_TABLE_ONLY", message: "Only a table's bill can be split by item" },
+  SPLIT_ITEM_NOT_FOUND: { key: "PAYMENT_SPLIT_ITEM_NOT_FOUND", message: "One of these items is no longer on the bill" },
+  SPLIT_OVER_REMAINING: { key: "PAYMENT_SPLIT_OVER_REMAINING", message: "That is more of an item than is still unbilled" },
+  SPLIT_AFTER_WHOLE_BILL: {
+    key: "PAYMENT_SPLIT_AFTER_WHOLE_BILL",
+    message: "This table already has a whole-table bill, so it can't be split by item",
+  },
+  SPLIT_IN_PROGRESS: {
+    key: "PAYMENT_SPLIT_IN_PROGRESS",
+    message: "This bill is being split by item — settle what is left the same way",
+  },
   ORDER_ALREADY_PAID: { key: "PAYMENT_ORDER_ALREADY_PAID", message: "That order has already been paid" },
 };

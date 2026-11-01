@@ -15,7 +15,9 @@ export interface IRecurringExpenseCreate {
   createdBy: string;
 }
 
-export type IRecurringExpenseUpdate = Partial<Omit<IRecurringExpenseCreate, "restaurantId" | "branchId" | "createdBy"> & { isActive: boolean; handledThrough: Date | null }>;
+export type IRecurringExpenseUpdate = Partial<
+  Omit<IRecurringExpenseCreate, "restaurantId" | "branchId" | "createdBy"> & { isActive: boolean; handledThrough: Date | null }
+>;
 
 export abstract class RecurringExpenseRepository {
   abstract $transaction<T>(fn: (tx: PrismaTransaction) => Promise<T>): Promise<T>;

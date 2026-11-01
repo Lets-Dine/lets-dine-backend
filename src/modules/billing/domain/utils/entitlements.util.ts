@@ -2,6 +2,7 @@ import { SubscriptionStatus } from "@prisma/client";
 import {
   PlanFeaturesConfig,
   PlanLimitsConfig,
+  featureOverridesSchema,
   planFeaturesSchema,
   planLimitsSchema,
 } from "../../interfaces/http/validations/plan-config.validation";
@@ -35,7 +36,8 @@ const addExtra = (base: number | undefined, extra: number): number | undefined =
 /** Parses the plan's JSON at the boundary — a malformed plan throws instead of silently granting or denying access. */
 export function resolveEntitlements(subscription: IBillingSubscription, now: Date): IEntitlements {
   const limits: PlanLimitsConfig = planLimitsSchema.parse(subscription.plan.limits);
-  const features: PlanFeaturesConfig = planFeaturesSchema.parse(subscription.plan.features);
+  const planFeatures = planFeaturesSchema.parse(subscription.plan.features);
+  const features: PlanFeaturesConfig = { ...planFeatures, ...featureOverridesSchema.parse(subscription.featureOverrides ?? {}) };
 
   return {
     planKey: subscription.plan.key,

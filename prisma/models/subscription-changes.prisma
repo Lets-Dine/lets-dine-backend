@@ -1,0 +1,15 @@
+/// What an operator changed on a subscription and why. The platform key carries no user identity, so unlike AuditLog there is no actor.
+model SubscriptionChange {
+  id             String   @id @default(uuid()) @map("id") @db.Uuid
+  subscriptionId String   @map("subscription_id") @db.Uuid
+  action         String   @map("action")
+  reason         String   @map("reason")
+  detail         String   @default("") @map("detail")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId, createdAt])
+  @@map("subscription_changes")
+  @@schema("public")
+}

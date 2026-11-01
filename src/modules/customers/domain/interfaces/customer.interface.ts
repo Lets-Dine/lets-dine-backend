@@ -34,6 +34,8 @@ export interface ICustomerProfile {
   offersOk: boolean;
   /** Dishes they order most, most first — from their own orders here, never typed in. */
   favourites: string[];
+  /** Where a delivery to them went last — what a staff-placed delivery prefills. */
+  defaultAddress: string | null;
 }
 
 export type CustomerSegment = "new" | "regular" | "lapsed" | "occasional";

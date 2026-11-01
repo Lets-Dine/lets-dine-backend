@@ -13,7 +13,8 @@ export interface IRecurrence {
 export const MAX_DUE = 24;
 
 const parts = (day: string) => day.split("-").map(Number) as [number, number, number];
-const fmt = (y: number, m: number, d: number) => `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+const fmt = (y: number, m: number, d: number) =>
+  `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 const daysIn = (y: number, m: number) => new Date(Date.UTC(y, m, 0)).getUTCDate();
 
 export function addDays(day: string, n: number): string {

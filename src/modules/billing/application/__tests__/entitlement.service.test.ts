@@ -20,6 +20,7 @@ const buildSubscription = (overrides: Partial<IBillingSubscription> = {}): IBill
   pastDueSince: null,
   extraBranches: 0,
   extraSeats: 0,
+  featureOverrides: null,
   plan: {
     id: "plan-1",
     key: "starter",

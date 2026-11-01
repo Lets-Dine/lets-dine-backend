@@ -46,7 +46,10 @@ export class RecurringExpenseController {
     @Body() dto: UpdateRecurringExpenseDto,
     @AuthUser() authEntity: AuthEntity
   ): Promise<IHttpResponse<IRecurringExpense>> {
-    return buildHttpResponse(await this.updateRecurringExpenseUsecase.execute(id, dto, authEntity), LEDGER_SUCCESS_MESSAGES.RECURRING_UPDATED);
+    return buildHttpResponse(
+      await this.updateRecurringExpenseUsecase.execute(id, dto, authEntity),
+      LEDGER_SUCCESS_MESSAGES.RECURRING_UPDATED
+    );
   }
 
   @Delete(":id")
@@ -67,6 +70,9 @@ export class RecurringExpenseController {
     @Body() dto: SettleRecurringExpenseDto,
     @AuthUser() authEntity: AuthEntity
   ): Promise<IHttpResponse<IRecurringExpense>> {
-    return buildHttpResponse(await this.settleRecurringExpenseUsecase.execute(id, dto, authEntity), LEDGER_SUCCESS_MESSAGES.RECURRING_SETTLED);
+    return buildHttpResponse(
+      await this.settleRecurringExpenseUsecase.execute(id, dto, authEntity),
+      LEDGER_SUCCESS_MESSAGES.RECURRING_SETTLED
+    );
   }
 }

@@ -12,7 +12,9 @@ export interface IDiningSessionCreate {
   expiresAt: Date;
 }
 
-export type IDiningSessionUpdate = Partial<Pick<IDiningSession, "expiresAt" | "endedAt" | "waiterCalledAt" | "billRequestedAt">>;
+export type IDiningSessionUpdate = Partial<
+  Pick<IDiningSession, "tableId" | "expiresAt" | "endedAt" | "waiterCalledAt" | "billRequestedAt">
+>;
 
 export interface DiningSessionFetchOptions {
   tx?: PrismaTransaction;
@@ -25,5 +27,7 @@ export abstract class DiningSessionRepository {
   abstract findActiveByTableId(tableId: string, options?: DiningSessionFetchOptions): Promise<IDiningSession | null>;
   abstract findServiceRequests(restaurantId: string, branchId: string): Promise<IServiceRequest[]>;
   abstract create(data: IDiningSessionCreate, options?: { tx?: PrismaTransaction }): Promise<IDiningSession>;
+  /** Whether any bill — a whole-table one or a split share — was ever taken on this visit. */
+  abstract hasPayments(sessionId: string, options?: DiningSessionFetchOptions): Promise<boolean>;
   abstract update(id: string, data: IDiningSessionUpdate, transaction?: PrismaTransaction): Promise<IDiningSession>;
 }

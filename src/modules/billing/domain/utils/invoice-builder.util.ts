@@ -12,6 +12,8 @@ interface IBillable {
   /** Active right now — whatever is beyond what the plan includes is billed, purchased or not. */
   usedBranches: number;
   usedSeats: number;
+  discountPercent?: number | null;
+  discountEndsAt?: Date | null;
 }
 
 const priceFor = (monthly: number, interval: BillingInterval): number =>
@@ -32,11 +34,12 @@ const billedExtras = (purchased: number, used: number, included: number | undefi
  * What one period of this plan costs: the plan fee plus extras — purchased, or simply in use past the limit.
  * Nothing is capped; the overage is how the plan grows with the restaurant.
  * ponytail: a snapshot of usage at invoice time, not peak or prorated — add usage history if that gets disputed.
+ * An operator discount is a negative line on that subtotal while it runs (`discountEndsAt` is exclusive).
  * An extra on a plan with no price for it is left off rather than billed at an
  * invented price — assigning one is rejected up front, so that only happens to
  * data that predates the check.
  */
-export function buildInvoiceLines(plan: IPlan, subscription: IBillable): IInvoiceLine[] {
+export function buildInvoiceLines(plan: IPlan, subscription: IBillable, periodStart: Date = new Date()): IInvoiceLine[] {
   const annual = subscription.interval === "ANNUAL";
   const limits = planLimitsSchema.parse(plan.limits);
   const lines = [line(`${plan.name} plan — ${annual ? "annual" : "monthly"}`, 1, annual ? plan.annualPrice : plan.monthlyPrice)];
@@ -48,6 +51,12 @@ export function buildInvoiceLines(plan: IPlan, subscription: IBillable): IInvoic
   const seats = billedExtras(subscription.extraSeats, subscription.usedSeats, limits.staffSeats);
   if (seats > 0 && plan.extraSeatPrice !== null) {
     lines.push(line("Extra staff seat", seats, priceFor(plan.extraSeatPrice, subscription.interval)));
+  }
+
+  const { discountPercent, discountEndsAt } = subscription;
+  if (discountPercent && (!discountEndsAt || discountEndsAt > periodStart)) {
+    const subtotal = sumLines(lines);
+    lines.push(line(`Discount (${discountPercent}%)`, 1, -Math.round((subtotal * discountPercent) / 100)));
   }
 
   return lines;

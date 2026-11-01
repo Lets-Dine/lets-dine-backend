@@ -10,6 +10,7 @@ import { DiningSessionService } from "./application/dining-session.service";
 import { EndDiningSessionUsecase } from "./application/use-cases/end-dining-session.usecase";
 import { FetchActiveSessionForTableUsecase } from "./application/use-cases/fetch-active-session-for-table.usecase";
 import { FetchCurrentSessionUsecase } from "./application/use-cases/fetch-current-session.usecase";
+import { MergeTableSessionUsecase } from "./application/use-cases/merge-table-session.usecase";
 import { ServiceRequestUsecase } from "./application/use-cases/service-request.usecase";
 import { StartDeliverySessionUsecase } from "./application/use-cases/start-delivery-session.usecase";
 import { StartDiningSessionUsecase } from "./application/use-cases/start-dining-session.usecase";
@@ -49,6 +50,7 @@ import {
     StartTableSessionUsecase,
     FetchCurrentSessionUsecase,
     EndDiningSessionUsecase,
+    MergeTableSessionUsecase,
     ServiceRequestUsecase,
     DiningSessionRepositoryImpl,
     { provide: DiningSessionRepository, useExisting: DiningSessionRepositoryImpl },
@@ -57,6 +59,9 @@ import {
     DiningSessionService,
     DinerSessionGuard,
     DinerSessionAnyGuard,
+    // Staff placing an order seat a table the same way the table page does (see `CreateStaffOrderUsecase`).
+    StartTableSessionUsecase,
+    EndDiningSessionUsecase,
     { provide: DiningSessionRepository, useExisting: DiningSessionRepositoryImpl },
   ],
 })

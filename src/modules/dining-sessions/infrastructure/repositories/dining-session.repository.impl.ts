@@ -70,6 +70,10 @@ class DiningSessionRepositoryImpl implements DiningSessionRepository {
     return prisma.diningSession.create({ data });
   }
 
+  async hasPayments(sessionId: string, options?: DiningSessionFetchOptions): Promise<boolean> {
+    return (options?.tx ?? this.prisma).payment.count({ where: { sessionId } }).then(count => count > 0);
+  }
+
   async update(id: string, data: IDiningSessionUpdate, transaction?: PrismaTransaction): Promise<IDiningSession> {
     const prisma = transaction ?? this.prisma;
     return prisma.diningSession.update({ where: { id }, data });

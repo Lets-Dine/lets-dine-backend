@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { AuditAction, OrderItemStatus, OrderStatus } from "@prisma/client";
-import { NotFoundException } from "../../../../common/exceptions";
+import { ConflictException, NotFoundException } from "../../../../common/exceptions";
 import { AuthEntity, isInActiveBranch } from "../../../../common/interfaces";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
 import { RESTAURANT_ERROR_MESSAGES } from "../../../restaurants/domain/constants";
@@ -38,6 +38,9 @@ export class RemoveOrderItemUsecase {
 
       const item = order.items.find(candidate => candidate.id === itemId);
       if (!item) throw new NotFoundException(ORDER_ERROR_MESSAGES.ITEM_NOT_FOUND);
+
+      if (order.tableId) await this.orderRepository.lockTable(order.tableId, { tx });
+      if (await this.orderRepository.hasBilledItems({ itemId }, { tx })) throw new ConflictException(ORDER_ERROR_MESSAGES.ITEM_BILLED);
 
       const resultingLines = order.items
         .filter(candidate => candidate.id !== itemId || candidate.quantity > 1)

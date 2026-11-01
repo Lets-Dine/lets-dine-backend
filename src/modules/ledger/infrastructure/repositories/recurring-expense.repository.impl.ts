@@ -1,7 +1,11 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService, PrismaTransaction } from "../../../../common/prisma";
 import { IRecurringExpenseRow } from "../../domain/interfaces/recurring-expense.interface";
-import { IRecurringExpenseCreate, IRecurringExpenseUpdate, RecurringExpenseRepository } from "../../domain/repositories/recurring-expense.repository";
+import {
+  IRecurringExpenseCreate,
+  IRecurringExpenseUpdate,
+  RecurringExpenseRepository,
+} from "../../domain/repositories/recurring-expense.repository";
 
 @Injectable()
 class RecurringExpenseRepositoryImpl implements RecurringExpenseRepository {

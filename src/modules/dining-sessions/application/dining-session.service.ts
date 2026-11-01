@@ -71,9 +71,14 @@ export class DiningSessionService {
     return session;
   }
 
-  async endSession(session: IDiningSession, authEntity: AuthEntity, tx: PrismaTransaction): Promise<IDiningTable | null> {
-    const { closed, tickets } = await this.closeOpenOrders(session, authEntity, tx);
-    const ended = await this.diningSessionRepository.update(session.id, { endedAt: new Date(), waiterCalledAt: null, billRequestedAt: null }, tx);
+  /** `paid`: the visit ends because its bill was taken, so lines nobody started are food the guest paid for — served, not dropped. */
+  async endSession(session: IDiningSession, authEntity: AuthEntity, tx: PrismaTransaction, { paid = false } = {}): Promise<IDiningTable | null> {
+    const { closed, tickets } = await this.closeOpenOrders(session, authEntity, tx, paid);
+    const ended = await this.diningSessionRepository.update(
+      session.id,
+      { endedAt: new Date(), waiterCalledAt: null, billRequestedAt: null },
+      tx
+    );
     // A delivery or floor session has no table to free up.
     const table = session.tableId ? await this.diningTableRepository.update(session.tableId, { currentSessionId: null }, { tx }) : null;
     // A floor has no singleton to clear — the session ending is the whole story for it.
@@ -133,7 +138,8 @@ export class DiningSessionService {
   private async closeOpenOrders(
     session: IDiningSession,
     authEntity: AuthEntity,
-    tx: PrismaTransaction
+    tx: PrismaTransaction,
+    paid: boolean
   ): Promise<{ closed: IOrderWithItems[]; tickets: IKitchenTicket[] }> {
     const open = await this.orderRepository.findOpenBySessionId(session.id, authEntity.restaurantId, { tx });
     if (open.length === 0) return { closed: [], tickets: [] };
@@ -146,9 +152,14 @@ export class DiningSessionService {
     for (const order of open) {
       let items = order.items;
       for (const item of items) {
-        if (item.status === OrderItemStatus.PENDING) {
+        // A line a share already paid for is food the guest has bought: it is delivered, never dropped.
+        if (item.status === OrderItemStatus.PENDING && !paid && !(await this.orderRepository.hasBilledItems({ itemId: item.id }, { tx }))) {
           items = (await this.orderRepository.updateItemStatus(item.id, OrderItemStatus.CANCELLED, { tx })).items;
-        } else if (item.status === OrderItemStatus.PREPARING || item.status === OrderItemStatus.READY) {
+        } else if (
+          item.status === OrderItemStatus.PENDING ||
+          item.status === OrderItemStatus.PREPARING ||
+          item.status === OrderItemStatus.READY
+        ) {
           items = (await this.orderRepository.updateItemStatus(item.id, OrderItemStatus.SERVED, { tx })).items;
         }
       }
@@ -157,7 +168,9 @@ export class DiningSessionService {
       // `deriveOrderStatus` to key off — without a `cancelledAt` of its own
       // it would read as still PENDING forever, so this is the one place
       // that sets it by hand (mirroring what accepting it never got to).
-      const cancelledAt = order.acceptedAt ? order.cancelledAt : new Date();
+      // A line a share already paid for stayed (now SERVED), so an order holding one is a paid order, not a cancelled one.
+      const keepsLines = items.some(item => item.status !== OrderItemStatus.CANCELLED);
+      const cancelledAt = order.acceptedAt || keepsLines ? order.cancelledAt : new Date();
       // Ending the visit is not the same as paying it — a floor order whose bill was never taken
       // lands on UNPAID here, not COMPLETED, same as any other item-driven transition (§16b).
       const status = deriveOrderStatus(items, cancelledAt, order.orderType, {
