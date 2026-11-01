@@ -36,6 +36,8 @@ export abstract class RestaurantMemberRepository {
     options?: RestaurantMemberFetchOptions
   ): Promise<IStaffMember | null>;
   abstract findActiveByUserId(userId: string, options?: RestaurantMemberFetchOptions): Promise<IStaffMember[]>;
+  /** Records a sign-in. Deliberately not part of `update`, which is for staff management and bumps who edited the row. */
+  abstract touchLastSignIn(id: string, at: Date): Promise<void>;
   abstract countActiveByRole(restaurantId: string, role: StaffRole, options?: RestaurantMemberFetchOptions): Promise<number>;
   abstract create(data: IRestaurantMemberCreate, options?: { tx?: PrismaTransaction }): Promise<IStaffMember>;
   abstract update(id: string, data: IRestaurantMemberUpdate, transaction?: PrismaTransaction): Promise<IStaffMember>;

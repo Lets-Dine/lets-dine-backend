@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { StaffAccessPolicy } from "../../../../common/auth";
 import { AUTH_ERROR_MESSAGES } from "../../../../common/constants";
 import { ForbiddenException, UnauthorizedException } from "../../../../common/exceptions";
@@ -17,6 +17,8 @@ import { BranchScopeService, IBranchScope } from "../branch-scope.service";
  */
 @Injectable()
 export class SignInStaffUsecase {
+  private readonly logger = new Logger(SignInStaffUsecase.name);
+
   constructor(
     private readonly userRepository: UserRepository,
     private readonly restaurantMemberRepository: RestaurantMemberRepository,
@@ -39,6 +41,13 @@ export class SignInStaffUsecase {
 
     const scope = await this.branchScopeService.resolve(membership, dto.branchId);
     const accessToken = await this.authTokenService.issue(membership, { branchId: scope.active.id, branchIds: scope.branchIds });
+
+    // Only feeds "last active" on the platform list, so it must never cost anyone their sign-in.
+    try {
+      await this.restaurantMemberRepository.touchLastSignIn(membership.id, new Date());
+    } catch (error) {
+      this.logger.error(`Could not record sign-in for member ${membership.id}`, error instanceof Error ? error.stack : String(error));
+    }
 
     return {
       accessToken,

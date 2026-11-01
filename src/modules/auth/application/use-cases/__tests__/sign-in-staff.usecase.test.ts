@@ -50,7 +50,7 @@ describe("SignInStaffUsecase", () => {
       providers: [
         SignInStaffUsecase,
         { provide: UserRepository, useValue: { findByEmail: jest.fn() } },
-        { provide: RestaurantMemberRepository, useValue: { findActiveByUserId: jest.fn() } },
+        { provide: RestaurantMemberRepository, useValue: { findActiveByUserId: jest.fn(), touchLastSignIn: jest.fn() } },
         { provide: AuthTokenService, useValue: { issue: jest.fn().mockResolvedValue("signed.jwt.token") } },
         { provide: BranchScopeService, useValue: { resolve: jest.fn().mockResolvedValue(scope) } },
         { provide: StaffAccessPolicy, useValue: { assertCanAccess: jest.fn().mockResolvedValue(undefined) } },
@@ -89,6 +89,31 @@ describe("SignInStaffUsecase", () => {
         branchId: "branch-1",
         branchIds: ["branch-1"],
       });
+    });
+
+    it("should stamp the signed-in membership's last sign-in, and still sign in if stamping fails", async () => {
+      // Arrange
+      userRepository.findByEmail.mockResolvedValue({ id: "user-1", isActive: true, pinHash } as any);
+      restaurantMemberRepository.findActiveByUserId.mockResolvedValue([buildMember()]);
+      restaurantMemberRepository.touchLastSignIn.mockRejectedValue(new Error("db down"));
+
+      // Act
+      const result = await usecase.execute({ email: "aarati@lets-dine.test", pin: PIN });
+
+      // Assert
+      expect(restaurantMemberRepository.touchLastSignIn).toHaveBeenCalledWith("member-1", expect.any(Date));
+      expect(result.accessToken).toBe("signed.jwt.token");
+    });
+
+    it("should not stamp anything when the PIN is wrong", async () => {
+      // Arrange
+      userRepository.findByEmail.mockResolvedValue({ id: "user-1", isActive: true, pinHash } as any);
+
+      // Act
+      await expect(usecase.execute({ email: "aarati@lets-dine.test", pin: "0000" })).rejects.toBeInstanceOf(UnauthorizedException);
+
+      // Assert
+      expect(restaurantMemberRepository.touchLastSignIn).not.toHaveBeenCalled();
     });
 
     it("should start in the requested branch", async () => {

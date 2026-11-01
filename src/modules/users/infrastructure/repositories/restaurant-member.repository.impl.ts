@@ -50,6 +50,10 @@ class RestaurantMemberRepositoryImpl implements RestaurantMemberRepository {
     return members.map(member => this.toStaffMember(member));
   }
 
+  async touchLastSignIn(id: string, at: Date): Promise<void> {
+    await this.prisma.restaurantMember.update({ where: { id }, data: { lastSignInAt: at }, select: { id: true } });
+  }
+
   async countActiveByRole(restaurantId: string, role: StaffRole, options?: RestaurantMemberFetchOptions): Promise<number> {
     const prisma = options?.tx ?? this.prisma;
     return prisma.restaurantMember.count({ where: { restaurantId, role, isActive: true } });

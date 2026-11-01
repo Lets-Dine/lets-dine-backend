@@ -144,11 +144,11 @@ class TenantRepositoryImpl implements TenantRepository {
           LIMIT 1
         ) own ON TRUE
         LEFT JOIN LATERAL (
-          SELECT o.created_at AS last_active_at
-          FROM orders o
-          WHERE o.restaurant_id = r.id
-          ORDER BY o.created_at DESC
-          LIMIT 1
+          -- Newest order or staff sign-in; GREATEST skips NULLs and is NULL only when both are.
+          SELECT GREATEST(
+            (SELECT o.created_at FROM orders o WHERE o.restaurant_id = r.id ORDER BY o.created_at DESC LIMIT 1),
+            (SELECT MAX(m.last_sign_in_at) FROM restaurant_members m WHERE m.restaurant_id = r.id)
+          ) AS last_active_at
         ) act ON TRUE
         WHERE ${VIEW_PREDICATE[query.view]} ${byPlan} ${bySearch}
       )
