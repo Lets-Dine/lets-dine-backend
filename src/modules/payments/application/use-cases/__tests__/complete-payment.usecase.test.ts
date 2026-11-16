@@ -15,6 +15,7 @@ import { OrderRepository } from "../../../../orders/domain/repositories/order.re
 import { RestaurantRepository } from "../../../../restaurants/domain/repositories/restaurant.repository";
 import { PAYMENT_ERROR_MESSAGES } from "../../../domain/constants";
 import { PaymentRepository } from "../../../domain/repositories/payment.repository";
+import { PaymentApprovalService } from "../../payment-approval.service";
 import { CompletePaymentUsecase } from "../complete-payment.usecase";
 
 const authUser = buildAuthEntity();
@@ -75,6 +76,7 @@ describe("CompletePaymentUsecase", () => {
         { provide: EventEmitter2, useValue: { emit: jest.fn() } },
         { provide: LoyaltyService, useValue: { earnForPayment: jest.fn(), planRedemption: jest.fn(), recordRedemption: jest.fn() } },
         { provide: CustomerRepository, useValue: { findById: jest.fn() } },
+        { provide: PaymentApprovalService, useValue: { verify: jest.fn() } },
       ],
     }).compile();
 
@@ -329,13 +331,14 @@ describe("CompletePaymentUsecase", () => {
       expect(createArgs.total).toBe(350 + 35 + 50);
     });
 
-    it("should throw ForbiddenException when a role without payments:discount tries to discount", async () => {
+    it("should ask for a manager's approval when a role without payments:discount tries to discount", async () => {
       // Arrange
       const staffUser = buildAuthEntity({ role: StaffRole.STAFF });
+      orderRepository.findBySessionId.mockResolvedValue([{ status: "PENDING", items: [{ dishId: "dish-1", variantId: null, addOns: [], quantity: 2, status: "PENDING" }] }] as any);
 
       // Act & Assert
       await expect(usecase.execute({ sessionId: "session-1", items: requestItems, method, discount: 50 }, staffUser)).rejects.toThrow(
-        new ForbiddenException(PAYMENT_ERROR_MESSAGES.DISCOUNT_NOT_ALLOWED)
+        new ForbiddenException({ ...PAYMENT_ERROR_MESSAGES.APPROVAL_REQUIRED, detail: { reasons: ["discount"], sessionId: "session-1" } })
       );
     });
 
@@ -351,7 +354,10 @@ describe("CompletePaymentUsecase", () => {
 
       beforeEach(() => {
         paymentRepository.create.mockResolvedValue({ id: "payment-1" } as any);
-        orderRepository.findBySessionId.mockResolvedValue([{ customerId: CUSTOMER_ID }] as any);
+        // The order's own lines match what is charged, so plain staff are not asked to get anyone's approval for it.
+        orderRepository.findBySessionId.mockResolvedValue([
+          { customerId: CUSTOMER_ID, status: "PENDING", items: [{ dishId: "dish-1", variantId: null, addOns: [], quantity: 2, status: "PENDING" }] },
+        ] as any);
         loyaltyService.planRedemption.mockResolvedValue(100);
       });
 
@@ -495,14 +501,24 @@ describe("CompletePaymentUsecase", () => {
         ).rejects.toThrow(new NotFoundException(PAYMENT_ERROR_MESSAGES.ORDER_NOT_FOUND));
       });
 
-      it("should throw ConflictException when the order isn't a floor order", async () => {
+      it("should throw ConflictException when the order is a table order, which settles with its table", async () => {
         // Arrange
-        orderRepository.findById.mockResolvedValue({ ...floorOrder, floorId: null, floorName: null } as any);
+        orderRepository.findById.mockResolvedValue({ ...floorOrder, floorId: null, floorName: null, tableId: "table-1" } as any);
 
         // Act & Assert
         await expect(
           usecase.execute({ sessionId: "session-1", orderId: "order-1", items: requestItems, method }, authUser)
         ).rejects.toThrow(new ConflictException(PAYMENT_ERROR_MESSAGES.ORDER_NOT_FLOOR));
+      });
+
+      it("should bill a quick sale with no table or floor on its own, the same as a floor order", async () => {
+        // Arrange
+        orderRepository.findById.mockResolvedValue({ ...floorOrder, floorId: null, floorName: null, tableId: null } as any);
+
+        // Act & Assert
+        await expect(
+          usecase.execute({ sessionId: "session-1", orderId: "order-1", items: requestItems, method }, authUser)
+        ).resolves.toBeDefined();
       });
 
       it("should throw ConflictException when the order is already paid", async () => {

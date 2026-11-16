@@ -9,7 +9,7 @@ import { ORDER_ERROR_MESSAGES } from "../../domain/constants";
 import { OrderItemEntity } from "../../domain/entity/order-item.entity";
 import { IOrderWithItems } from "../../domain/interfaces/order.interface";
 import { OrderRepository } from "../../domain/repositories/order.repository";
-import { deriveOrderStatus } from "../../domain/utils/order-status.util";
+import { billsOnItsOwn, deriveOrderStatus } from "../../domain/utils/order-status.util";
 import { AdvanceOrderItemStatusInput } from "../../interfaces/http/validations/advance-order-item-status.validation";
 
 /**
@@ -63,7 +63,7 @@ export class AdvanceOrderItemStatusUsecase {
         );
       }
       const status = deriveOrderStatus(afterItemUpdate.items, order.cancelledAt, order.orderType, {
-        isFloorOrder: Boolean(order.floorId),
+        isFloorOrder: billsOnItsOwn(order),
         paidAt: order.paidAt,
       });
       const updated =

@@ -37,7 +37,8 @@ function build() {
     { record: jest.fn() } as any,
     { emit: jest.fn() } as any,
     { earnForPayment: jest.fn(), planRedemption: jest.fn(), recordRedemption: jest.fn() } as any,
-    customerRepository as any
+    customerRepository as any,
+    { verify: jest.fn() } as any
   );
   return { usecase, paymentRepository };
 }

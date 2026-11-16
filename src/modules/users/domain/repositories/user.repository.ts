@@ -7,10 +7,16 @@ export interface IUserCreate {
   pinHash: string;
   emailKey?: string;
   phone?: string;
+  avatarUrl?: string;
   isActive?: boolean;
 }
 
-export type IUserUpdate = Partial<Omit<IUserCreate, "email">> & { email?: string };
+export type IUserUpdate = Partial<Omit<IUserCreate, "email" | "phone" | "avatarUrl">> & {
+  email?: string;
+  phone?: string | null;
+  avatarUrl?: string | null;
+  approvalPinHash?: string | null;
+};
 
 export interface UserFetchOptions {
   tx?: PrismaTransaction;

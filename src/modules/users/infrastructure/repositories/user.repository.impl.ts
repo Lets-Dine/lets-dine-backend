@@ -20,7 +20,7 @@ class UserRepositoryImpl implements UserRepository {
   async findByEmail(email: string, options?: UserFetchOptions): Promise<IUserCredentials | null> {
     const prisma = options?.tx ?? this.prisma;
     const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
-    return user ? { ...this.toUser(user), pinHash: user.pinHash } : null;
+    return user ? { ...this.toUser(user), pinHash: user.pinHash, approvalPinHash: user.approvalPinHash } : null;
   }
 
   async findByEmailKey(emailKey: string, options?: UserFetchOptions): Promise<IUser | null> {
@@ -55,11 +55,13 @@ class UserRepositoryImpl implements UserRepository {
     return this.toUser(user);
   }
 
-  private toUser(user: { id: string; email: string; name: string; isActive: boolean; createdAt: Date; updatedAt: Date }): IUser {
+  private toUser(user: { id: string; email: string; name: string; phone: string | null; avatarUrl: string | null; isActive: boolean; createdAt: Date; updatedAt: Date }): IUser {
     return {
       id: user.id,
       email: user.email,
       name: user.name,
+      phone: user.phone,
+      avatarUrl: user.avatarUrl,
       isActive: user.isActive,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,

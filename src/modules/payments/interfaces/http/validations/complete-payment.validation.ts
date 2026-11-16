@@ -67,6 +67,11 @@ export const completePaymentSchema = z
      * This decides who earns and spends loyalty points, so the server checks it, never the screen.
      */
     customerId: z.string().uuid().nullable().optional(),
+    /**
+     * A manager vouching for a discount or a changed bill, for a cashier who may not do it alone: who, and their own
+     * PIN. Used for this payment only; ignored when the caller can already do it.
+     */
+    approval: z.object({ memberId: z.string().uuid(), pin: z.string().regex(/^\d{4,8}$/, "PIN must be 4 to 8 digits") }).optional(),
     /** Also ends the visit — every order still on the session gets marked completed in the same motion. */
     endSession: z.boolean().optional(),
   })

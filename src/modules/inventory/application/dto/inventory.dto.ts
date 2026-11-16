@@ -7,6 +7,7 @@ import { fetchBuyListSchema } from "../../interfaces/http/validations/fetch-buy-
 import { fetchPurchasesSchema } from "../../interfaces/http/validations/fetch-purchases.validation";
 import { fetchWasteSchema } from "../../interfaces/http/validations/fetch-waste.validation";
 import { logWasteSchema } from "../../interfaces/http/validations/log-waste.validation";
+import { fetchConsumptionSchema } from "../../interfaces/http/validations/fetch-consumption.validation";
 import { fetchUsageSchema } from "../../interfaces/http/validations/fetch-usage.validation";
 import { fetchQualitySchema } from "../../interfaces/http/validations/fetch-quality.validation";
 import { receiveDeliverySchema } from "../../interfaces/http/validations/receive-delivery.validation";
@@ -24,6 +25,7 @@ export class AdjustStockDto extends createZodDto(adjustStockSchema) {}
 export class SetRecipeDto extends createZodDto(setRecipeSchema) {}
 export class FetchQualityDto extends createZodDto(fetchQualitySchema) {}
 export class FetchPurchasesDto extends createZodDto(fetchPurchasesSchema) {}
+export class FetchConsumptionDto extends createZodDto(fetchConsumptionSchema) {}
 export class FetchUsageDto extends createZodDto(fetchUsageSchema) {}
 export class FetchExpiringDto extends createZodDto(fetchExpiringSchema) {}
 export class FetchBuyListDto extends createZodDto(fetchBuyListSchema) {}

@@ -8,5 +8,9 @@ export const STAFF_MEMBER_ERROR_MESSAGES = {
   ALREADY_EXISTS: { key: "STAFF_MEMBER_ALREADY_EXISTS", message: "This person is already on the team" },
   CANNOT_EDIT_SELF: { key: "STAFF_MEMBER_CANNOT_EDIT_SELF", message: "You cannot change your own role or access" },
   INVALID_BRANCHES: { key: "STAFF_MEMBER_INVALID_BRANCHES", message: "One or more branches do not exist or are not active" },
+  SHARED_ACCOUNT: {
+    key: "STAFF_MEMBER_SHARED_ACCOUNT",
+    message: "This person also works at another restaurant, so only they can change their name, phone or photo",
+  },
   LAST_OWNER: { key: "STAFF_MEMBER_LAST_OWNER", message: "A restaurant must keep at least one active owner" },
 };

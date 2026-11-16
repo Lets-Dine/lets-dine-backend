@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { AuditAction, StaffRole } from "@prisma/client";
+import { AUTH_ERROR_MESSAGES } from "../../../../common/constants";
 import { BadRequestException, ConflictException } from "../../../../common/exceptions";
 import { AuthEntity } from "../../../../common/interfaces";
 import { BranchRepository } from "../../../branches/domain/repositories/branch.repository";
@@ -35,6 +36,10 @@ export class CreateStaffMemberUsecase {
       if (existingMember) throw new ConflictException(STAFF_MEMBER_ERROR_MESSAGES.ALREADY_EXISTS);
     }
 
+    if (!existingUser && dto.phone && (await this.userRepository.findByPhone(dto.phone))) {
+      throw new ConflictException(AUTH_ERROR_MESSAGES.PHONE_TAKEN);
+    }
+
     await this.entitlementService.assertCanCreate("seat", authEntity.restaurantId);
 
     const branchIds = await this.resolveBranchIds(dto, authEntity);
@@ -42,7 +47,10 @@ export class CreateStaffMemberUsecase {
 
     const member = await this.userRepository.$transaction(async tx => {
       const user =
-        existingUser ?? (await this.userRepository.create({ email: dto.email, name: dto.name, pinHash }, { tx, actorId: authEntity.sub }));
+        existingUser ?? (await this.userRepository.create(
+          { email: dto.email, name: dto.name, pinHash, phone: dto.phone, avatarUrl: dto.avatarUrl },
+          { tx, actorId: authEntity.sub }
+        ));
 
       return this.restaurantMemberRepository.create(
         { userId: user.id, restaurantId: authEntity.restaurantId, role: dto.role, branchIds },

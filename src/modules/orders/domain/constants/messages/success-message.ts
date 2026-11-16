@@ -3,6 +3,7 @@ export const ORDER_SUCCESS_MESSAGES = {
   ORDER_FETCHED: { key: "ORDER_FETCHED", message: "Order fetched successfully" },
   ORDERS_FETCHED: { key: "ORDERS_FETCHED", message: "Orders fetched successfully" },
   ORDER_STATUS_UPDATED: { key: "ORDER_STATUS_UPDATED", message: "Order status updated successfully" },
+  TICKETS_REPRINTED: { key: "ORDER_TICKETS_REPRINTED", message: "Kitchen tickets sent to the printer again" },
   ORDER_CANCELLED: { key: "ORDER_CANCELLED", message: "Order cancelled successfully" },
   KITCHEN_TICKETS_FETCHED: { key: "KITCHEN_TICKETS_FETCHED", message: "Kitchen tickets fetched successfully" },
   PRINT_JOBS_FETCHED: { key: "PRINT_JOBS_FETCHED", message: "Print jobs fetched successfully" },

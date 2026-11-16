@@ -25,6 +25,8 @@ export abstract class KitchenTicketRepository {
     options?: { tx?: PrismaTransaction }
   ): Promise<IKitchenTicket[]>;
   abstract findById(id: string, options?: { tx?: PrismaTransaction }): Promise<IKitchenTicket | null>;
+  /** Every ticket sent for one order, in the order they were sent. */
+  abstract findByOrder(orderId: string, options?: { tx?: PrismaTransaction }): Promise<IKitchenTicket[]>;
   abstract findManyByIds(ids: string[], options?: { tx?: PrismaTransaction }): Promise<IKitchenTicket[]>;
   /** A slip carrying these tickets came out — only the ones not already marked are touched. */
   abstract markPrintedMany(ids: string[], at: Date, options?: { tx?: PrismaTransaction }): Promise<void>;

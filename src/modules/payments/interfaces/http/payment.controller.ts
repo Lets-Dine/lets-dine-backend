@@ -8,6 +8,7 @@ import { CompletePaymentDto } from "../../application/dto/complete-payment.dto";
 import { FetchPaymentsDto } from "../../application/dto/fetch-payments.dto";
 import { CollectPaymentUsecase } from "../../application/use-cases/collect-payment.usecase";
 import { RefundPaymentUsecase } from "../../application/use-cases/refund-payment.usecase";
+import { ListPaymentApproversUsecase, IPaymentApprover } from "../../application/use-cases/list-payment-approvers.usecase";
 import { CompletePaymentUsecase } from "../../application/use-cases/complete-payment.usecase";
 import { FetchBilledItemsUsecase } from "../../application/use-cases/fetch-billed-items.usecase";
 import { GetPaymentUsecase } from "../../application/use-cases/get-payment.usecase";
@@ -26,7 +27,8 @@ export class PaymentController {
     private readonly getPaymentUsecase: GetPaymentUsecase,
     private readonly collectPaymentUsecase: CollectPaymentUsecase,
     private readonly refundPaymentUsecase: RefundPaymentUsecase,
-    private readonly fetchBilledItemsUsecase: FetchBilledItemsUsecase
+    private readonly fetchBilledItemsUsecase: FetchBilledItemsUsecase,
+    private readonly listPaymentApproversUsecase: ListPaymentApproversUsecase
   ) {}
 
   @Post()
@@ -72,6 +74,14 @@ export class PaymentController {
   }
 
   /** Declared before `:id`, which would otherwise take "summary" for an id. */
+  /** Who this cashier can ask to approve a discount or a changed bill. */
+  @Get("approvers")
+  @UseGuards(AuthGuard, AbilityGuard)
+  @CheckPolicies(checkPermissionRules([["orders:advance"]]))
+  async approvers(@AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IPaymentApprover[]>> {
+    return buildHttpResponse(await this.listPaymentApproversUsecase.execute(authEntity), PAYMENT_SUCCESS_MESSAGES.APPROVERS_FETCHED);
+  }
+
   @Get("summary")
   @UseGuards(AuthGuard, AbilityGuard)
   @CheckPolicies(checkPermissionRules([["payments:view"]]))

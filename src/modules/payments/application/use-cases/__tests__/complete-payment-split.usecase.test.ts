@@ -14,6 +14,7 @@ import { LoyaltyService } from "../../../../loyalty/application/loyalty.service"
 import { OrderRepository } from "../../../../orders/domain/repositories/order.repository";
 import { RestaurantRepository } from "../../../../restaurants/domain/repositories/restaurant.repository";
 import { PaymentRepository } from "../../../domain/repositories/payment.repository";
+import { PaymentApprovalService } from "../../payment-approval.service";
 import { CompletePaymentUsecase } from "../complete-payment.usecase";
 
 const manager = buildAuthEntity({ role: StaffRole.MANAGER });
@@ -69,6 +70,7 @@ describe("CompletePaymentUsecase — split by item", () => {
         { provide: EventEmitter2, useValue: { emit: jest.fn() } },
         { provide: LoyaltyService, useValue: { earnForPayment: jest.fn(), planRedemption: jest.fn(), recordRedemption: jest.fn() } },
         { provide: CustomerRepository, useValue: { findById: jest.fn() } },
+        { provide: PaymentApprovalService, useValue: { verify: jest.fn() } },
       ],
     }).compile();
     usecase = module.get(CompletePaymentUsecase);

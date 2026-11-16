@@ -5,6 +5,8 @@ import {
   IPurchase,
   IIngredientSummary,
   IUsagePage,
+  IConsumptionPage,
+  IConsumptionQuery,
   IIngredient,
   IRecipeLine,
   IReturnableLot,
@@ -203,6 +205,8 @@ export abstract class InventoryRepository {
   /** Deliveries of one ingredient and the stock sent back to suppliers, newest first. */
   abstract findPurchases(ingredientId: string, limit: number): Promise<IPurchase[]>;
   /** Order deductions of one ingredient, newest first, with the dish each was for. */
+  /** The branch-wide stock-out feed, filtered and paged, newest first. */
+  abstract findConsumption(branchId: string, query: IConsumptionQuery): Promise<IConsumptionPage>;
   abstract findIngredientUsage(ingredientId: string, page: number, pageSize: number): Promise<IUsagePage>;
   abstract findDishNames(ids: string[]): Promise<Map<string, string>>;
   abstract findLastPurchases(branchId: string): Promise<Map<string, ILastPurchase>>;

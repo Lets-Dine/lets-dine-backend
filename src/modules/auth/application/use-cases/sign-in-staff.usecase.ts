@@ -55,6 +55,7 @@ export class SignInStaffUsecase {
         id: user.id,
         name: user.name,
         email: user.email,
+        avatarUrl: user.avatarUrl,
         memberId: membership.id,
         restaurantId: membership.restaurantId,
         role: membership.role,

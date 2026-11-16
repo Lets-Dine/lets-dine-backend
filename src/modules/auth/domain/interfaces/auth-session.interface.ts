@@ -17,6 +17,11 @@ export interface IAuthProfile {
   id: string;
   name: string;
   email: string;
+  /** Only the profile read (`GET /auth/me`) fills this; sign-in leaves it off. */
+  phone?: string | null;
+  avatarUrl?: string | null;
+  /** Only the profile read fills this: whether a manager or owner has set the PIN they approve with. */
+  hasApprovalPin?: boolean;
   memberId: string;
   restaurantId: string;
   role: StaffRole;

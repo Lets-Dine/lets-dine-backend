@@ -171,3 +171,47 @@ export interface IWasteReport extends IWasteSummary {
   to: Date;
   recent: IWasteEntry[];
 }
+
+/** One stock-out in the branch-wide consumption feed: a dish started, a manual use, or something thrown away. */
+export interface IConsumptionEntry {
+  id: string;
+  at: Date;
+  ingredientId: string;
+  ingredientName: string;
+  unit: string;
+  /** Base units taken, always positive. */
+  quantity: number;
+  source: ConsumptionSource;
+  /** The dish it went into; null for waste or a use that was not for a dish. */
+  dishName: string | null;
+  /** Portions on the order line (orders only). */
+  portions: number | null;
+  note: string;
+  /** Waste only. */
+  wasteReason: WasteReason | null;
+  /** Waste only: what the lots cost, minor units; null when unpriced. */
+  wasteCost: number | null;
+  /** Who recorded it; null for the kitchen starting an order line, or when the account is gone. */
+  byName: string | null;
+}
+
+export type ConsumptionSource = "order" | "manual" | "waste";
+
+export interface IConsumptionPage {
+  items: IConsumptionEntry[];
+  /** Matches for the current filters, source included. */
+  total: number;
+  page: number;
+  pageSize: number;
+  /** Matches per source under every filter except `source`, so the tabs can show what each would hold. */
+  counts: Record<ConsumptionSource, number>;
+}
+
+export interface IConsumptionQuery {
+  page: number;
+  pageSize: number;
+  source?: ConsumptionSource;
+  ingredientId?: string;
+  from?: Date;
+  to?: Date;
+}

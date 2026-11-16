@@ -73,7 +73,7 @@ export class KitchenTicketService {
     // Which printers get these, decided in the same transaction so a ticket is never without its slip.
     if (tickets.length) {
       const printers = await this.printerRepository.findByBranch(order.branchId, { tx, activeOnly: true });
-      const jobs = routePrintJobs(tickets, { tableId: order.tableId, floorId: order.floorId }, printers);
+      const jobs = routePrintJobs(tickets, { tableId: order.tableId, floorId: order.floorId, orderType: order.orderType }, printers);
       await this.printJobRepository.createMany(
         jobs.map(job => ({ ...job, branchId: order.branchId, orderId })),
         { tx }

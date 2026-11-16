@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { AuditAction, StaffRole } from "@prisma/client";
-import { BadRequestException, ForbiddenException, NotFoundException } from "../../../../common/exceptions";
+import { AUTH_ERROR_MESSAGES } from "../../../../common/constants";
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from "../../../../common/exceptions";
 import { AuthEntity } from "../../../../common/interfaces";
 import { BranchRepository } from "../../../branches/domain/repositories/branch.repository";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
@@ -8,12 +9,17 @@ import { EntitlementService } from "../../../billing/application/entitlement.ser
 import { STAFF_MEMBER_ERROR_MESSAGES } from "../../domain/constants";
 import { IStaffMember } from "../../domain/interfaces/restaurant-member.interface";
 import { RestaurantMemberRepository } from "../../domain/repositories/restaurant-member.repository";
+import { UserRepository } from "../../domain/repositories/user.repository";
 import { UpdateStaffMemberInput } from "../../interfaces/http/validations/update-staff-member.validation";
+
+/** The part of an edit that changes what somebody may do, as opposed to who they are. */
+type AccessChange = Pick<UpdateStaffMemberInput, "role" | "isActive" | "branchIds">;
 
 @Injectable()
 export class UpdateStaffMemberUsecase {
   constructor(
     private readonly restaurantMemberRepository: RestaurantMemberRepository,
+    private readonly userRepository: UserRepository,
     private readonly auditLogService: AuditLogService,
     private readonly branchRepository: BranchRepository,
     private readonly entitlementService: EntitlementService
@@ -27,15 +33,37 @@ export class UpdateStaffMemberUsecase {
 
     if (member.id === authEntity.memberId) throw new ForbiddenException(STAFF_MEMBER_ERROR_MESSAGES.CANNOT_EDIT_SELF);
 
-    await this.guardLastOwner(member, dto);
+    const { name, phone, avatarUrl, ...access } = dto;
+    const details = { name, phone, avatarUrl };
+    const editsDetails = Object.values(details).some(value => value !== undefined);
+    if (editsDetails) await this.guardDetails(member, phone);
+
+    await this.guardLastOwner(member, access);
 
     // Reactivating somebody takes a seat again, so it is held to the plan like adding a new one.
     if (dto.isActive === true && !member.isActive) {
       await this.entitlementService.assertCanCreate("seat", authEntity.restaurantId);
     }
 
-    const branchIds = await this.resolveBranchIds(member, dto, authEntity);
-    const updated = await this.restaurantMemberRepository.update(id, { ...dto, branchIds });
+    const branchIds = await this.resolveBranchIds(member, access, authEntity);
+    const updated = editsDetails
+      ? // One transaction, so a half-saved edit (new name, old role) cannot be left behind.
+        await this.userRepository.$transaction(async tx => {
+          await this.userRepository.update(
+            member.userId,
+            {
+              ...(name !== undefined && { name }),
+              ...(phone !== undefined && { phone }),
+              ...(avatarUrl !== undefined && { avatarUrl }),
+            },
+            tx
+          );
+          const changesAccess = Object.values(access).some(value => value !== undefined);
+          return changesAccess
+            ? this.restaurantMemberRepository.update(id, { ...access, branchIds }, tx)
+            : ((await this.restaurantMemberRepository.findById(id, { tx })) ?? member);
+        })
+      : await this.restaurantMemberRepository.update(id, { ...access, branchIds });
 
     if (branchIds && !sameIds(branchIds, member.branchIds)) {
       await this.auditLogService.record(
@@ -66,10 +94,25 @@ export class UpdateStaffMemberUsecase {
   }
 
   /**
+   * A name, phone or photo belongs to the person's account, which is shared by every restaurant they work at, so
+   * one owner must not rewrite it for the others. The number must also stay unique across accounts.
+   */
+  private async guardDetails(member: IStaffMember, phone: string | null | undefined): Promise<void> {
+    const memberships = await this.restaurantMemberRepository.findActiveByUserId(member.userId);
+    if (memberships.some(other => other.restaurantId !== member.restaurantId)) {
+      throw new ForbiddenException(STAFF_MEMBER_ERROR_MESSAGES.SHARED_ACCOUNT);
+    }
+    if (phone) {
+      const owner = await this.userRepository.findByPhone(phone);
+      if (owner && owner.id !== member.userId) throw new ConflictException(AUTH_ERROR_MESSAGES.PHONE_TAKEN);
+    }
+  }
+
+  /**
    * Explicit ids are validated against this restaurant. Demoting an OWNER (who needed no assignments)
    * without saying where they work would lock them out at sign-in, so they land in the editor's branch.
    */
-  private async resolveBranchIds(member: IStaffMember, dto: UpdateStaffMemberInput, authEntity: AuthEntity): Promise<string[] | undefined> {
+  private async resolveBranchIds(member: IStaffMember, dto: AccessChange, authEntity: AuthEntity): Promise<string[] | undefined> {
     const newRole = dto.role ?? member.role;
     if (newRole === StaffRole.OWNER) return undefined;
 
@@ -83,7 +126,7 @@ export class UpdateStaffMemberUsecase {
   }
 
   /** A restaurant with no active owner has nobody who can change its settings. */
-  private async guardLastOwner(member: IStaffMember, dto: UpdateStaffMemberInput): Promise<void> {
+  private async guardLastOwner(member: IStaffMember, dto: AccessChange): Promise<void> {
     const losingOwner = member.role === StaffRole.OWNER && (dto.isActive === false || (dto.role && dto.role !== StaffRole.OWNER));
     if (!losingOwner) return;
 

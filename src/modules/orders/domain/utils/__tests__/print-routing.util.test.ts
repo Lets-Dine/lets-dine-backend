@@ -52,4 +52,10 @@ describe("routePrintJobs", () => {
     expect(routePrintJobs([kot], dineIn, [printer({ fullKot: true, tableAssignment: true })])).toEqual([]);
     expect(routePrintJobs([kot], delivery, [printer({ fullKot: true })])).toHaveLength(1);
   });
+
+  it("prints a quick sale on a table-assigned printer, which it has no table or floor to match, but still skips a delivery", () => {
+    const assigned = printer({ fullKot: true, tableAssignment: true, tableIds: ["t9"] });
+    expect(routePrintJobs([kot], { tableId: null, floorId: null, orderType: "DINE_IN" }, [assigned])).toEqual([{ printerId: "p1", ticketIds: ["k"] }]);
+    expect(routePrintJobs([kot], { tableId: null, floorId: null, orderType: "DELIVERY" }, [assigned])).toEqual([]);
+  });
 });

@@ -9,6 +9,7 @@ import {
   FetchBuyListDto,
   FetchExpiringDto,
   FetchPurchasesDto,
+  FetchConsumptionDto,
   FetchUsageDto,
   FetchWasteDto,
   LogWasteDto,
@@ -31,6 +32,7 @@ import { FetchExpiringUsecase } from "../../application/use-cases/fetch-expiring
 import { FetchBuyListUsecase } from "../../application/use-cases/fetch-buy-list.usecase";
 import { FetchIngredientPurchasesUsecase } from "../../application/use-cases/fetch-ingredient-purchases.usecase";
 import { FetchIngredientSummaryUsecase } from "../../application/use-cases/fetch-ingredient-summary.usecase";
+import { FetchConsumptionUsecase } from "../../application/use-cases/fetch-consumption.usecase";
 import { FetchIngredientUsageUsecase } from "../../application/use-cases/fetch-ingredient-usage.usecase";
 import { FetchDeliveryQualityUsecase } from "../../application/use-cases/fetch-delivery-quality.usecase";
 import { FetchDishMarginsUsecase } from "../../application/use-cases/fetch-dish-margins.usecase";
@@ -56,6 +58,7 @@ import {
   ILotQuality,
   IRecipeLine,
   IWasteReport,
+  IConsumptionPage,
 } from "../../domain/interfaces/inventory.interface";
 
 const VIEW = [AuthGuard, AbilityGuard] as const;
@@ -74,6 +77,7 @@ export class InventoryController {
     private readonly fetchDeliveryQualityUsecase: FetchDeliveryQualityUsecase,
     private readonly fetchBuyListUsecase: FetchBuyListUsecase,
     private readonly fetchExpiringUsecase: FetchExpiringUsecase,
+    private readonly fetchConsumptionUsecase: FetchConsumptionUsecase,
     private readonly fetchIngredientUsageUsecase: FetchIngredientUsageUsecase,
     private readonly fetchIngredientSummaryUsecase: FetchIngredientSummaryUsecase,
     private readonly fetchIngredientPurchasesUsecase: FetchIngredientPurchasesUsecase,
@@ -134,6 +138,13 @@ export class InventoryController {
       await this.fetchIngredientPurchasesUsecase.execute(id, query, authEntity),
       INVENTORY_SUCCESS_MESSAGES.PURCHASES_FETCHED
     );
+  }
+
+  @Get("consumption")
+  @UseGuards(...VIEW)
+  @CheckPolicies(checkPermissionRules([["inventory:view"]]))
+  async consumption(@Query() query: FetchConsumptionDto, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IConsumptionPage>> {
+    return buildHttpResponse(await this.fetchConsumptionUsecase.execute(query, authEntity), INVENTORY_SUCCESS_MESSAGES.CONSUMPTION_FETCHED);
   }
 
   @Get("ingredients/:id/usage")

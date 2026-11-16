@@ -4,6 +4,7 @@ import { AUTH_ERROR_MESSAGES } from "../../../../../common/constants";
 import { UnauthorizedException } from "../../../../../common/exceptions";
 import { buildAuthEntity } from "../../../../../common/testing";
 import { BranchRepository } from "../../../../branches/domain/repositories/branch.repository";
+import { UserRepository } from "../../../../users/domain/repositories/user.repository";
 import { RestaurantMemberRepository } from "../../../../users/domain/repositories/restaurant-member.repository";
 import { FetchAuthProfileUsecase } from "../fetch-auth-profile.usecase";
 
@@ -18,6 +19,7 @@ describe("FetchAuthProfileUsecase", () => {
       providers: [
         FetchAuthProfileUsecase,
         { provide: RestaurantMemberRepository, useValue: { findActiveByUserId: jest.fn() } },
+        { provide: UserRepository, useValue: { findById: jest.fn().mockResolvedValue({ phone: null, avatarUrl: null }) } },
         {
           provide: BranchRepository,
           useValue: {
@@ -43,6 +45,9 @@ describe("FetchAuthProfileUsecase", () => {
           isActive: true,
           name: authUser.name,
           email: authUser.email,
+          phone: null,
+          avatarUrl: null,
+          hasApprovalPin: false,
           branchIds: [],
           createdAt: new Date(),
           updatedAt: new Date(),

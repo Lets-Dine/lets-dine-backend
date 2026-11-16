@@ -7,8 +7,13 @@ model User {
   /// Email with `+tag` and gmail dots stripped; set at self sign-up so aliases of one address can't each claim a trial.
   emailKey  String?  @unique @map("email_key")
   phone     String?  @unique @map("phone")
+  /// Profile photo (an uploaded image URL).
+  avatarUrl String?  @map("avatar_url")
   /// Hashed with scrypt — never the PIN itself.
   pinHash   String   @map("pin_hash")
+  /// A second PIN, for approving a discount or a changed bill at somebody else's till. Hashed like `pinHash`, and never the same PIN, so
+  /// typing it on a cashier's screen cannot be used to sign in. Null until a manager or owner sets one.
+  approvalPinHash String? @map("approval_pin_hash")
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

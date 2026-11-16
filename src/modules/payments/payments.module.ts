@@ -8,7 +8,10 @@ import { DishesModule } from "../dishes/dishes.module";
 import { DishVariantsModule } from "../dish-variants/dish-variants.module";
 import { LoyaltyModule } from "../loyalty/loyalty.module";
 import { OrdersModule } from "../orders/orders.module";
+import { UsersModule } from "../users/users.module";
 import { RestaurantsModule } from "../restaurants/restaurants.module";
+import { ApprovalAttemptLimiter, PaymentApprovalService } from "./application/payment-approval.service";
+import { ListPaymentApproversUsecase } from "./application/use-cases/list-payment-approvers.usecase";
 import { CollectPaymentUsecase } from "./application/use-cases/collect-payment.usecase";
 import { RefundPaymentUsecase } from "./application/use-cases/refund-payment.usecase";
 import { CompletePaymentUsecase } from "./application/use-cases/complete-payment.usecase";
@@ -36,10 +39,14 @@ import { PublicPaymentController } from "./interfaces/http/public-payment.contro
     OrdersModule,
     RestaurantsModule,
     AuditLogsModule,
+    UsersModule,
   ],
   controllers: [FonepayController, PaymentController, PublicPaymentController],
   providers: [
     CompletePaymentUsecase,
+    ListPaymentApproversUsecase,
+    PaymentApprovalService,
+    ApprovalAttemptLimiter,
     CollectPaymentUsecase,
     RefundPaymentUsecase,
     ListPaymentsUsecase,

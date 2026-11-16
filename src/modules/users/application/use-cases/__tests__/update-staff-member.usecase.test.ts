@@ -1,13 +1,15 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { AuditAction, StaffRole } from "@prisma/client";
 import { EntitlementService } from "../../../../billing/application/entitlement.service";
-import { BadRequestException, ForbiddenException, NotFoundException } from "../../../../../common/exceptions";
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from "../../../../../common/exceptions";
 import { buildAuthEntity } from "../../../../../common/testing";
 import { AuditLogService } from "../../../../audit-logs/application/audit-log.service";
 import { STAFF_MEMBER_ERROR_MESSAGES } from "../../../domain/constants";
 import { IStaffMember } from "../../../domain/interfaces/restaurant-member.interface";
 import { BranchRepository } from "../../../../branches/domain/repositories/branch.repository";
 import { RestaurantMemberRepository } from "../../../domain/repositories/restaurant-member.repository";
+import { UserRepository } from "../../../domain/repositories/user.repository";
+import { PrismaTransaction } from "../../../../../common/prisma";
 import { UpdateStaffMemberUsecase } from "../update-staff-member.usecase";
 
 const authUser = buildAuthEntity();
@@ -21,6 +23,9 @@ function buildMember(overrides: Partial<IStaffMember> = {}): IStaffMember {
     isActive: true,
     name: "Bikash Rai",
     email: "bikash@lets-dine.test",
+    phone: null,
+    avatarUrl: null,
+    hasApprovalPin: false,
     branchIds: ["branch-a"],
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -31,6 +36,7 @@ function buildMember(overrides: Partial<IStaffMember> = {}): IStaffMember {
 describe("UpdateStaffMemberUsecase", () => {
   let usecase: UpdateStaffMemberUsecase;
   let restaurantMemberRepository: jest.Mocked<RestaurantMemberRepository>;
+  let userRepository: jest.Mocked<UserRepository>;
   let auditLogService: jest.Mocked<AuditLogService>;
   let branchRepository: jest.Mocked<BranchRepository>;
   let entitlementService: jest.Mocked<EntitlementService>;
@@ -41,7 +47,15 @@ describe("UpdateStaffMemberUsecase", () => {
         UpdateStaffMemberUsecase,
         {
           provide: RestaurantMemberRepository,
-          useValue: { findById: jest.fn(), update: jest.fn(), countActiveByRole: jest.fn() },
+          useValue: { findById: jest.fn(), update: jest.fn(), countActiveByRole: jest.fn(), findActiveByUserId: jest.fn() },
+        },
+        {
+          provide: UserRepository,
+          useValue: {
+            $transaction: jest.fn((fn: (tx: PrismaTransaction) => Promise<unknown>) => fn({} as PrismaTransaction)),
+            update: jest.fn(),
+            findByPhone: jest.fn().mockResolvedValue(null),
+          },
         },
         { provide: AuditLogService, useValue: { record: jest.fn() } },
         { provide: EntitlementService, useValue: { assertCanCreate: jest.fn().mockResolvedValue(undefined) } },
@@ -51,6 +65,7 @@ describe("UpdateStaffMemberUsecase", () => {
 
     usecase = module.get(UpdateStaffMemberUsecase);
     restaurantMemberRepository = module.get(RestaurantMemberRepository);
+    userRepository = module.get(UserRepository);
     auditLogService = module.get(AuditLogService);
     branchRepository = module.get(BranchRepository);
     entitlementService = module.get(EntitlementService);
@@ -214,6 +229,41 @@ describe("UpdateStaffMemberUsecase", () => {
         new BadRequestException(STAFF_MEMBER_ERROR_MESSAGES.LAST_OWNER)
       );
       expect(restaurantMemberRepository.update).not.toHaveBeenCalled();
+    });
+
+    describe("details", () => {
+      it("should change the name, phone and photo on the person's account in one go", async () => {
+        const member = buildMember();
+        restaurantMemberRepository.findById.mockResolvedValue(member);
+        restaurantMemberRepository.findActiveByUserId.mockResolvedValue([member]);
+
+        await usecase.execute(member.id, { name: "Bikash R.", phone: "9812345678", avatarUrl: "https://img.test/b.jpg" }, authUser);
+
+        expect(userRepository.update).toHaveBeenCalledWith(
+          member.userId,
+          { name: "Bikash R.", phone: "9812345678", avatarUrl: "https://img.test/b.jpg" },
+          expect.anything()
+        );
+        expect(restaurantMemberRepository.update).not.toHaveBeenCalled();
+      });
+
+      it("should refuse to rewrite the account of somebody who also works at another restaurant", async () => {
+        const member = buildMember();
+        restaurantMemberRepository.findById.mockResolvedValue(member);
+        restaurantMemberRepository.findActiveByUserId.mockResolvedValue([member, buildMember({ restaurantId: "elsewhere" })]);
+
+        await expect(usecase.execute(member.id, { name: "New Name" }, authUser)).rejects.toThrow(ForbiddenException);
+        expect(userRepository.update).not.toHaveBeenCalled();
+      });
+
+      it("should refuse a phone number that belongs to another account", async () => {
+        const member = buildMember();
+        restaurantMemberRepository.findById.mockResolvedValue(member);
+        restaurantMemberRepository.findActiveByUserId.mockResolvedValue([member]);
+        userRepository.findByPhone.mockResolvedValue({ id: "someone-else" } as never);
+
+        await expect(usecase.execute(member.id, { phone: "9812345678" }, authUser)).rejects.toThrow(ConflictException);
+      });
     });
   });
 });

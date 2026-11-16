@@ -18,6 +18,7 @@ export const INVENTORY_SUCCESS_MESSAGES = {
   WASTE_LOGGED: { key: "INVENTORY_WASTE_LOGGED", message: "Waste recorded" },
   WASTE_FETCHED: { key: "INVENTORY_WASTE_FETCHED", message: "Waste report fetched" },
   STOCK_USED: { key: "INVENTORY_STOCK_USED", message: "Stock use recorded" },
+  CONSUMPTION_FETCHED: { key: "INVENTORY_CONSUMPTION_FETCHED", message: "Stock consumption fetched" },
   USAGE_FETCHED: { key: "INVENTORY_USAGE_FETCHED", message: "Ingredient usage fetched" },
   QUALITY_FETCHED: { key: "INVENTORY_QUALITY_FETCHED", message: "Delivery quality fetched" },
   RECIPE_SAVED: { key: "INVENTORY_RECIPE_SAVED", message: "Recipe saved" },

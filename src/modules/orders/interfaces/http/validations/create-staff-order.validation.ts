@@ -4,11 +4,12 @@ import { createOrderSchema } from "./create-order.validation";
 /**
  * Staff placing an order at the till — the diner's own cart body, plus where it goes. Staff
  * have no diner session, so `type` and its target name the one the order should land in
- * (an open table visit is reused, anything else gets a fresh one).
+ * (an open table visit is reused, anything else gets a fresh one). `QUICK` is a sale at the till with no
+ * table, floor or delivery behind it.
  */
 export const createStaffOrderSchema = createOrderSchema
   .extend({
-    type: z.enum(["TABLE", "FLOOR", "DELIVERY"]),
+    type: z.enum(["TABLE", "FLOOR", "DELIVERY", "QUICK"]),
     tableId: z.string().uuid().optional(),
     floorId: z.string().uuid().optional(),
   })

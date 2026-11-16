@@ -1,4 +1,5 @@
 export const PAYMENT_SUCCESS_MESSAGES = {
+  APPROVERS_FETCHED: { key: "PAYMENT_APPROVERS_FETCHED", message: "Approvers fetched" },
   PAYMENT_COMPLETED: { key: "PAYMENT_COMPLETED", message: "Payment completed" },
   PAYMENT_COLLECTED: { key: "PAYMENT_COLLECTED", message: "Payment collected" },
   PAYMENT_REFUNDED: { key: "PAYMENT_REFUNDED", message: "Payment refunded" },

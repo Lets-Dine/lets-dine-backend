@@ -7,6 +7,7 @@ import { ConsumeStockUsecase } from "./application/use-cases/consume-stock.useca
 import { CreateIngredientUsecase } from "./application/use-cases/create-ingredient.usecase";
 import { FetchIngredientPurchasesUsecase } from "./application/use-cases/fetch-ingredient-purchases.usecase";
 import { FetchIngredientSummaryUsecase } from "./application/use-cases/fetch-ingredient-summary.usecase";
+import { FetchConsumptionUsecase } from "./application/use-cases/fetch-consumption.usecase";
 import { FetchIngredientUsageUsecase } from "./application/use-cases/fetch-ingredient-usage.usecase";
 import { FetchExpiringUsecase } from "./application/use-cases/fetch-expiring.usecase";
 import { FetchBuyListUsecase } from "./application/use-cases/fetch-buy-list.usecase";
@@ -45,6 +46,7 @@ import { InventoryController } from "./interfaces/http/inventory.controller";
     FetchDeliveryQualityUsecase,
     FetchBuyListUsecase,
     FetchExpiringUsecase,
+    FetchConsumptionUsecase,
     FetchIngredientUsageUsecase,
     FetchIngredientSummaryUsecase,
     FetchIngredientPurchasesUsecase,

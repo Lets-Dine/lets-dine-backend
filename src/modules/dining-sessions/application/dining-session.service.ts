@@ -14,7 +14,7 @@ import { OrderRepository } from "../../orders/domain/repositories/order.reposito
 import { calculateOrderTotals } from "../../orders/domain/utils/money.util";
 import { IKitchenTicket } from "../../orders/domain/interfaces/kitchen-ticket.interface";
 import { KitchenTicketService } from "../../orders/application/kitchen-ticket.service";
-import { deriveOrderStatus } from "../../orders/domain/utils/order-status.util";
+import { billsOnItsOwn, deriveOrderStatus } from "../../orders/domain/utils/order-status.util";
 import { RESTAURANT_ERROR_MESSAGES } from "../../restaurants/domain/constants";
 import { RestaurantRepository } from "../../restaurants/domain/repositories/restaurant.repository";
 import { AuditLogService } from "../../audit-logs/application/audit-log.service";
@@ -174,7 +174,7 @@ export class DiningSessionService {
       // Ending the visit is not the same as paying it — a floor order whose bill was never taken
       // lands on UNPAID here, not COMPLETED, same as any other item-driven transition (§16b).
       const status = deriveOrderStatus(items, cancelledAt, order.orderType, {
-        isFloorOrder: Boolean(order.floorId),
+        isFloorOrder: billsOnItsOwn(order),
         paidAt: order.paidAt,
       });
       const billable = items.filter(item => item.status !== OrderItemStatus.CANCELLED);

@@ -52,7 +52,7 @@ export class GetLedgerEntriesUsecase {
           cashDelta: sale.method === "CASH" ? sale.total : 0,
           bankDelta: sale.method === "CASH" ? 0 : sale.total,
           label: sale.items.map(item => `${item.quantity}× ${item.dishNameSnapshot}`).join(", "),
-          detail: sale.tableName ?? "Delivery",
+          detail: sale.tableName ?? "Counter or delivery",
           sourceType: "PAYMENT",
           sourceId: sale.paymentId,
           reference: sale.reference,

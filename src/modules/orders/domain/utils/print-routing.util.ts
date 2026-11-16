@@ -29,12 +29,14 @@ export interface PrintJobDraft {
  */
 export function routePrintJobs(
   tickets: RoutableTicket[],
-  order: { tableId: string | null; floorId: string | null },
+  order: { tableId: string | null; floorId: string | null; orderType?: string },
   printers: RoutablePrinter[]
 ): PrintJobDraft[] {
   const jobs: PrintJobDraft[] = [];
   for (const printer of printers) {
-    if (printer.tableAssignment) {
+    // A quick sale has no table or floor to match, but it is cooked here, so it goes to every printer; a delivery is skipped.
+    const quick = order.tableId === null && order.floorId === null && order.orderType === "DINE_IN";
+    if (printer.tableAssignment && !quick) {
       const atTable = order.tableId !== null && printer.tableIds.includes(order.tableId);
       const onFloor = order.floorId !== null && printer.floorIds.includes(order.floorId);
       if (!atTable && !onFloor) continue;

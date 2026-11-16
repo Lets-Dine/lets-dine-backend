@@ -15,12 +15,14 @@ import { DishVariantRepository } from "../../../dish-variants/domain/repositorie
 import { DishRepository } from "../../../dishes/domain/repositories/dish.repository";
 import { OrderRepository } from "../../../orders/domain/repositories/order.repository";
 import { calculateOrderTotals } from "../../../orders/domain/utils/money.util";
-import { deriveOrderStatus } from "../../../orders/domain/utils/order-status.util";
+import { billsOnItsOwn, deriveOrderStatus } from "../../../orders/domain/utils/order-status.util";
 import { RESTAURANT_ERROR_MESSAGES } from "../../../restaurants/domain/constants";
 import { RestaurantRepository } from "../../../restaurants/domain/repositories/restaurant.repository";
 import { PAYMENT_ERROR_MESSAGES } from "../../domain/constants";
 import { IPaymentWithItems } from "../../domain/interfaces/payment.interface";
+import { billDiffersFromOrder } from "../../domain/utils/bill-lines.util";
 import { openingTenders } from "../../domain/utils/tender.util";
+import { PaymentApprovalService } from "../payment-approval.service";
 import { IPaymentItemCreate, PaymentRepository } from "../../domain/repositories/payment.repository";
 import { CompletePaymentInput } from "../../interfaces/http/validations/complete-payment.validation";
 
@@ -38,7 +40,8 @@ export class CompletePaymentUsecase {
     private readonly auditLogService: AuditLogService,
     private readonly eventEmitter: EventEmitter2,
     private readonly loyaltyService: LoyaltyService,
-    private readonly customerRepository: CustomerRepository
+    private readonly customerRepository: CustomerRepository,
+    private readonly approvalService: PaymentApprovalService
   ) {}
 
   async execute(dto: CompletePaymentInput, authEntity: AuthEntity): Promise<IPaymentWithItems> {
@@ -56,9 +59,13 @@ export class CompletePaymentUsecase {
     if (!restaurant) throw new NotFoundException(RESTAURANT_ERROR_MESSAGES.NOT_FOUND);
 
     const discount = dto.discount ?? 0;
-    if (discount > 0 && !can(authEntity.role, "payments:discount")) {
-      throw new ForbiddenException(PAYMENT_ERROR_MESSAGES.DISCOUNT_NOT_ALLOWED);
-    }
+    // A discount, or a bill that is not what was ordered, is a manager's call. Somebody without that right can still get it
+    // through with a manager's PIN, checked here and not inside the transaction so that a refused attempt is recorded and
+    // counted even though the payment is refused.
+    const mayOverride = can(authEntity.role, "payments:discount");
+    // Only asked of the manager when something here needs it, so a PIN is never tested for a payment that needed none.
+    const approver =
+      !mayOverride && dto.approval && (await this.mightNeedApproval(dto, session, authEntity)) ? await this.approvalService.verify(dto.approval, authEntity) : null;
 
     return this.paymentRepository.$transaction(async tx => {
       // §16b — scopes this charge to one floor order's own bill rather than the whole session's
@@ -66,7 +73,7 @@ export class CompletePaymentUsecase {
       const order = dto.orderId ? await this.orderRepository.findById(dto.orderId, { tx }) : null;
       if (dto.orderId) {
         if (!order || order.sessionId !== session.id) throw new NotFoundException(PAYMENT_ERROR_MESSAGES.ORDER_NOT_FOUND);
-        if (!order.floorId) throw new ConflictException(PAYMENT_ERROR_MESSAGES.ORDER_NOT_FLOOR);
+        if (!billsOnItsOwn(order)) throw new ConflictException(PAYMENT_ERROR_MESSAGES.ORDER_NOT_FLOOR);
         if (order.paidAt) throw new ConflictException(PAYMENT_ERROR_MESSAGES.ORDER_ALREADY_PAID);
       }
 
@@ -92,6 +99,36 @@ export class CompletePaymentUsecase {
           const picked = await this.customerRepository.findById(customerId, authEntity.restaurantId, { tx });
           if (!picked) throw new NotFoundException(PAYMENT_ERROR_MESSAGES.CUSTOMER_NOT_FOUND);
           pickedName = picked.name;
+        }
+      }
+
+      if (!mayOverride) {
+        const charged = dto.items ?? [];
+        const ordered = split ? [] : await this.orderedLines(order, session, authEntity);
+        const reasons: string[] = [];
+        if (discount > 0) reasons.push("discount");
+        if (!split && billDiffersFromOrder(charged, ordered)) reasons.push("lines");
+        // Points and credit land on whoever the bill is for. Moving them to a customer the orders were not placed under would
+        // spend somebody else's points, or leave a debt with somebody who was not there.
+        if (dto.customerId !== undefined && customerId !== resolvedCustomerId && (dto.redeemPoints || dto.credit)) reasons.push("customer");
+        if (reasons.length > 0) {
+          const count = (lines: { quantity: number }[]) => lines.reduce((sum, line) => sum + line.quantity, 0);
+          if (!approver) {
+            throw new ForbiddenException({
+              ...PAYMENT_ERROR_MESSAGES.APPROVAL_REQUIRED,
+              // What the manager is being asked to approve, so they are not signing blind.
+              detail: { reasons, sessionId: session.id, discount, currency: restaurant.currency, ordered: count(ordered), charged: count(charged) },
+            });
+          }
+          await this.auditLogService.record(
+            {
+              action: AuditAction.payment_override_approved,
+              subject: approver.name,
+              detail: `Approved ${reasons.map(reason => (reason === "discount" ? `a ${discount} ${restaurant.currency} discount` : reason === "lines" ? "a bill changed from the order" : "points or credit on another customer")).join(", ")} on ${order ? `order ${order.reference}` : `session ${session.id}`}, taken by ${authEntity.name} (approver member ${approver.id})`,
+            },
+            authEntity,
+            tx
+          );
         }
       }
 
@@ -188,6 +225,35 @@ export class CompletePaymentUsecase {
 
       return payment;
     });
+  }
+
+  /**
+   * Whether this request could need a manager, judged before the transaction opens. Deliberately generous (it only decides whether
+   * to test a PIN); the transaction decides for real once the table is locked.
+   */
+  private async mightNeedApproval(dto: CompletePaymentInput, session: { id: string; branchId: string }, authEntity: AuthEntity): Promise<boolean> {
+    if ((dto.discount ?? 0) > 0) return true;
+    if (dto.customerId !== undefined && (dto.redeemPoints || dto.credit)) return true;
+    if (dto.split) return false;
+    const order = dto.orderId ? await this.orderRepository.findById(dto.orderId) : null;
+    return billDiffersFromOrder(dto.items ?? [], await this.orderedLines(order, session, authEntity));
+  }
+
+  /**
+   * What the bill should be if nothing was changed: the lines of the one floor order being paid, or of every order on the
+   * table's visit that has not been cancelled.
+   */
+  private async orderedLines(
+    order: { items: { dishId: string; variantId: string | null; addOns: { addOnId: string }[]; quantity: number; status: OrderItemStatus }[] } | null,
+    session: { id: string; branchId: string },
+    authEntity: AuthEntity
+  ) {
+    const orders = order ? [order] : (await this.orderRepository.findBySessionId(session.id, authEntity.restaurantId, session.branchId)).filter(o => o.status !== OrderStatus.CANCELLED);
+    return orders.flatMap(o =>
+      o.items
+        .filter(item => item.status !== OrderItemStatus.CANCELLED)
+        .map(item => ({ dishId: item.dishId, variantId: item.variantId, addOnIds: item.addOns.map(addOn => addOn.addOnId), quantity: item.quantity }))
+    );
   }
 
   /**

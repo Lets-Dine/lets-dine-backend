@@ -72,6 +72,12 @@ class KitchenTicketRepositoryImpl implements KitchenTicketRepository {
     return row ? (await this.hydrate(prisma, [row]))[0] : null;
   }
 
+  async findByOrder(orderId: string, options?: { tx?: PrismaTransaction }): Promise<IKitchenTicket[]> {
+    const prisma = options?.tx ?? this.prisma;
+    const rows = await prisma.kitchenTicket.findMany({ where: { orderId }, include: TICKET_INCLUDE, orderBy: { number: "asc" } });
+    return this.hydrate(prisma, rows);
+  }
+
   async findManyByIds(ids: string[], options?: { tx?: PrismaTransaction }): Promise<IKitchenTicket[]> {
     if (ids.length === 0) return [];
     const prisma = options?.tx ?? this.prisma;

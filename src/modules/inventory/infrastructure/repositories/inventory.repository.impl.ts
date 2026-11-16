@@ -1,9 +1,13 @@
 import { Injectable } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import { PrismaService, PrismaTransaction } from "../../../../common/prisma";
 import {
   IPurchase,
   IIngredientSummary,
   IUsagePage,
+  IConsumptionPage,
+  IConsumptionQuery,
+  ConsumptionSource,
   IIngredient,
   IRecipeLine,
   IReturnableLot,
@@ -362,6 +366,87 @@ class InventoryRepositoryImpl implements InventoryRepository {
       quantity: r.delta,
       cost: r.cost,
     }));
+  }
+
+  async findConsumption(branchId: string, query: IConsumptionQuery): Promise<IConsumptionPage> {
+    const matches: Record<ConsumptionSource, Prisma.StockMovementWhereInput> = {
+      order: { reason: "ORDER", orderItemId: { not: null } },
+      manual: { reason: "MANUAL_USE" },
+      waste: { reason: "WASTE" },
+    };
+    const shared: Prisma.StockMovementWhereInput = {
+      ingredient: { branchId },
+      ...(query.ingredientId && { ingredientId: query.ingredientId }),
+      ...((query.from || query.to) && { createdAt: { ...(query.from && { gte: query.from }), ...(query.to && { lt: query.to }) } }),
+    };
+    const where: Prisma.StockMovementWhereInput = { ...shared, OR: query.source ? [matches[query.source]] : Object.values(matches) };
+
+    const [total, grouped, movements] = await Promise.all([
+      this.prisma.stockMovement.count({ where }),
+      // Counted without the source filter, so each tab can say what it would show.
+      this.prisma.stockMovement.groupBy({ by: ["reason"], where: { ...shared, OR: Object.values(matches) }, _count: { _all: true } }),
+      this.prisma.stockMovement.findMany({
+        where,
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        skip: (query.page - 1) * query.pageSize,
+        take: query.pageSize,
+        select: {
+          id: true,
+          ingredientId: true,
+          delta: true,
+          createdAt: true,
+          reason: true,
+          orderItemId: true,
+          dishId: true,
+          note: true,
+          wasteReason: true,
+          wasteCost: true,
+          createdBy: true,
+          ingredient: { select: { name: true, unit: true } },
+        },
+      }),
+    ]);
+
+    const [orderItems, dishNames, users] = await Promise.all([
+      this.prisma.orderItem.findMany({
+        where: { id: { in: movements.flatMap(m => (m.orderItemId ? [m.orderItemId] : [])) } },
+        select: { id: true, dishNameSnapshot: true, quantity: true },
+      }),
+      this.findDishNames(movements.flatMap(m => (m.dishId ? [m.dishId] : []))),
+      this.prisma.user.findMany({
+        where: { id: { in: [...new Set(movements.flatMap(m => (m.createdBy ? [m.createdBy] : [])))] } },
+        select: { id: true, name: true },
+      }),
+    ]);
+    const itemById = new Map(orderItems.map(item => [item.id, item]));
+    const userName = new Map(users.map(user => [user.id, user.name]));
+    const count = (reason: "ORDER" | "MANUAL_USE" | "WASTE") => grouped.find(g => g.reason === reason)?._count._all ?? 0;
+
+    return {
+      total,
+      page: query.page,
+      pageSize: query.pageSize,
+      counts: { order: count("ORDER"), manual: count("MANUAL_USE"), waste: count("WASTE") },
+      items: movements.map(m => {
+        const item = m.orderItemId ? itemById.get(m.orderItemId) : undefined;
+        const source: ConsumptionSource = m.reason === "WASTE" ? "waste" : m.reason === "MANUAL_USE" ? "manual" : "order";
+        return {
+          id: m.id,
+          at: m.createdAt,
+          ingredientId: m.ingredientId,
+          ingredientName: m.ingredient.name,
+          unit: m.ingredient.unit,
+          quantity: -m.delta,
+          source,
+          dishName: source === "order" ? (item?.dishNameSnapshot ?? "Removed dish") : source === "manual" && m.dishId ? (dishNames.get(m.dishId) ?? "Removed dish") : null,
+          portions: source === "order" ? (item?.quantity ?? null) : null,
+          note: m.note,
+          wasteReason: m.wasteReason,
+          wasteCost: m.wasteCost,
+          byName: m.createdBy ? (userName.get(m.createdBy) ?? null) : null,
+        };
+      }),
+    };
   }
 
   async findIngredientUsage(ingredientId: string, page: number, pageSize: number): Promise<IUsagePage> {

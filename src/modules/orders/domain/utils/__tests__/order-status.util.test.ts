@@ -1,5 +1,5 @@
 import { OrderItemStatus, OrderType } from "@prisma/client";
-import { deriveOrderStatus } from "../order-status.util";
+import { billsOnItsOwn, deriveOrderStatus } from "../order-status.util";
 
 function item(status: OrderItemStatus) {
   return { status };
@@ -37,5 +37,15 @@ describe("deriveOrderStatus", () => {
   it("should never gate a table order on payment — UNPAID is floor-only", () => {
     // Arrange & Act & Assert
     expect(deriveOrderStatus([item(OrderItemStatus.SERVED)], null, OrderType.DINE_IN, { isFloorOrder: false })).toBe("COMPLETED");
+  });
+});
+
+describe("billsOnItsOwn", () => {
+  it("should bill a floor order and a location-less quick sale on their own, but not a table or delivery order", () => {
+    // Arrange & Act & Assert
+    expect(billsOnItsOwn({ floorId: "f1", tableId: null, orderType: OrderType.DINE_IN })).toBe(true);
+    expect(billsOnItsOwn({ floorId: null, tableId: null, orderType: OrderType.DINE_IN })).toBe(true);
+    expect(billsOnItsOwn({ floorId: null, tableId: "t1", orderType: OrderType.DINE_IN })).toBe(false);
+    expect(billsOnItsOwn({ floorId: null, tableId: null, orderType: OrderType.DELIVERY })).toBe(false);
   });
 });

@@ -19,6 +19,7 @@ import {
   FailPrintJobUsecase,
   FetchPendingPrintJobsUsecase,
 } from "./application/use-cases/print-jobs.usecases";
+import { ReprintKitchenTicketsUsecase } from "./application/use-cases/reprint-kitchen-tickets.usecase";
 import { DismissKitchenTicketWarningUsecase } from "./application/use-cases/dismiss-kitchen-ticket-warning.usecase";
 import { FetchKitchenTicketsUsecase } from "./application/use-cases/fetch-kitchen-tickets.usecase";
 import { KitchenTicketService } from "./application/kitchen-ticket.service";
@@ -91,6 +92,7 @@ import { BillingModule } from "../billing/billing.module";
     DismissKitchenTicketWarningUsecase,
     FetchPendingPrintJobsUsecase,
     ClaimPrintJobUsecase,
+    ReprintKitchenTicketsUsecase,
     CompletePrintJobUsecase,
     FailPrintJobUsecase,
     PrintJobRepositoryImpl,

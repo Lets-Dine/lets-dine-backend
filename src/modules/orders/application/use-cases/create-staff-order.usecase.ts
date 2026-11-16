@@ -22,11 +22,11 @@ import { UpdateOrderStatusUsecase } from "./update-order-status.usecase";
 const DEFAULT_TTL_MINUTES = 180;
 
 /**
- * Staff placing an order at the till, for a table, a floor or a delivery. Staff have no diner
+ * Staff placing an order at the till, for a table, a floor, a delivery or a quick sale with none of them. Staff have no diner
  * session, so this finds (or opens) the one the order belongs in and hands off to
  * `CreateOrderUsecase` — the same pricing, validation and idempotency as a diner's checkout.
  *
- * A table reuses its open visit, or is seated now if it has none; a floor or delivery order
+ * A table reuses its open visit, or is seated now if it has none; a floor, delivery or quick order
  * always starts its own session, the same as a fresh scan or phone number would. Staff placed
  * it themselves, so it is accepted on the spot and goes straight to the kitchen.
  */
@@ -117,6 +117,9 @@ export class CreateStaffOrderUsecase {
       if (!floor || !floor.isActive || !isInActiveBranch(authEntity, floor)) throw new NotFoundException(FLOOR_ERROR_MESSAGES.NOT_FOUND);
       return { session: await this.newSession(authEntity, { floorId: floor.id }), opened: true };
     }
+
+    // A quick sale: nowhere to bring it, nobody to deliver to. Its own visit, billed on its own.
+    if (dto.type === "QUICK") return { session: await this.newSession(authEntity, {}), opened: true };
 
     // Delivery: the phone number is the customer. A known one keeps their name and saved address — an address
     // typed here is for this one order only; a new one is saved with what staff typed.

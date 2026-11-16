@@ -73,6 +73,9 @@ enum AuditAction {
   order_item_cancelled
   table_settled
   payment_completed
+  payment_override_approved
+  payment_override_denied
+  approval_pin_changed
   payment_collected
   payment_refunded
   settings_updated

@@ -20,6 +20,9 @@ const REVIEW_TAGS = [
 ];
 
 const DEMO_PIN = process.env.SEED_DEMO_PIN ?? "4821";
+/** What the demo manager and owner approve a discount with at the till. Never the sign-in PIN: the two are meant to differ. */
+const DEMO_APPROVAL_PIN = process.env.SEED_DEMO_APPROVAL_PIN ?? "7351";
+if (DEMO_APPROVAL_PIN === DEMO_PIN) throw new Error("SEED_DEMO_APPROVAL_PIN must differ from SEED_DEMO_PIN");
 
 function hashPin(pin: string): string {
   const salt = randomBytes(16).toString("hex");
@@ -215,6 +218,12 @@ async function seedDemoRestaurant(): Promise<void> {
       create: { email: member.email, name: member.name, pinHash: hashPin(DEMO_PIN) },
     });
 
+    // Only somebody who can approve has an approval PIN; a demo database seeded before this existed gets one now, but a PIN
+    // somebody has since chosen is left alone.
+    if (member.role !== StaffRole.STAFF) {
+      await prisma.user.updateMany({ where: { id: user.id, approvalPinHash: null }, data: { approvalPinHash: hashPin(DEMO_APPROVAL_PIN) } });
+    }
+
     const membership = await prisma.restaurantMember.upsert({
       where: { restaurantId_userId: { restaurantId: restaurant.id, userId: user.id } },
       update: { role: member.role },
@@ -275,7 +284,7 @@ async function seedDemoRestaurant(): Promise<void> {
   }
 
   console.info(
-    `Seeded demo restaurant "${restaurant.name}" — sign in with any of ${staff.map(member => member.email).join(", ")} and PIN ${DEMO_PIN}`
+    `Seeded demo restaurant "${restaurant.name}" — sign in with any of ${staff.map(member => member.email).join(", ")} and PIN ${DEMO_PIN}; the owner and manager approve discounts with PIN ${DEMO_APPROVAL_PIN}`
   );
 }
 

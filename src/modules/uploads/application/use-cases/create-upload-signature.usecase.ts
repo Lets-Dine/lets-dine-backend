@@ -30,6 +30,14 @@ export class CreateUploadSignatureUsecase {
     return this.sign(`lets-dine/${authEntity.restaurantId}/${FOLDER_BY_TARGET[dto.target]}`);
   }
 
+  /**
+   * Profile photos: any signed-in member may upload their own, and an owner uploads for others, so this is not held
+   * to the menu/settings permission the rest are. It only mints a slip for the restaurant's avatar folder.
+   */
+  executeAvatar(authEntity: AuthEntity): IUploadSignature {
+    return this.sign(`lets-dine/${authEntity.restaurantId}/staff-avatars`);
+  }
+
   sign(folder: string): IUploadSignature {
     const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
     const apiKey = process.env.CLOUDINARY_API_KEY;

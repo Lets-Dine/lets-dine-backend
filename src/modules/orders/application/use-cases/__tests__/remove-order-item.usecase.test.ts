@@ -1,6 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { AuditAction } from "@prisma/client";
-import { NotFoundException } from "../../../../../common/exceptions";
+import { AuditAction, StaffRole } from "@prisma/client";
+import { ForbiddenException, NotFoundException } from "../../../../../common/exceptions";
 import { buildAuthEntity } from "../../../../../common/testing";
 import { AuditLogService } from "../../../../audit-logs/application/audit-log.service";
 import { RestaurantRepository } from "../../../../restaurants/domain/repositories/restaurant.repository";
@@ -116,6 +116,38 @@ describe("RemoveOrderItemUsecase", () => {
 
       // Act & Assert
       await expect(usecase.execute("order-1", "item-1", authUser)).resolves.toBeDefined();
+    });
+
+    describe("who may take food off an order", () => {
+      const staff = buildAuthEntity({ role: StaffRole.STAFF });
+      const orderWith = (itemStatus: string, orderStatus = "PENDING") => ({
+        id: "order-1",
+        reference: "#1001",
+        restaurantId: authUser.restaurantId,
+        branchId: authUser.branchId,
+        status: orderStatus,
+        items: [{ id: "item-1", dishId: "dish-1", dishNameSnapshot: "Steak", imageUrlSnapshot: null, unitPrice: 900, quantity: 1, notes: "", status: itemStatus }],
+      });
+
+      it("should let plain staff take off a line the kitchen has not started", async () => {
+        orderRepository.findById.mockResolvedValue(orderWith("PENDING") as any);
+        orderRepository.syncItems.mockResolvedValue({ id: "order-1" } as any);
+        await expect(usecase.execute("order-1", "item-1", staff)).resolves.toBeDefined();
+      });
+
+      it("should refuse plain staff taking off food that is cooking, ready or served, or anything from a finished order", async () => {
+        for (const order of [orderWith("PREPARING"), orderWith("READY"), orderWith("SERVED"), orderWith("PENDING", "COMPLETED")]) {
+          orderRepository.findById.mockResolvedValue(order as any);
+          await expect(usecase.execute("order-1", "item-1", staff)).rejects.toThrow(new ForbiddenException(ORDER_ERROR_MESSAGES.REMOVE_NOT_ALLOWED));
+        }
+        expect(orderRepository.syncItems).not.toHaveBeenCalled();
+      });
+
+      it("should let a manager correct a served line", async () => {
+        orderRepository.findById.mockResolvedValue(orderWith("SERVED") as any);
+        orderRepository.syncItems.mockResolvedValue({ id: "order-1" } as any);
+        await expect(usecase.execute("order-1", "item-1", buildAuthEntity({ role: StaffRole.MANAGER }))).resolves.toBeDefined();
+      });
     });
 
     it("should throw NotFoundException when the order isn't this restaurant's", async () => {

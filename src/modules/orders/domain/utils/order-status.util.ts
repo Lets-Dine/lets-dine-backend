@@ -16,6 +16,14 @@ export function isOrderOpen(status: OrderStatus): boolean {
   return OPEN_ORDER_STATUSES.includes(status);
 }
 
+/**
+ * Whether an order is billed on its own rather than as part of a table's tab: a floor order, or a quick sale placed
+ * at the till with no table, floor or customer behind it. Either sits at `UNPAID` until its own bill is paid.
+ */
+export function billsOnItsOwn(order: { floorId: string | null; tableId: string | null; orderType: OrderType }): boolean {
+  return Boolean(order.floorId) || (!order.tableId && order.orderType === OrderType.DINE_IN);
+}
+
 /** The bits of a floor order's payment state `deriveOrderStatus` needs — nothing else about it. */
 export interface DeriveOrderStatusContext {
   /** §16b — whether this order was placed through a floor's shared QR, not a table's. `UNPAID`

@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Headers, HttpCode, HttpStatus, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { AbilityGuard, AuthGuard, AuthUser, CheckPolicies, checkPermissionRules } from "../../../../common/auth";
 import { type AuthEntity, IHttpResponse, PaginatedResponse } from "../../../../common/interfaces";
 import { ParseUuidPipe } from "../../../../common/pipes";
@@ -16,6 +16,7 @@ import { CreateStaffOrderUsecase } from "../../application/use-cases/create-staf
 import { FetchAllOrdersUsecase } from "../../application/use-cases/fetch-all-orders.usecase";
 import { FetchOrderByIdUsecase } from "../../application/use-cases/fetch-order-by-id.usecase";
 import { FetchOrdersBySessionUsecase } from "../../application/use-cases/fetch-orders-by-session.usecase";
+import { ReprintKitchenTicketsUsecase } from "../../application/use-cases/reprint-kitchen-tickets.usecase";
 import { RemoveOrderItemUsecase } from "../../application/use-cases/remove-order-item.usecase";
 import { DeliverOrderUsecase } from "../../application/use-cases/deliver-order.usecase";
 import { SettleTableUsecase } from "../../application/use-cases/settle-table.usecase";
@@ -36,7 +37,8 @@ export class RestaurantOrderController {
     private readonly advanceOrderItemStatusUsecase: AdvanceOrderItemStatusUsecase,
     private readonly settleTableUsecase: SettleTableUsecase,
     private readonly deliverOrderUsecase: DeliverOrderUsecase,
-    private readonly createStaffOrderUsecase: CreateStaffOrderUsecase
+    private readonly createStaffOrderUsecase: CreateStaffOrderUsecase,
+    private readonly reprintKitchenTicketsUsecase: ReprintKitchenTicketsUsecase
   ) {}
 
   /** Staff placing an order at the till — for a table (seating it if needed), a floor, or a delivery. */
@@ -88,9 +90,10 @@ export class RestaurantOrderController {
     return buildHttpResponse(order, ORDER_SUCCESS_MESSAGES.ORDER_ITEM_ADDED);
   }
 
+  // Closes every open order on a table without recording any payment, so it is a manager's: the till takes money through /payments.
   @Post("/table/:tableId/settle")
   @UseGuards(AuthGuard, AbilityGuard)
-  @CheckPolicies(checkPermissionRules([["orders:advance"]]))
+  @CheckPolicies(checkPermissionRules([["orders:cancel"]]))
   async settle(
     @Param("tableId", ParseUuidPipe) tableId: string,
     @AuthUser() authEntity: AuthEntity
@@ -126,6 +129,14 @@ export class RestaurantOrderController {
   ): Promise<IHttpResponse<IOrderWithItems>> {
     const order = await this.updateOrderStatusUsecase.execute(id, dto, authEntity);
     return buildHttpResponse(order, ORDER_SUCCESS_MESSAGES.ORDER_STATUS_UPDATED);
+  }
+
+  @Post("/:id/reprint-ticket")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AuthGuard, AbilityGuard)
+  @CheckPolicies(checkPermissionRules([["orders:advance"]]))
+  async reprintTicket(@Param("id", ParseUuidPipe) id: string, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<{ jobs: number }>> {
+    return buildHttpResponse(await this.reprintKitchenTicketsUsecase.execute(id, authEntity), ORDER_SUCCESS_MESSAGES.TICKETS_REPRINTED);
   }
 
   @Post("/:id/cancel")
