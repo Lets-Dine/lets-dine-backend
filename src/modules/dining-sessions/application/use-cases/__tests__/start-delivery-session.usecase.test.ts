@@ -129,6 +129,20 @@ describe("StartDeliverySessionUsecase", () => {
       expect(diningSessionRepository.create).not.toHaveBeenCalled();
     });
 
+    it("should still open the visit with delivery off or on WhatsApp when pick-up is on, so the customer can collect", async () => {
+      // Arrange
+      restaurantRepository.findBySlug.mockResolvedValue({ ...restaurant, deliveryEnabled: false, deliveryChannel: "WHATSAPP", pickupEnabled: true });
+      customerRepository.findByPhone.mockResolvedValue(customer as any);
+      customerRepository.upsert.mockResolvedValue(customer as any);
+      diningSessionRepository.create.mockResolvedValue({ id: "session-1" } as any);
+
+      // Act
+      const result = await usecase.execute(dto);
+
+      // Assert
+      expect(result.session).toEqual({ id: "session-1" });
+    });
+
     it("should throw BadRequestException when delivery is taken on WhatsApp", async () => {
       // Arrange
       restaurantRepository.findBySlug.mockResolvedValue({ ...restaurant, deliveryChannel: "WHATSAPP" });

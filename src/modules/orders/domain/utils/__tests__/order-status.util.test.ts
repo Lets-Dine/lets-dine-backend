@@ -1,15 +1,14 @@
 import { OrderItemStatus, OrderType } from "@prisma/client";
-import { billsOnItsOwn, deriveOrderStatus } from "../order-status.util";
+import { deriveOrderStatus } from "../order-status.util";
 
 function item(status: OrderItemStatus) {
   return { status };
 }
 
 describe("deriveOrderStatus", () => {
-  it("should derive COMPLETED for a dine-in order once every item is served", () => {
+  it("should derive COMPLETED for a paid dine-in order once every item is served", () => {
     // Arrange & Act & Assert
-    expect(deriveOrderStatus([item(OrderItemStatus.SERVED)], null, OrderType.DINE_IN)).toBe("COMPLETED");
-    expect(deriveOrderStatus([item(OrderItemStatus.SERVED)], null)).toBe("COMPLETED");
+    expect(deriveOrderStatus([item(OrderItemStatus.SERVED)], null, OrderType.DINE_IN, { paidAt: new Date() })).toBe("COMPLETED");
   });
 
   it("should cap a delivery order at READY instead of auto-completing — only the manual steps progress it further", () => {
@@ -22,30 +21,21 @@ describe("deriveOrderStatus", () => {
     expect(deriveOrderStatus([item(OrderItemStatus.CANCELLED)], null, OrderType.DELIVERY)).toBe("CANCELLED");
   });
 
-  it("should derive UNPAID for a floor order once every item is served but nothing is paid yet", () => {
+  it("should derive UNPAID for a dine-in order once every item is served but nothing is paid yet", () => {
     // Arrange & Act & Assert
-    expect(deriveOrderStatus([item(OrderItemStatus.SERVED)], null, OrderType.DINE_IN, { isFloorOrder: true })).toBe("UNPAID");
+    expect(deriveOrderStatus([item(OrderItemStatus.SERVED)], null, OrderType.DINE_IN)).toBe("UNPAID");
   });
 
-  it("should derive COMPLETED for a floor order once every item is served and it's been paid", () => {
+  it("should derive COMPLETED for a dine-in order once every item is served and it's been paid", () => {
     // Arrange & Act & Assert
-    expect(deriveOrderStatus([item(OrderItemStatus.SERVED)], null, OrderType.DINE_IN, { isFloorOrder: true, paidAt: new Date() })).toBe(
+    expect(deriveOrderStatus([item(OrderItemStatus.SERVED)], null, OrderType.DINE_IN, { paidAt: new Date() })).toBe(
       "COMPLETED"
     );
   });
 
-  it("should never gate a table order on payment — UNPAID is floor-only", () => {
+  it("should gate a table order on payment too, and never a delivery order", () => {
     // Arrange & Act & Assert
-    expect(deriveOrderStatus([item(OrderItemStatus.SERVED)], null, OrderType.DINE_IN, { isFloorOrder: false })).toBe("COMPLETED");
-  });
-});
-
-describe("billsOnItsOwn", () => {
-  it("should bill a floor order and a location-less quick sale on their own, but not a table or delivery order", () => {
-    // Arrange & Act & Assert
-    expect(billsOnItsOwn({ floorId: "f1", tableId: null, orderType: OrderType.DINE_IN })).toBe(true);
-    expect(billsOnItsOwn({ floorId: null, tableId: null, orderType: OrderType.DINE_IN })).toBe(true);
-    expect(billsOnItsOwn({ floorId: null, tableId: "t1", orderType: OrderType.DINE_IN })).toBe(false);
-    expect(billsOnItsOwn({ floorId: null, tableId: null, orderType: OrderType.DELIVERY })).toBe(false);
+    expect(deriveOrderStatus([item(OrderItemStatus.SERVED)], null, OrderType.DINE_IN)).toBe("UNPAID");
+    expect(deriveOrderStatus([item(OrderItemStatus.SERVED)], null, OrderType.DELIVERY)).toBe("READY");
   });
 });

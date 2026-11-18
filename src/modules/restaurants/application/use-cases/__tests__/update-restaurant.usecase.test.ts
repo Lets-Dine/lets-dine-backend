@@ -26,6 +26,7 @@ function buildRestaurant(overrides: Partial<IRestaurant> = {}): IRestaurant {
     taxRate: 0.13,
     deliveryFeeAmount: null,
     deliveryEnabled: true,
+    pickupEnabled: false,
     deliveryChannel: "APP",
     whatsappNumber: null,
     autoConsumeStock: true,

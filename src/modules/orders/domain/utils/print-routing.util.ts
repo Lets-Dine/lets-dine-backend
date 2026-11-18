@@ -35,7 +35,7 @@ export function routePrintJobs(
   const jobs: PrintJobDraft[] = [];
   for (const printer of printers) {
     // A quick sale has no table or floor to match, but it is cooked here, so it goes to every printer; a delivery is skipped.
-    const quick = order.tableId === null && order.floorId === null && order.orderType === "DINE_IN";
+    const quick = order.tableId === null && order.floorId === null && (order.orderType === "DINE_IN" || order.orderType === "PICKUP");
     if (printer.tableAssignment && !quick) {
       const atTable = order.tableId !== null && printer.tableIds.includes(order.tableId);
       const onFloor = order.floorId !== null && printer.floorIds.includes(order.floorId);

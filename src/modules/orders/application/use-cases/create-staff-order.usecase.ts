@@ -22,7 +22,7 @@ import { UpdateOrderStatusUsecase } from "./update-order-status.usecase";
 const DEFAULT_TTL_MINUTES = 180;
 
 /**
- * Staff placing an order at the till, for a table, a floor, a delivery or a quick sale with none of them. Staff have no diner
+ * Staff placing an order at the till, for a table, a floor, a delivery, a pick-up or a quick sale with none of them. Staff have no diner
  * session, so this finds (or opens) the one the order belongs in and hands off to
  * `CreateOrderUsecase` — the same pricing, validation and idempotency as a diner's checkout.
  *
@@ -54,7 +54,7 @@ export class CreateStaffOrderUsecase {
 
     let order: IOrderWithItems;
     try {
-      order = await this.createOrderUsecase.execute(input, session, { idempotencyKey: options?.idempotencyKey, placedByStaff: true });
+      order = await this.createOrderUsecase.execute(input, session, { idempotencyKey: options?.idempotencyKey, placedByStaff: true, ...(dto.type === "PICKUP" && { pickup: true }) });
     } catch (error) {
       // The same tap, racing itself: the other request's order is the answer to this one too.
       const raced = isUniqueViolation(error) ? await this.replayOf(options?.idempotencyKey, authEntity) : null;
@@ -119,7 +119,8 @@ export class CreateStaffOrderUsecase {
     }
 
     // A quick sale: nowhere to bring it, nobody to deliver to. Its own visit, billed on its own.
-    if (dto.type === "QUICK") return { session: await this.newSession(authEntity, {}), opened: true };
+    // A pick-up is the same: its own visit with no table, and the customer is named on the order itself.
+    if (dto.type === "QUICK" || dto.type === "PICKUP") return { session: await this.newSession(authEntity, {}), opened: true };
 
     // Delivery: the phone number is the customer. A known one keeps their name and saved address — an address
     // typed here is for this one order only; a new one is saved with what staff typed.

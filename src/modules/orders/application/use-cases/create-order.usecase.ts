@@ -44,11 +44,14 @@ export class CreateOrderUsecase {
     private readonly entitlementService: EntitlementService
   ) {}
 
-  /** `placedByStaff` — an order typed in at the till; WhatsApp-channel delivery is exactly what staff key in, so the app-only check doesn't apply. */
+  /**
+   * `placedByStaff` — an order typed in at the till; WhatsApp-channel delivery is exactly what staff key in, so the app-only check doesn't apply.
+   * `pickup` — the customer collects it: no table, no address, no fee, and the customer is named on the order like any dine-in guest.
+   */
   async execute(
     dto: CreateOrderInput,
     session: IDiningSession,
-    options?: { idempotencyKey?: string; placedByStaff?: boolean }
+    options?: { idempotencyKey?: string; placedByStaff?: boolean; pickup?: boolean }
   ): Promise<IOrderWithItems> {
     if (options?.idempotencyKey) {
       const alreadyPlaced = await this.orderRepository.findByIdempotencyKey(options.idempotencyKey);
@@ -59,8 +62,13 @@ export class CreateOrderUsecase {
     const order = await this.orderRepository.$transaction(async tx => {
       const restaurant = await this.restaurantRepository.findByIdForBranch(session.restaurantId, session.branchId, { tx });
       if (!restaurant || !restaurant.isActive) throw new NotFoundException(RESTAURANT_ERROR_MESSAGES.NOT_FOUND);
-      if (session.customerId && !restaurant.deliveryEnabled) throw new BadRequestException(RESTAURANT_ERROR_MESSAGES.DELIVERY_DISABLED);
-      if (session.customerId && !options?.placedByStaff && restaurant.deliveryChannel !== DeliveryChannel.APP) {
+      // A customer-identified session is a delivery one unless this order says it will be collected. Each has its own switch,
+      // and only delivery cares about the courier channel.
+      const customerSession = !!session.customerId;
+      const collecting = customerSession && dto.fulfilment === "PICKUP";
+      if (collecting && !options?.placedByStaff && !restaurant.pickupEnabled) throw new BadRequestException(RESTAURANT_ERROR_MESSAGES.PICKUP_DISABLED);
+      if (customerSession && !collecting && !restaurant.deliveryEnabled) throw new BadRequestException(RESTAURANT_ERROR_MESSAGES.DELIVERY_DISABLED);
+      if (customerSession && !collecting && !options?.placedByStaff && restaurant.deliveryChannel !== DeliveryChannel.APP) {
         throw new BadRequestException(RESTAURANT_ERROR_MESSAGES.DELIVERY_VIA_WHATSAPP);
       }
 
@@ -77,7 +85,8 @@ export class CreateOrderUsecase {
       // §22 — `customerId` is the one field exclusive to a delivery session (a floor
       // session also has no `tableId`, so that alone can't be the delivery check).
       // `orderType` is what everything else (totals, transitions, staff filtering) branches on.
-      const isDelivery = !!session.customerId;
+      const isDelivery = customerSession && !collecting;
+      const isPickup = collecting || !!options?.pickup;
       const deliveryFee = isDelivery ? (restaurant.deliveryFeeAmount ?? 0) : 0;
       const totals = calculateOrderTotals(items, restaurant, 0, deliveryFee);
 
@@ -98,8 +107,8 @@ export class CreateOrderUsecase {
           // every floor-order check downstream (status derivation, single-order payment) should
           // key off instead of the display-only `floorVisitorName`/`floorName`.
           floorId: session.floorId,
-          orderType: isDelivery ? OrderType.DELIVERY : OrderType.DINE_IN,
-          customerId: isDelivery ? (session.customerId ?? null) : (dineInCustomer?.id ?? null),
+          orderType: isDelivery ? OrderType.DELIVERY : isPickup ? OrderType.PICKUP : OrderType.DINE_IN,
+          customerId: customerSession ? (session.customerId ?? null) : (dineInCustomer?.id ?? null),
           // §16b — which cabin/room/spot on the floor to bring this order to,
           // typed in at checkout and snapshotted here (never the session's,
           // since editing the session later must not rewrite a placed order).

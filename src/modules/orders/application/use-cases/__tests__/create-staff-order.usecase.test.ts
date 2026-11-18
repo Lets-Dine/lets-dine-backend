@@ -185,6 +185,18 @@ describe("CreateStaffOrderUsecase", () => {
     expect(m.customerRepository.upsert).toHaveBeenCalledWith(expect.objectContaining({ phone: "9800000000", defaultAddress: "Thamel" }));
   });
 
+  it("places a pick-up in its own tableless visit, flagged as pick-up and accepted at once", async () => {
+    const m = setup();
+    const pickup = { type: "PICKUP", lines, customer: { phone: "9800000000", name: "Hari" } } as any;
+
+    const order = await m.usecase.execute(pickup, auth);
+
+    expect(m.diningSessionRepository.create).toHaveBeenCalledWith(expect.objectContaining({ tableId: null, branchId: "branch-1" }));
+    expect(m.createOrderUsecase.execute).toHaveBeenCalledWith(pickup, expect.objectContaining({ id: "session-new" }), { idempotencyKey: undefined, placedByStaff: true, pickup: true });
+    expect(m.updateOrderStatusUsecase.execute).toHaveBeenCalledWith("order-1", { status: "ACCEPTED" }, auth);
+    expect(order).toBe(accepted);
+  });
+
   it("refuses a delivery with nowhere to deliver to", async () => {
     const m = setup();
     await expect(

@@ -501,7 +501,7 @@ describe("CompletePaymentUsecase", () => {
         ).rejects.toThrow(new NotFoundException(PAYMENT_ERROR_MESSAGES.ORDER_NOT_FOUND));
       });
 
-      it("should throw ConflictException when the order is a table order, which settles with its table", async () => {
+      it("should throw ConflictException when the order is a table order and the table is still open, which settles with its table", async () => {
         // Arrange
         orderRepository.findById.mockResolvedValue({ ...floorOrder, floorId: null, floorName: null, tableId: "table-1" } as any);
 

@@ -29,6 +29,11 @@ export const createOrderSchema = z.object({
   deliveryLongitude: z.number().min(-180).max(180).optional(),
   deliveryNote: z.string().max(280).optional(),
   /**
+   * A delivery session's customer says how this order reaches them: brought to the address (the default) or
+   * collected at the counter. Ignored for a table or floor session.
+   */
+  fulfilment: z.enum(["DELIVERY", "PICKUP"]).optional(),
+  /**
    * Dine-in only (table or floor) — identity captured at order time rather than at session
    * start (§16b). Upserted as a `Customer` keyed by `(restaurantId, phone)`, same as a
    * delivery session's own customer, and the resulting row is linked to the order. Ignored

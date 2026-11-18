@@ -28,6 +28,8 @@ model Restaurant {
   deliveryFeeAmount      Int?            @map("delivery_fee_amount")
   /// Off = the restaurant takes no delivery orders; diners can still browse the menu.
   deliveryEnabled        Boolean         @default(true) @map("delivery_enabled")
+  /// Off = no pick-up orders from diners. Staff can still ring one up at the till.
+  pickupEnabled          Boolean         @default(false) @map("pickup_enabled")
   /// Only one channel at a time. WHATSAPP creates no order here — the diner sends a message to `whatsappNumber`.
   deliveryChannel        DeliveryChannel @default(APP) @map("delivery_channel")
   /// Digits with country code, no "+"; required while `deliveryChannel` is WHATSAPP.

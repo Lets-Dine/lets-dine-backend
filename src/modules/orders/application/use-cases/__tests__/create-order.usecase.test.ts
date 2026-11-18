@@ -499,6 +499,66 @@ describe("CreateOrderUsecase", () => {
       expect(created).toMatchObject({ orderType: OrderType.DINE_IN, floorVisitorName: "Room 12" });
     });
 
+    it("should place a customer's order as PICKUP when they choose to collect it, whatever the delivery switch and fee say", async () => {
+      // Arrange — delivery is off and costs a fee, but this customer is collecting.
+      restaurantRepository.findByIdForBranch.mockResolvedValue({ ...restaurant, deliveryEnabled: false, deliveryChannel: "WHATSAPP", pickupEnabled: true });
+      dishRepository.findManyByIds.mockResolvedValue([dish]);
+      orderRepository.create.mockResolvedValue({ id: "order-1" } as any);
+
+      // Act
+      await usecase.execute({ lines: [{ dishId: "dish-1", quantity: 1, addOnIds: [] }], fulfilment: "PICKUP" }, deliverySession);
+
+      // Assert
+      const [created] = orderRepository.create.mock.calls[0];
+      expect(created).toMatchObject({ orderType: OrderType.PICKUP, customerId: customer.id, deliveryFee: 0 });
+      expect(created.deliveryAddress).toBeUndefined();
+    });
+
+    it("should refuse a customer's pick-up order once the restaurant has pick-up switched off", async () => {
+      // Arrange
+      restaurantRepository.findByIdForBranch.mockResolvedValue({ ...restaurant, pickupEnabled: false });
+
+      // Act & Assert
+      await expect(
+        usecase.execute({ lines: [{ dishId: "dish-1", quantity: 1, addOnIds: [] }], fulfilment: "PICKUP" }, deliverySession)
+      ).rejects.toThrow(new BadRequestException(RESTAURANT_ERROR_MESSAGES.PICKUP_DISABLED));
+      expect(orderRepository.create).not.toHaveBeenCalled();
+    });
+
+    it("should still deliver by default when the customer doesn't choose", async () => {
+      // Arrange
+      restaurantRepository.findByIdForBranch.mockResolvedValue({ ...restaurant, pickupEnabled: true });
+      dishRepository.findManyByIds.mockResolvedValue([dish]);
+      customerRepository.findById.mockResolvedValue(customer as any);
+      orderRepository.create.mockResolvedValue({ id: "order-1" } as any);
+
+      // Act
+      await usecase.execute({ lines: [{ dishId: "dish-1", quantity: 1, addOnIds: [] }] }, deliverySession);
+
+      // Assert
+      expect(orderRepository.create.mock.calls[0][0]).toMatchObject({ orderType: OrderType.DELIVERY, deliveryFee: 5000 });
+    });
+
+    it("should place a pick-up order with the named customer, no table, address or delivery fee", async () => {
+      // Arrange — the restaurant charges a delivery fee; a pick-up must not pay it.
+      restaurantRepository.findByIdForBranch.mockResolvedValue(restaurant);
+      dishRepository.findManyByIds.mockResolvedValue([dish]);
+      customerRepository.upsert.mockResolvedValue(customer as any);
+      orderRepository.create.mockResolvedValue({ id: "order-1" } as any);
+
+      // Act
+      await usecase.execute(
+        { lines: [{ dishId: "dish-1", quantity: 1, addOnIds: [] }], customer: { phone: "9800000000", name: "Hari Gurung" } },
+        session,
+        { placedByStaff: true, pickup: true }
+      );
+
+      // Assert
+      const [created] = orderRepository.create.mock.calls[0];
+      expect(created).toMatchObject({ orderType: OrderType.PICKUP, customerId: customer.id, deliveryFee: 0 });
+      expect(created.deliveryAddress).toBeUndefined();
+    });
+
     it("should upsert a Customer by phone and attach it to a floor order given identity in the request, independently of floorVisitorName", async () => {
       // Arrange — §16b: identity (who it's for) and floorVisitorName (where it goes) are
       // independent — the customer's own name must never leak onto floorVisitorName.

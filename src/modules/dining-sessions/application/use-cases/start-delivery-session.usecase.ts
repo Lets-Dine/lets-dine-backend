@@ -14,7 +14,8 @@ import { StartDeliverySessionInput } from "../../interfaces/http/validations/sta
 const DEFAULT_TTL_MINUTES = 180;
 
 /**
- * The delivery counterpart of `StartDiningSessionUsecase` — no QR, no table.
+ * The delivery counterpart of `StartDiningSessionUsecase` — no QR, no table. It also opens the visit for pick-up: the
+ * customer picks delivery or pick-up when placing the order.
  * A phone number is the diner's whole identity; repeat customers are
  * recognised by `(restaurantId, phone)` and their name/address prefilled.
  */
@@ -30,8 +31,12 @@ export class StartDeliverySessionUsecase {
   async execute(dto: StartDeliverySessionInput): Promise<IResolvedSession> {
     const restaurant = await this.restaurantRepository.findBySlug(dto.restaurantSlug);
     if (!restaurant || !restaurant.isActive) throw new NotFoundException(RESTAURANT_ERROR_MESSAGES.NOT_FOUND);
-    if (!restaurant.deliveryEnabled) throw new BadRequestException(RESTAURANT_ERROR_MESSAGES.DELIVERY_DISABLED);
-    if (restaurant.deliveryChannel !== DeliveryChannel.APP) throw new BadRequestException(RESTAURANT_ERROR_MESSAGES.DELIVERY_VIA_WHATSAPP);
+    // Pick-up needs the same phone-number visit, so a restaurant with it on can open one even with delivery off or on WhatsApp;
+    // placing the order then checks the option the customer actually chose.
+    if (!restaurant.pickupEnabled) {
+      if (!restaurant.deliveryEnabled) throw new BadRequestException(RESTAURANT_ERROR_MESSAGES.DELIVERY_DISABLED);
+      if (restaurant.deliveryChannel !== DeliveryChannel.APP) throw new BadRequestException(RESTAURANT_ERROR_MESSAGES.DELIVERY_VIA_WHATSAPP);
+    }
 
     // Delivery has no table/floor to take a branch from: the customer names one, else the default.
     const branch = dto.branchSlug

@@ -19,6 +19,8 @@ export const updateRestaurantSchema = z
     deliveryFeeAmount: z.number().int().min(0).nullish(),
     /** Off = no delivery orders; the menu stays visible. */
     deliveryEnabled: z.boolean().optional(),
+    /** Off = diners cannot order for pick-up; staff can still ring one up. */
+    pickupEnabled: z.boolean().optional(),
     deliveryChannel: z.enum(["APP", "WHATSAPP"]).optional(),
     /** Same rule as the owner phone at sign-up, with the country code included (wa.me needs it). Empty clears it; "+", spaces and dashes are dropped. */
     whatsappNumber: z

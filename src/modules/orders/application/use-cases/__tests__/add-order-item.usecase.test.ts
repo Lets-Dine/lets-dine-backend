@@ -3,6 +3,9 @@ import { AuditAction, OrderItemStatus, OrderStatus } from "@prisma/client";
 import { BadRequestException, NotFoundException } from "../../../../../common/exceptions";
 import { buildAuthEntity } from "../../../../../common/testing";
 import { AddOnRepository } from "../../../../add-ons/domain/repositories/add-on.repository";
+import { CUSTOMER_ERROR_MESSAGES } from "../../../../customers/domain/constants";
+import { CustomerRepository } from "../../../../customers/domain/repositories/customer.repository";
+import { UpdateOrderStatusUsecase } from "../update-order-status.usecase";
 import { AuditLogService } from "../../../../audit-logs/application/audit-log.service";
 import { DishVariantRepository } from "../../../../dish-variants/domain/repositories/dish-variant.repository";
 import { DiningSessionRepository } from "../../../../dining-sessions/domain/repositories/dining-session.repository";
@@ -39,6 +42,8 @@ describe("AddOrderItemUsecase", () => {
   let addOnRepository: jest.Mocked<AddOnRepository>;
   let dishVariantRepository: jest.Mocked<DishVariantRepository>;
   let restaurantRepository: jest.Mocked<RestaurantRepository>;
+  let customerRepository: jest.Mocked<CustomerRepository>;
+  let updateOrderStatusUsecase: jest.Mocked<UpdateOrderStatusUsecase>;
   let auditLogService: jest.Mocked<AuditLogService>;
 
   beforeEach(async () => {
@@ -55,12 +60,16 @@ describe("AddOrderItemUsecase", () => {
         { provide: AddOnRepository, useValue: { findLinkedToDish: jest.fn() } },
         { provide: DishVariantRepository, useValue: { findByDishId: jest.fn() } },
         { provide: RestaurantRepository, useValue: { findByIdForBranch: jest.fn() } },
+        { provide: CustomerRepository, useValue: { findById: jest.fn() } },
+        { provide: UpdateOrderStatusUsecase, useValue: { execute: jest.fn() } },
         { provide: AuditLogService, useValue: { record: jest.fn() } },
         { provide: KitchenTicketService, useValue: { reconcile: jest.fn().mockResolvedValue([]), announce: jest.fn() } },
       ],
     }).compile();
 
     usecase = module.get(AddOrderItemUsecase);
+    customerRepository = module.get(CustomerRepository);
+    updateOrderStatusUsecase = module.get(UpdateOrderStatusUsecase);
     orderRepository = module.get(OrderRepository);
     diningTableRepository = module.get(DiningTableRepository);
     diningSessionRepository = module.get(DiningSessionRepository);
@@ -397,6 +406,46 @@ describe("AddOrderItemUsecase", () => {
         new BadRequestException(ORDER_ERROR_MESSAGES.VARIANT_UNAVAILABLE)
       );
       expect(orderRepository.syncItems).not.toHaveBeenCalled();
+    });
+
+    it("should accept the order it opens, since staff placed it", async () => {
+      // Arrange
+      orderRepository.findLatestByTableId.mockResolvedValue(null);
+      orderRepository.create.mockResolvedValue({ id: "order-2", reference: "#1002", status: "PENDING" } as any);
+      updateOrderStatusUsecase.execute.mockResolvedValue({ id: "order-2", status: "ACCEPTED" } as any);
+
+      // Act
+      const result = await usecase.execute("table-1", { dishId: "dish-1", addOnIds: [] }, authUser);
+
+      // Assert
+      expect(updateOrderStatusUsecase.execute).toHaveBeenCalledWith("order-2", { status: "ACCEPTED" }, authUser);
+      expect(result).toMatchObject({ status: "ACCEPTED" });
+    });
+
+    it("should put the first order of a seated table on the customer it was seated for", async () => {
+      // Arrange
+      orderRepository.findLatestByTableId.mockResolvedValue(null);
+      customerRepository.findById.mockResolvedValue({ id: "customer-1" } as any);
+      orderRepository.create.mockResolvedValue({ id: "order-2", reference: "#1002" } as any);
+
+      // Act
+      await usecase.execute("table-1", { dishId: "dish-1", addOnIds: [], customerId: "customer-1" }, authUser);
+
+      // Assert
+      expect(customerRepository.findById).toHaveBeenCalledWith("customer-1", authUser.restaurantId, { tx });
+      expect(orderRepository.create).toHaveBeenCalledWith(expect.objectContaining({ customerId: "customer-1" }), expect.anything());
+    });
+
+    it("should refuse a customer who isn't one of this restaurant's, without opening an order", async () => {
+      // Arrange
+      orderRepository.findLatestByTableId.mockResolvedValue(null);
+      customerRepository.findById.mockResolvedValue(null);
+
+      // Act & Assert
+      await expect(usecase.execute("table-1", { dishId: "dish-1", addOnIds: [], customerId: "customer-9" }, authUser)).rejects.toThrow(
+        new NotFoundException(CUSTOMER_ERROR_MESSAGES.CUSTOMER_NOT_FOUND)
+      );
+      expect(orderRepository.create).not.toHaveBeenCalled();
     });
 
     it("should start a fresh order when the table has an open visit but nothing ordered yet", async () => {

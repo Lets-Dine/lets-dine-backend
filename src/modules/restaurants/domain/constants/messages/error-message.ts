@@ -1,5 +1,6 @@
 export const RESTAURANT_ERROR_MESSAGES = {
   NOT_FOUND: { key: "RESTAURANT_NOT_FOUND", message: "Restaurant not found" },
+  PICKUP_DISABLED: { key: "RESTAURANT_PICKUP_DISABLED", message: "This restaurant is not taking pick-up orders" },
   DELIVERY_DISABLED: { key: "RESTAURANT_DELIVERY_DISABLED", message: "This restaurant is not taking delivery orders" },
   DELIVERY_VIA_WHATSAPP: { key: "RESTAURANT_DELIVERY_VIA_WHATSAPP", message: "This restaurant takes delivery orders on WhatsApp" },
   WHATSAPP_NUMBER_REQUIRED: {

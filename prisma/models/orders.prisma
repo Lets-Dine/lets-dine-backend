@@ -90,6 +90,8 @@ model Order {
 enum OrderType {
   DINE_IN
   DELIVERY
+  /// Collected by the customer at the counter. Billed on its own like a floor order, so it sits at UNPAID until paid.
+  PICKUP
 
   @@schema("public")
 }

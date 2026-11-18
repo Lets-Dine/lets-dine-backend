@@ -11,7 +11,7 @@ import { OrderItemEntity } from "../../domain/entity/order-item.entity";
 import { IOrderWithItems } from "../../domain/interfaces/order.interface";
 import { OrderRepository } from "../../domain/repositories/order.repository";
 import { calculateOrderTotals } from "../../domain/utils/money.util";
-import { billsOnItsOwn, deriveOrderStatus } from "../../domain/utils/order-status.util";
+import { deriveOrderStatus } from "../../domain/utils/order-status.util";
 import { IKitchenTicket } from "../../domain/interfaces/kitchen-ticket.interface";
 import { KitchenTicketService } from "../kitchen-ticket.service";
 
@@ -52,7 +52,6 @@ export class CancelOrderItemUsecase {
         .map(line => ({ unitPrice: line.unitPrice, quantity: line.quantity }));
       const totals = calculateOrderTotals(billableLines, restaurant, order.discount, order.deliveryFee ?? 0);
       const status = deriveOrderStatus(afterItemUpdate.items, order.cancelledAt, order.orderType, {
-        isFloorOrder: billsOnItsOwn(order),
         paidAt: order.paidAt,
       });
       const orderNewStatus = status ?? order.status;

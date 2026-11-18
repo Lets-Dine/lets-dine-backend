@@ -14,7 +14,7 @@ import { OrderRepository } from "../../orders/domain/repositories/order.reposito
 import { calculateOrderTotals } from "../../orders/domain/utils/money.util";
 import { IKitchenTicket } from "../../orders/domain/interfaces/kitchen-ticket.interface";
 import { KitchenTicketService } from "../../orders/application/kitchen-ticket.service";
-import { billsOnItsOwn, deriveOrderStatus } from "../../orders/domain/utils/order-status.util";
+import { deriveOrderStatus } from "../../orders/domain/utils/order-status.util";
 import { RESTAURANT_ERROR_MESSAGES } from "../../restaurants/domain/constants";
 import { RestaurantRepository } from "../../restaurants/domain/repositories/restaurant.repository";
 import { AuditLogService } from "../../audit-logs/application/audit-log.service";
@@ -171,19 +171,17 @@ export class DiningSessionService {
       // A line a share already paid for stayed (now SERVED), so an order holding one is a paid order, not a cancelled one.
       const keepsLines = items.some(item => item.status !== OrderItemStatus.CANCELLED);
       const cancelledAt = order.acceptedAt || keepsLines ? order.cancelledAt : new Date();
-      // Ending the visit is not the same as paying it — a floor order whose bill was never taken
+      // Ending the visit is not the same as paying it — an order whose bill was never taken
       // lands on UNPAID here, not COMPLETED, same as any other item-driven transition (§16b).
-      const status = deriveOrderStatus(items, cancelledAt, order.orderType, {
-        isFloorOrder: billsOnItsOwn(order),
-        paidAt: order.paidAt,
-      });
+      const paidAt = paid ? (order.paidAt ?? new Date()) : order.paidAt;
+      const status = deriveOrderStatus(items, cancelledAt, order.orderType, { paidAt });
       const billable = items.filter(item => item.status !== OrderItemStatus.CANCELLED);
       const totals = calculateOrderTotals(billable, restaurant, order.discount, order.deliveryFee ?? 0);
 
       closed.push(
         await this.orderRepository.update(
           order.id,
-          { status: status ?? order.status, cancelledAt, completedAt: status === OrderStatus.COMPLETED ? new Date() : null, ...totals },
+          { status: status ?? order.status, cancelledAt, paidAt, completedAt: status === OrderStatus.COMPLETED ? new Date() : null, ...totals },
           { tx, actorId: authEntity.sub }
         )
       );

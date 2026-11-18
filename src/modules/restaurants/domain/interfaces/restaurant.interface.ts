@@ -19,6 +19,8 @@ export interface IRestaurant {
   deliveryFeeAmount: number | null;
   /** Off = no delivery orders; the menu stays visible. */
   deliveryEnabled: boolean;
+  /** Off = diners cannot order for pick-up; staff still can. */
+  pickupEnabled: boolean;
   /** APP = orders placed in the app; WHATSAPP = the diner messages `whatsappNumber` instead. */
   deliveryChannel: DeliveryChannel;
   whatsappNumber: string | null;

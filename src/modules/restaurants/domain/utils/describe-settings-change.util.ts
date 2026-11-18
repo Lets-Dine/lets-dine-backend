@@ -13,6 +13,7 @@ const TRACKED_FIELDS: (keyof IRestaurant)[] = [
   "taxRate",
   "deliveryFeeAmount",
   "deliveryEnabled",
+  "pickupEnabled",
   "deliveryChannel",
   "whatsappNumber",
   "autoConsumeStock",

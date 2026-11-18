@@ -1,8 +1,10 @@
 import { Injectable } from "@nestjs/common";
-import { AuditAction, OrderItemStatus } from "@prisma/client";
+import { AuditAction, OrderItemStatus, OrderStatus } from "@prisma/client";
 import { BadRequestException, NotFoundException } from "../../../../common/exceptions";
 import { AuthEntity, isInActiveBranch } from "../../../../common/interfaces";
 import { AddOnRepository } from "../../../add-ons/domain/repositories/add-on.repository";
+import { CUSTOMER_ERROR_MESSAGES } from "../../../customers/domain/constants";
+import { CustomerRepository } from "../../../customers/domain/repositories/customer.repository";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
 import { IDishVariant } from "../../../dish-variants/domain/interfaces/dish-variant.interface";
 import { DishVariantRepository } from "../../../dish-variants/domain/repositories/dish-variant.repository";
@@ -16,6 +18,7 @@ import { IOrderItemAddOn, IOrderWithItems } from "../../domain/interfaces/order.
 import { OrderRepository } from "../../domain/repositories/order.repository";
 import { IKitchenTicket } from "../../domain/interfaces/kitchen-ticket.interface";
 import { KitchenTicketService } from "../kitchen-ticket.service";
+import { UpdateOrderStatusUsecase } from "./update-order-status.usecase";
 import { calculateOrderTotals } from "../../domain/utils/money.util";
 import { isOrderOpen } from "../../domain/utils/order-status.util";
 import { AddOrderItemInput } from "../../interfaces/http/validations/add-order-item.validation";
@@ -64,12 +67,15 @@ export class AddOrderItemUsecase {
     private readonly addOnRepository: AddOnRepository,
     private readonly dishVariantRepository: DishVariantRepository,
     private readonly restaurantRepository: RestaurantRepository,
+    private readonly customerRepository: CustomerRepository,
     private readonly auditLogService: AuditLogService,
-    private readonly kitchenTicketService: KitchenTicketService
+    private readonly kitchenTicketService: KitchenTicketService,
+    private readonly updateOrderStatusUsecase: UpdateOrderStatusUsecase
   ) {}
 
   async execute(tableId: string, dto: AddOrderItemInput, authEntity: AuthEntity): Promise<IOrderWithItems> {
     let tickets: IKitchenTicket[] = [];
+    let opened = false;
     const result = await this.orderRepository.$transaction(async tx => {
       const table = await this.diningTableRepository.findById(tableId, { tx });
       if (!table || !isInActiveBranch(authEntity, table)) {
@@ -131,6 +137,11 @@ export class AddOrderItemUsecase {
       if (!order) {
         if (!session) throw new NotFoundException(ORDER_ERROR_MESSAGES.NO_OPEN_VISIT_FOR_TABLE);
 
+        // Staff adding to a table inherits whoever the visit is already for; failing that, the regular it was seated for.
+        const inherited = latest?.sessionId === session.id ? latest.customerId : null;
+        const seatedFor = !inherited && dto.customerId ? await this.customerRepository.findById(dto.customerId, authEntity.restaurantId, { tx }) : null;
+        if (!inherited && dto.customerId && !seatedFor) throw new NotFoundException(CUSTOMER_ERROR_MESSAGES.CUSTOMER_NOT_FOUND);
+
         const totals = calculateOrderTotals([{ unitPrice, quantity: 1 }], restaurant);
         const created = await this.orderRepository.create(
           {
@@ -138,8 +149,7 @@ export class AddOrderItemUsecase {
             branchId: table.branchId,
             tableId,
             sessionId: session.id,
-            // Staff adding to a table inherits whoever the diner already identified as this visit.
-            customerId: latest?.sessionId === session.id ? latest.customerId : null,
+            customerId: inherited ?? seatedFor?.id ?? null,
             currency: restaurant.currency,
             items: [
               {
@@ -166,6 +176,7 @@ export class AddOrderItemUsecase {
           tx
         );
 
+        opened = true;
         return created;
       }
 
@@ -223,6 +234,15 @@ export class AddOrderItemUsecase {
       return updated;
     });
     this.kitchenTicketService.announce(tickets);
+    // Staff placed it, so it goes straight to the kitchen. The order is already committed: if accepting fails
+    // (someone accepted it on the pass first), it still exists — hand back its current state.
+    if (opened && result.status === OrderStatus.PENDING) {
+      try {
+        return await this.updateOrderStatusUsecase.execute(result.id, { status: OrderStatus.ACCEPTED }, authEntity);
+      } catch {
+        return (await this.orderRepository.findById(result.id)) ?? result;
+      }
+    }
     return result;
   }
 }

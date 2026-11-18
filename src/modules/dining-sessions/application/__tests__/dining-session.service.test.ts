@@ -210,7 +210,7 @@ describe("DiningSessionService", () => {
       orderRepository.update.mockImplementation(async (id, data) => ({ id, ...data }) as any);
     });
 
-    it("should drop a line the kitchen never started and serve one already cooking, then complete the order", async () => {
+    it("should drop a line the kitchen never started and serve one already cooking, then leave the order unpaid", async () => {
       // Arrange
       const items = [
         item({ id: "item-1", status: OrderItemStatus.PENDING, unitPrice: 100 }),
@@ -225,10 +225,10 @@ describe("DiningSessionService", () => {
       // Assert — the untouched line is dropped, the cooking one is treated as delivered
       expect(orderRepository.updateItemStatus).toHaveBeenCalledWith("item-1", OrderItemStatus.CANCELLED, { tx });
       expect(orderRepository.updateItemStatus).toHaveBeenCalledWith("item-2", OrderItemStatus.SERVED, { tx });
-      // The order completes, billed only for what was actually made
+      // The visit ended without a payment: billed only for what was actually made, and still waiting on it
       expect(orderRepository.update).toHaveBeenCalledWith(
         "order-1",
-        expect.objectContaining({ status: OrderStatus.COMPLETED, subtotal: 200, completedAt: expect.any(Date) }),
+        expect.objectContaining({ status: OrderStatus.UNPAID, subtotal: 200, completedAt: null }),
         { tx, actorId: authUser.sub }
       );
     });
@@ -253,7 +253,7 @@ describe("DiningSessionService", () => {
       await service.endSession(session as any, authUser, tx, { paid: true });
 
       expect(orderRepository.updateItemStatus).toHaveBeenCalledWith("item-1", OrderItemStatus.SERVED, { tx });
-      expect(orderRepository.update).toHaveBeenCalledWith("order-1", expect.objectContaining({ status: OrderStatus.COMPLETED, cancelledAt: null }), { tx, actorId: authUser.sub });
+      expect(orderRepository.update).toHaveBeenCalledWith("order-1", expect.objectContaining({ status: OrderStatus.COMPLETED, cancelledAt: null, paidAt: expect.any(Date) }), { tx, actorId: authUser.sub });
     });
 
     it("should cancel an order outright when every line was still untouched", async () => {
@@ -315,7 +315,7 @@ describe("DiningSessionService", () => {
         expect.objectContaining({
           action: AuditAction.table_session_ended,
           subject: "T1",
-          detail: expect.stringContaining("1 order completed, 1 cancelled"),
+          detail: expect.stringContaining("1 left unpaid, 1 cancelled"),
         }),
         authUser,
         tx

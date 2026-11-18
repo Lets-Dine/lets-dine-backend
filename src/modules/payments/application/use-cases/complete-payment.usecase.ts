@@ -15,7 +15,7 @@ import { DishVariantRepository } from "../../../dish-variants/domain/repositorie
 import { DishRepository } from "../../../dishes/domain/repositories/dish.repository";
 import { OrderRepository } from "../../../orders/domain/repositories/order.repository";
 import { calculateOrderTotals } from "../../../orders/domain/utils/money.util";
-import { billsOnItsOwn, deriveOrderStatus } from "../../../orders/domain/utils/order-status.util";
+import { deriveOrderStatus } from "../../../orders/domain/utils/order-status.util";
 import { RESTAURANT_ERROR_MESSAGES } from "../../../restaurants/domain/constants";
 import { RestaurantRepository } from "../../../restaurants/domain/repositories/restaurant.repository";
 import { PAYMENT_ERROR_MESSAGES } from "../../domain/constants";
@@ -73,7 +73,7 @@ export class CompletePaymentUsecase {
       const order = dto.orderId ? await this.orderRepository.findById(dto.orderId, { tx }) : null;
       if (dto.orderId) {
         if (!order || order.sessionId !== session.id) throw new NotFoundException(PAYMENT_ERROR_MESSAGES.ORDER_NOT_FOUND);
-        if (!billsOnItsOwn(order)) throw new ConflictException(PAYMENT_ERROR_MESSAGES.ORDER_NOT_FLOOR);
+        if (order.tableId && !session.endedAt) throw new ConflictException(PAYMENT_ERROR_MESSAGES.ORDER_NOT_FLOOR);
         if (order.paidAt) throw new ConflictException(PAYMENT_ERROR_MESSAGES.ORDER_ALREADY_PAID);
       }
 
@@ -211,7 +211,7 @@ export class CompletePaymentUsecase {
         // Marks exactly this order paid and re-derives its own status — never the session-wide
         // `endSession` below, which a floor order's "no shared bill" rule (§16b) must not trigger.
         const paidAt = new Date();
-        const status = deriveOrderStatus(order.items, order.cancelledAt, order.orderType, { isFloorOrder: true, paidAt });
+        const status = deriveOrderStatus(order.items, order.cancelledAt, order.orderType, { paidAt });
         const updatedOrder = await this.orderRepository.update(
           order.id,
           { paidAt, status: status ?? order.status, completedAt: status === OrderStatus.COMPLETED ? paidAt : order.completedAt },

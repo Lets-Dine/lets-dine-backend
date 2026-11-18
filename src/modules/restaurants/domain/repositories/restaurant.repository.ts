@@ -17,6 +17,7 @@ export interface IRestaurantCreate {
   taxRate?: number;
   deliveryFeeAmount?: number | null;
   deliveryEnabled?: boolean;
+  pickupEnabled?: boolean;
   deliveryChannel?: DeliveryChannel;
   whatsappNumber?: string | null;
   autoConsumeStock?: boolean;
