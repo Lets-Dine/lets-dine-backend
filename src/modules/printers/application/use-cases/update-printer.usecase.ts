@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { PrinterLink } from "@prisma/client";
 import { ConflictException, NotFoundException } from "../../../../common/exceptions";
 import { AuthEntity } from "../../../../common/interfaces";
 import { PRINTER_ERROR_MESSAGES } from "../../domain/constants";
@@ -18,8 +19,18 @@ export class UpdatePrinterUsecase {
       throw new ConflictException(PRINTER_ERROR_MESSAGES.NAME_ALREADY_EXISTS);
     }
     if (dto.isActive === false && existing.isActive) await this.printerRepository.dropPendingJobs(id);
+    const bluetooth = dto.link === PrinterLink.BLUETOOTH;
+    const data =
+      dto.link === undefined
+        ? dto
+        : {
+            ...dto,
+            ipAddress: bluetooth ? "" : dto.ipAddress,
+            deviceName: bluetooth ? (dto.deviceName ?? "").trim() : "",
+            serial: bluetooth ? Boolean(dto.serial) : false,
+          };
     try {
-      return await this.printerRepository.update(id, dto);
+      return await this.printerRepository.update(id, data);
     } catch (error) {
       // Two requests racing past the name check: the unique index decides, and that is a conflict, not a crash.
       if ((error as { code?: string }).code === "P2002") throw new ConflictException(PRINTER_ERROR_MESSAGES.NAME_ALREADY_EXISTS);

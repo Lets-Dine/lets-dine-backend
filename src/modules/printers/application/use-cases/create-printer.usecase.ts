@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { PrinterLink } from "@prisma/client";
 import { ConflictException } from "../../../../common/exceptions";
 import { AuthEntity } from "../../../../common/interfaces";
 import { PRINTER_ERROR_MESSAGES } from "../../domain/constants";
@@ -14,8 +15,16 @@ export class CreatePrinterUsecase {
     if (await this.printerRepository.findByName(authEntity.branchId, dto.name)) {
       throw new ConflictException(PRINTER_ERROR_MESSAGES.NAME_ALREADY_EXISTS);
     }
+    const bluetooth = dto.link === PrinterLink.BLUETOOTH;
     try {
-      return await this.printerRepository.create({ ...dto, branchId: authEntity.branchId });
+      return await this.printerRepository.create({
+        ...dto,
+        branchId: authEntity.branchId,
+        link: bluetooth ? PrinterLink.BLUETOOTH : PrinterLink.NETWORK,
+        ipAddress: bluetooth ? "" : dto.ipAddress!,
+        deviceName: bluetooth ? dto.deviceName!.trim() : "",
+        serial: bluetooth ? Boolean(dto.serial) : false,
+      });
     } catch (error) {
       if ((error as { code?: string }).code === "P2002") throw new ConflictException(PRINTER_ERROR_MESSAGES.NAME_ALREADY_EXISTS);
       throw error;

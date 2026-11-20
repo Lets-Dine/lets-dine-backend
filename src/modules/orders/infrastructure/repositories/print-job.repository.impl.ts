@@ -27,7 +27,11 @@ class PrintJobRepositoryImpl implements PrintJobRepository {
     const prisma = options?.tx ?? this.prisma;
     const rows = await prisma.printJob.findMany({
       where: { branchId, printedAt: null, createdAt: { gte: since }, printer: { isActive: true } },
-      include: { printer: { select: { id: true, name: true, ipAddress: true, port: true, paperWidth: true } } },
+      include: {
+        printer: {
+          select: { id: true, name: true, ipAddress: true, port: true, paperWidth: true, link: true, deviceName: true, serial: true },
+        },
+      },
       orderBy: { createdAt: "asc" },
     });
     const tickets = await this.ticketRepository.findManyByIds([...new Set(rows.flatMap(row => row.ticketIds))], options);

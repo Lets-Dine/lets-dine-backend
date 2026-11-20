@@ -5,15 +5,28 @@ enum PaperWidth {
   @@schema("public")
 }
 
-/// A thermal receipt printer on the branch's network. The branch keeps the list; which PC actually
-/// sends to it (through QZ Tray) is that PC's own choice, so only one prints a given job.
+enum PrinterLink {
+  NETWORK
+  BLUETOOTH
+
+  @@schema("public")
+}
+
+/// A thermal receipt printer. Network printers are reached by IP from any printing PC. A Bluetooth
+/// printer is paired to one PC; only that PC (the one that can see the device) sends its slips.
 model Printer {
   id              String           @id @default(uuid()) @map("id") @db.Uuid
   branchId        String           @map("branch_id") @db.Uuid
   name            String           @map("name")
   paperWidth      PaperWidth       @default(MM80) @map("paper_width")
-  ipAddress       String           @map("ip_address")
+  /// Empty when `link` is BLUETOOTH.
+  ipAddress       String           @default("") @map("ip_address")
   port            Int              @default(9100) @map("port")
+  link            PrinterLink      @default(NETWORK) @map("link")
+  /// OS printer name, or a serial port (COM5, /dev/tty…) when `serial` is set. Empty for a network printer.
+  deviceName      String           @default("") @map("device_name")
+  /// Paired as a serial port rather than an installed printer.
+  serial          Boolean          @default(false) @map("serial")
   /// The whole order on one slip, every station together (a pass or expo printer). Overrides `stations`.
   fullKot         Boolean          @default(false) @map("full_kot")
   /// Otherwise: only tickets for these stations (KITCHEN = KOT, BAR = BOT).
