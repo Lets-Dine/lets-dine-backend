@@ -69,7 +69,7 @@ describe("CompletePaymentUsecase", () => {
         { provide: AddOnRepository, useValue: { findManyByIds: jest.fn() } },
         {
           provide: OrderRepository,
-          useValue: { findById: jest.fn(), findBySessionId: jest.fn().mockResolvedValue([]), update: jest.fn() },
+          useValue: { findById: jest.fn(), findBySessionId: jest.fn().mockResolvedValue([]), update: jest.fn(), updateItemStatus: jest.fn() },
         },
         { provide: RestaurantRepository, useValue: { findByIdForBranch: jest.fn() } },
         { provide: AuditLogService, useValue: { record: jest.fn() } },
@@ -489,6 +489,29 @@ describe("CompletePaymentUsecase", () => {
         // Assert — paidAt is set, but status/completedAt stay put until the kitchen actually finishes.
         const [, patch] = orderRepository.update.mock.calls[0];
         expect(patch).toEqual(expect.objectContaining({ status: "PREPARING", paidAt: expect.any(Date), completedAt: null }));
+      });
+
+      it("should hand a paid pickup's unfinished lines over and complete it", async () => {
+        // Arrange — a pickup paid while its one line is still pending in the kitchen.
+        const pickup = { ...floorOrder, orderType: "PICKUP", items: [{ id: "item-1", status: "PENDING" }] };
+        orderRepository.findById.mockResolvedValue(pickup as any);
+        orderRepository.updateItemStatus.mockResolvedValue({ ...pickup, items: [{ id: "item-1", status: "SERVED" }] } as any);
+        orderRepository.update.mockImplementation(async (_id, patch) => ({ ...pickup, ...patch }) as any);
+
+        // Act
+        await usecase.execute({ sessionId: "session-1", orderId: "order-1", items: requestItems, method }, authUser);
+
+        // Assert
+        expect(orderRepository.updateItemStatus).toHaveBeenCalledWith("item-1", "SERVED", { tx });
+        const [, patch] = orderRepository.update.mock.calls[0];
+        expect(patch).toEqual(expect.objectContaining({ status: "COMPLETED", paidAt: expect.any(Date), completedAt: expect.any(Date) }));
+      });
+
+      it("should refuse a delivery here — its money is taken when the courier run is settled", async () => {
+        orderRepository.findById.mockResolvedValue({ ...floorOrder, orderType: "DELIVERY" } as any);
+
+        await expect(usecase.execute({ sessionId: "session-1", orderId: "order-1", items: requestItems, method }, authUser)).rejects.toBeInstanceOf(ConflictException);
+        expect(paymentRepository.create).not.toHaveBeenCalled();
       });
 
       it("should throw NotFoundException when the order isn't on this session", async () => {

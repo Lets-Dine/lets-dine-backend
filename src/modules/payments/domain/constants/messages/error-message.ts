@@ -13,6 +13,7 @@ export const PAYMENT_ERROR_MESSAGES = {
   CUSTOMER_NOT_FOUND: { key: "PAYMENT_CUSTOMER_NOT_FOUND", message: "That customer isn't one of this restaurant's customers" },
   ORDER_NOT_FOUND: { key: "PAYMENT_ORDER_NOT_FOUND", message: "That order is no longer on this session" },
   ORDER_NOT_FLOOR: { key: "PAYMENT_ORDER_NOT_FLOOR", message: "Only a floor order can be paid on its own like this" },
+  ORDER_IS_DELIVERY: { key: "PAYMENT_ORDER_IS_DELIVERY", message: "A delivery is paid when it is settled, after the courier run" },
   TENDERS_EXCEED_TOTAL: { key: "PAYMENT_TENDERS_EXCEED_TOTAL", message: "The amounts collected add up to more than the bill" },
   TENDERS_BELOW_TOTAL: {
     key: "PAYMENT_TENDERS_BELOW_TOTAL",

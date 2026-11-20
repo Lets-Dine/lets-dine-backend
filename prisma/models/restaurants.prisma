@@ -89,6 +89,7 @@ model Restaurant {
   branches            Branch[]
 
   fonepayConfig RestaurantFonepayConfig?
+  staticQr      RestaurantStaticQr?
 
   subscription  Subscription?
   invoices      Invoice[]

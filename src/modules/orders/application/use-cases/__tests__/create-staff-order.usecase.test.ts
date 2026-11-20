@@ -31,6 +31,7 @@ function setup() {
   const endDiningSessionUsecase = { execute: jest.fn().mockResolvedValue(undefined) };
   const createOrderUsecase = { execute: jest.fn().mockResolvedValue(placed) };
   const updateOrderStatusUsecase = { execute: jest.fn().mockResolvedValue(accepted) };
+  const advanceOrderItemStatusUsecase = { execute: jest.fn().mockResolvedValue(accepted) };
   const usecase = new CreateStaffOrderUsecase(
     orderRepository as any,
     diningSessionRepository as any,
@@ -39,7 +40,8 @@ function setup() {
     startTableSessionUsecase as any,
     endDiningSessionUsecase as any,
     createOrderUsecase as any,
-    updateOrderStatusUsecase as any
+    updateOrderStatusUsecase as any,
+    advanceOrderItemStatusUsecase as any
   );
   return {
     usecase,
@@ -50,6 +52,7 @@ function setup() {
     endDiningSessionUsecase,
     createOrderUsecase,
     updateOrderStatusUsecase,
+    advanceOrderItemStatusUsecase,
   };
 }
 
@@ -183,6 +186,27 @@ describe("CreateStaffOrderUsecase", () => {
     );
 
     expect(m.customerRepository.upsert).toHaveBeenCalledWith(expect.objectContaining({ phone: "9800000000", defaultAddress: "Thamel" }));
+  });
+
+  it("hands a quick sale straight to awaiting payment, without sending it to the kitchen", async () => {
+    const m = setup();
+    const item = { id: "item-1", status: "PENDING" };
+    const pending = { ...placed, items: [item] };
+    const unpaid = { ...pending, status: "UNPAID", items: [{ ...item, status: "SERVED" }] };
+    m.createOrderUsecase.execute.mockResolvedValue(pending);
+    m.advanceOrderItemStatusUsecase.execute.mockImplementation(async (_orderId: string, _itemId: string, dto: { status: string }) =>
+      dto.status === "SERVED" ? unpaid : pending
+    );
+
+    const order = await m.usecase.execute({ type: "QUICK", lines } as any, auth);
+
+    expect(m.updateOrderStatusUsecase.execute).not.toHaveBeenCalled();
+    expect(m.advanceOrderItemStatusUsecase.execute.mock.calls.map(call => call[2])).toEqual([
+      { status: "PREPARING" },
+      { status: "READY" },
+      { status: "SERVED" },
+    ]);
+    expect(order).toBe(unpaid);
   });
 
   it("places a pick-up in its own tableless visit, flagged as pick-up and accepted at once", async () => {

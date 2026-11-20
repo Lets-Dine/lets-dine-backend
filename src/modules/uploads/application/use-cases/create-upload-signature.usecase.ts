@@ -9,6 +9,7 @@ const FOLDER_BY_TARGET: Record<CreateUploadSignatureInput["target"], string> = {
   dish: "dishes",
   "restaurant-cover": "restaurant-covers",
   "restaurant-logo": "restaurant-logos",
+  "payment-qr": "payment-qrs",
 };
 
 export interface IUploadSignature {

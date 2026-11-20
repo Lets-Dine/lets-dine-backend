@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { OrderStatus } from "@prisma/client";
+import { OrderItemStatus, OrderStatus } from "@prisma/client";
 import { BadRequestException, ConflictException, NotFoundException } from "../../../../common/exceptions";
 import { AuthEntity, isInActiveBranch } from "../../../../common/interfaces";
 import { CustomerRepository } from "../../../customers/domain/repositories/customer.repository";
@@ -16,8 +16,13 @@ import { ORDER_ERROR_MESSAGES } from "../../domain/constants";
 import { IOrderWithItems } from "../../domain/interfaces/order.interface";
 import { OrderRepository } from "../../domain/repositories/order.repository";
 import { CreateStaffOrderInput } from "../../interfaces/http/validations/create-staff-order.validation";
+import { AdvanceOrderItemStatusInput } from "../../interfaces/http/validations/advance-order-item-status.validation";
+import { AdvanceOrderItemStatusUsecase } from "./advance-order-item-status.usecase";
 import { CreateOrderUsecase } from "./create-order.usecase";
 import { UpdateOrderStatusUsecase } from "./update-order-status.usecase";
+
+/** A quick sale is handed over at the till, so each line is walked straight to served. */
+const HANDED_OVER: AdvanceOrderItemStatusInput["status"][] = [OrderItemStatus.PREPARING, OrderItemStatus.READY, OrderItemStatus.SERVED];
 
 const DEFAULT_TTL_MINUTES = 180;
 
@@ -28,7 +33,9 @@ const DEFAULT_TTL_MINUTES = 180;
  *
  * A table reuses its open visit, or is seated now if it has none; a floor, delivery or quick order
  * always starts its own session, the same as a fresh scan or phone number would. Staff placed
- * it themselves, so it is accepted on the spot and goes straight to the kitchen.
+ * it themselves, so it is accepted on the spot and goes straight to the kitchen — except a quick
+ * sale, which is handed over at the counter: its lines are served at once, so the order waits on
+ * payment (`UNPAID`) and completes when that bill is paid.
  */
 @Injectable()
 export class CreateStaffOrderUsecase {
@@ -40,13 +47,14 @@ export class CreateStaffOrderUsecase {
     private readonly startTableSessionUsecase: StartTableSessionUsecase,
     private readonly endDiningSessionUsecase: EndDiningSessionUsecase,
     private readonly createOrderUsecase: CreateOrderUsecase,
-    private readonly updateOrderStatusUsecase: UpdateOrderStatusUsecase
+    private readonly updateOrderStatusUsecase: UpdateOrderStatusUsecase,
+    private readonly advanceOrderItemStatusUsecase: AdvanceOrderItemStatusUsecase
   ) {}
 
   async execute(dto: CreateStaffOrderInput, authEntity: AuthEntity, options?: { idempotencyKey?: string }): Promise<IOrderWithItems> {
     // Before any session is opened — a retried tap must not leave an empty floor/delivery visit behind.
     const alreadyPlaced = await this.replayOf(options?.idempotencyKey, authEntity);
-    if (alreadyPlaced) return this.accept(alreadyPlaced, authEntity);
+    if (alreadyPlaced) return this.finish(alreadyPlaced, dto, authEntity);
 
     const { session, opened, deliveryAddress } = await this.sessionFor(dto, authEntity);
     // Delivery may have fallen back to the customer's saved address; the order stores what was actually used.
@@ -60,11 +68,39 @@ export class CreateStaffOrderUsecase {
       const raced = isUniqueViolation(error) ? await this.replayOf(options?.idempotencyKey, authEntity) : null;
       // A visit this call opened and then couldn't put anything on — undo it, or the table reads as occupied.
       if (opened) await this.closeEmpty(session, authEntity).catch(() => undefined);
-      if (raced) return this.accept(raced, authEntity);
+      if (raced) return this.finish(raced, dto, authEntity);
       throw error;
     }
 
-    return this.accept(order, authEntity);
+    return this.finish(order, dto, authEntity);
+  }
+
+  /** A quick sale never reaches the pass: paying it is the only step left. Everything else is accepted into the kitchen. */
+  private finish(order: IOrderWithItems, dto: CreateStaffOrderInput, authEntity: AuthEntity): Promise<IOrderWithItems> {
+    return dto.type === "QUICK" ? this.handOver(order, authEntity) : this.accept(order, authEntity);
+  }
+
+  /**
+   * Walks every line to served, which is what puts the order at `UNPAID`. Stock still comes off, on the
+   * preparing step. A retry resumes a line where it stopped.
+   * ponytail: one advance per step; a single served-at-once write if a long quick bill gets slow.
+   */
+  private async handOver(order: IOrderWithItems, authEntity: AuthEntity): Promise<IOrderWithItems> {
+    let current = order;
+    for (const item of order.items) {
+      const rest =
+        item.status === OrderItemStatus.PENDING
+          ? HANDED_OVER
+          : item.status === OrderItemStatus.PREPARING
+            ? HANDED_OVER.slice(1)
+            : item.status === OrderItemStatus.READY
+              ? HANDED_OVER.slice(2)
+              : [];
+      for (const status of rest) {
+        current = await this.advanceOrderItemStatusUsecase.execute(order.id, item.id, { status }, authEntity);
+      }
+    }
+    return current;
   }
 
   private async replayOf(idempotencyKey: string | undefined, authEntity: AuthEntity): Promise<IOrderWithItems | null> {

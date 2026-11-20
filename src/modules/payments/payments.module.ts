@@ -24,6 +24,8 @@ import { FonepayService } from "./infrastructure/fonepay/fonepay.service";
 import { PaymentRepository } from "./domain/repositories/payment.repository";
 import PaymentRepositoryImpl from "./infrastructure/repositories/payment.repository.impl";
 import { FonepayController } from "./interfaces/http/fonepay.controller";
+import { StaticQrController } from "./interfaces/http/static-qr.controller";
+import { StaticQrService } from "./infrastructure/static-qr.service";
 import { PaymentController } from "./interfaces/http/payment.controller";
 import { PublicPaymentController } from "./interfaces/http/public-payment.controller";
 
@@ -41,7 +43,7 @@ import { PublicPaymentController } from "./interfaces/http/public-payment.contro
     AuditLogsModule,
     UsersModule,
   ],
-  controllers: [FonepayController, PaymentController, PublicPaymentController],
+  controllers: [FonepayController, StaticQrController, PaymentController, PublicPaymentController],
   providers: [
     CompletePaymentUsecase,
     ListPaymentApproversUsecase,
@@ -55,6 +57,7 @@ import { PublicPaymentController } from "./interfaces/http/public-payment.contro
     FetchSessionPaymentUsecase,
     FetchBilledItemsUsecase,
     FonepayService,
+    StaticQrService,
     PaymentRepositoryImpl,
     { provide: PaymentRepository, useExisting: PaymentRepositoryImpl },
   ],

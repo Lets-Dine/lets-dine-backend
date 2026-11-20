@@ -1,0 +1,14 @@
+/// A restaurant's own payment QR, uploaded as a picture (a bank or wallet sticker).
+/// Shown to the customer at the till. Not a generated, amount-specific code.
+model RestaurantStaticQr {
+  restaurantId String   @id @map("restaurant_id") @db.Uuid
+  imageUrl     String   @map("image_url")
+  /// Off keeps the picture but stops showing it at payment.
+  enabled      Boolean  @default(true) @map("enabled")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@map("restaurant_static_qrs")
+  @@schema("public")
+}
