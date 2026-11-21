@@ -62,7 +62,7 @@ export class CancelOrderUsecase {
 
       const cancelled = await this.orderRepository.update(
         id,
-        { status: OrderStatus.CANCELLED, cancelReason: dto.reason, cancelledAt: new Date(), ...totals },
+        { status: OrderStatus.CANCELLED, cancelReason: dto.reason ?? null, cancelledAt: new Date(), ...totals },
         { tx, actorId: authEntity.sub }
       );
 

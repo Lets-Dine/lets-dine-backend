@@ -51,10 +51,10 @@ export class CreateStaffOrderUsecase {
     private readonly advanceOrderItemStatusUsecase: AdvanceOrderItemStatusUsecase
   ) {}
 
-  async execute(dto: CreateStaffOrderInput, authEntity: AuthEntity, options?: { idempotencyKey?: string }): Promise<IOrderWithItems> {
+  async execute(dto: CreateStaffOrderInput, authEntity: AuthEntity, options?: { idempotencyKey?: string; claimant?: string }): Promise<IOrderWithItems> {
     // Before any session is opened — a retried tap must not leave an empty floor/delivery visit behind.
     const alreadyPlaced = await this.replayOf(options?.idempotencyKey, authEntity);
-    if (alreadyPlaced) return this.finish(alreadyPlaced, dto, authEntity);
+    if (alreadyPlaced) return this.finish(alreadyPlaced, dto, authEntity, options?.claimant);
 
     const { session, opened, deliveryAddress } = await this.sessionFor(dto, authEntity);
     // Delivery may have fallen back to the customer's saved address; the order stores what was actually used.
@@ -68,16 +68,16 @@ export class CreateStaffOrderUsecase {
       const raced = isUniqueViolation(error) ? await this.replayOf(options?.idempotencyKey, authEntity) : null;
       // A visit this call opened and then couldn't put anything on — undo it, or the table reads as occupied.
       if (opened) await this.closeEmpty(session, authEntity).catch(() => undefined);
-      if (raced) return this.finish(raced, dto, authEntity);
+      if (raced) return this.finish(raced, dto, authEntity, options?.claimant);
       throw error;
     }
 
-    return this.finish(order, dto, authEntity);
+    return this.finish(order, dto, authEntity, options?.claimant);
   }
 
   /** A quick sale never reaches the pass: paying it is the only step left. Everything else is accepted into the kitchen. */
-  private finish(order: IOrderWithItems, dto: CreateStaffOrderInput, authEntity: AuthEntity): Promise<IOrderWithItems> {
-    return dto.type === "QUICK" ? this.handOver(order, authEntity) : this.accept(order, authEntity);
+  private finish(order: IOrderWithItems, dto: CreateStaffOrderInput, authEntity: AuthEntity, claimant?: string): Promise<IOrderWithItems> {
+    return dto.type === "QUICK" ? this.handOver(order, authEntity) : this.accept(order, authEntity, { claimant });
   }
 
   /**
@@ -114,10 +114,10 @@ export class CreateStaffOrderUsecase {
    * Staff placed it, so it goes straight to the kitchen. The order is already committed by now: if
    * accepting fails (someone accepted it on the pass first), it still exists — hand back its current state.
    */
-  private async accept(order: IOrderWithItems, authEntity: AuthEntity): Promise<IOrderWithItems> {
+  private async accept(order: IOrderWithItems, authEntity: AuthEntity, options: { claimant?: string }): Promise<IOrderWithItems> {
     if (order.status !== OrderStatus.PENDING) return order;
     try {
-      return await this.updateOrderStatusUsecase.execute(order.id, { status: OrderStatus.ACCEPTED }, authEntity);
+      return await this.updateOrderStatusUsecase.execute(order.id, { status: OrderStatus.ACCEPTED }, authEntity, options);
     } catch {
       return (await this.orderRepository.findById(order.id)) ?? order;
     }

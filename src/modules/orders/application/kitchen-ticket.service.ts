@@ -38,7 +38,7 @@ export class KitchenTicketService {
     private readonly eventEmitter: EventEmitter2
   ) {}
 
-  async reconcile(orderId: string, tx: PrismaTransaction): Promise<IKitchenTicket[]> {
+  async reconcile(orderId: string, tx: PrismaTransaction, options?: { claimant?: string }): Promise<IKitchenTicket[]> {
     const order = await this.orderRepository.findById(orderId, { tx });
     if (!order || order.status === OrderStatus.PENDING) return [];
 
@@ -75,7 +75,8 @@ export class KitchenTicketService {
       const printers = await this.printerRepository.findByBranch(order.branchId, { tx, activeOnly: true });
       const jobs = routePrintJobs(tickets, { tableId: order.tableId, floorId: order.floorId, orderType: order.orderType }, printers);
       await this.printJobRepository.createMany(
-        jobs.map(job => ({ ...job, branchId: order.branchId, orderId })),
+        // The placing phone prints its own order's slips: the jobs are held for it, and open to any phone once the claim goes stale.
+        jobs.map(job => ({ ...job, branchId: order.branchId, orderId, ...(options?.claimant && { claimedAt: new Date(), claimedBy: options.claimant }) })),
         { tx }
       );
     }

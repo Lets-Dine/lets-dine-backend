@@ -6,6 +6,9 @@ export interface IPrintJobCreate {
   printerId: string;
   orderId: string;
   ticketIds: string[];
+  /** Reserved for the phone that placed the order: others can't take it until the claim goes stale. */
+  claimedAt?: Date;
+  claimedBy?: string;
 }
 
 export interface IPrintJobRow {

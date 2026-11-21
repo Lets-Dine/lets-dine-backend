@@ -115,6 +115,15 @@ describe("KitchenTicketService", () => {
     expect(printJobs.createMany).toHaveBeenCalledWith([expect.objectContaining({ printerId: "bar", branchId: "b", orderId: "o" })], { tx });
   });
 
+  it("holds the slips for the phone that placed the order, and for nobody otherwise", async () => {
+    orders.findById.mockResolvedValue({ id: "o", branchId: "b", tableId: "t1", floorId: null, status: OrderStatus.ACCEPTED, items: [item()] });
+    printers.findByBranch.mockResolvedValue([{ id: "bar", fullKot: false, stations: [KitchenStation.BAR], tableAssignment: false, tableIds: [], floorIds: [] }]);
+    await service.reconcile("o", tx, { claimant: "phone-1" });
+    expect(printJobs.createMany).toHaveBeenLastCalledWith([expect.objectContaining({ printerId: "bar", claimedBy: "phone-1", claimedAt: expect.any(Date) })], { tx });
+    await service.reconcile("o", tx);
+    expect(printJobs.createMany.mock.lastCall?.[0][0]).not.toHaveProperty("claimedBy");
+  });
+
   it("queues nothing when no ticket was produced", async () => {
     orders.findById.mockResolvedValue({ id: "o", branchId: "b", status: OrderStatus.ACCEPTED, items: [] });
     await service.reconcile("o", tx);

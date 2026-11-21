@@ -48,9 +48,11 @@ export class RestaurantOrderController {
   async create(
     @Body() dto: CreateStaffOrderDto,
     @AuthUser() authEntity: AuthEntity,
-    @Headers("idempotency-key") idempotencyKey?: string
+    @Headers("idempotency-key") idempotencyKey?: string,
+    // The phone placing it, if it is one: its slips are held for it to print itself.
+    @Headers("x-device") device?: string
   ): Promise<IHttpResponse<IOrderWithItems>> {
-    const order = await this.createStaffOrderUsecase.execute(dto, authEntity, { idempotencyKey });
+    const order = await this.createStaffOrderUsecase.execute(dto, authEntity, { idempotencyKey, claimant: device && device.trim().length >= 8 ? device.trim().slice(0, 64) : undefined });
     return buildHttpResponse(order, ORDER_SUCCESS_MESSAGES.ORDER_CREATED);
   }
 

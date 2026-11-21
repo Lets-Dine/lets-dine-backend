@@ -67,7 +67,7 @@ describe("CreateStaffOrderUsecase", () => {
 
     expect(m.startTableSessionUsecase.execute).toHaveBeenCalledWith("table-1", auth);
     expect(m.createOrderUsecase.execute).toHaveBeenCalledWith(tableOrder, tableSession, { idempotencyKey: "k1", placedByStaff: true });
-    expect(m.updateOrderStatusUsecase.execute).toHaveBeenCalledWith("order-1", { status: "ACCEPTED" }, auth);
+    expect(m.updateOrderStatusUsecase.execute).toHaveBeenCalledWith("order-1", { status: "ACCEPTED" }, auth, { claimant: undefined });
     expect(order).toBe(accepted);
   });
 
@@ -217,7 +217,7 @@ describe("CreateStaffOrderUsecase", () => {
 
     expect(m.diningSessionRepository.create).toHaveBeenCalledWith(expect.objectContaining({ tableId: null, branchId: "branch-1" }));
     expect(m.createOrderUsecase.execute).toHaveBeenCalledWith(pickup, expect.objectContaining({ id: "session-new" }), { idempotencyKey: undefined, placedByStaff: true, pickup: true });
-    expect(m.updateOrderStatusUsecase.execute).toHaveBeenCalledWith("order-1", { status: "ACCEPTED" }, auth);
+    expect(m.updateOrderStatusUsecase.execute).toHaveBeenCalledWith("order-1", { status: "ACCEPTED" }, auth, { claimant: undefined });
     expect(order).toBe(accepted);
   });
 
