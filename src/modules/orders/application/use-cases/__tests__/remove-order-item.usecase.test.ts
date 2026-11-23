@@ -126,7 +126,18 @@ describe("RemoveOrderItemUsecase", () => {
         restaurantId: authUser.restaurantId,
         branchId: authUser.branchId,
         status: orderStatus,
-        items: [{ id: "item-1", dishId: "dish-1", dishNameSnapshot: "Steak", imageUrlSnapshot: null, unitPrice: 900, quantity: 1, notes: "", status: itemStatus }],
+        items: [
+          {
+            id: "item-1",
+            dishId: "dish-1",
+            dishNameSnapshot: "Steak",
+            imageUrlSnapshot: null,
+            unitPrice: 900,
+            quantity: 1,
+            notes: "",
+            status: itemStatus,
+          },
+        ],
       });
 
       it("should let plain staff take off a line the kitchen has not started", async () => {
@@ -138,7 +149,9 @@ describe("RemoveOrderItemUsecase", () => {
       it("should refuse plain staff taking off food that is cooking, ready or served, or anything from a finished order", async () => {
         for (const order of [orderWith("PREPARING"), orderWith("READY"), orderWith("SERVED"), orderWith("PENDING", "COMPLETED")]) {
           orderRepository.findById.mockResolvedValue(order as any);
-          await expect(usecase.execute("order-1", "item-1", staff)).rejects.toThrow(new ForbiddenException(ORDER_ERROR_MESSAGES.REMOVE_NOT_ALLOWED));
+          await expect(usecase.execute("order-1", "item-1", staff)).rejects.toThrow(
+            new ForbiddenException(ORDER_ERROR_MESSAGES.REMOVE_NOT_ALLOWED)
+          );
         }
         expect(orderRepository.syncItems).not.toHaveBeenCalled();
       });

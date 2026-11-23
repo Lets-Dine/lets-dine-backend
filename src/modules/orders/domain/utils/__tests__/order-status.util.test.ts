@@ -28,9 +28,7 @@ describe("deriveOrderStatus", () => {
 
   it("should derive COMPLETED for a dine-in order once every item is served and it's been paid", () => {
     // Arrange & Act & Assert
-    expect(deriveOrderStatus([item(OrderItemStatus.SERVED)], null, OrderType.DINE_IN, { paidAt: new Date() })).toBe(
-      "COMPLETED"
-    );
+    expect(deriveOrderStatus([item(OrderItemStatus.SERVED)], null, OrderType.DINE_IN, { paidAt: new Date() })).toBe("COMPLETED");
   });
 
   it("should gate a table order on payment too, and never a delivery order", () => {

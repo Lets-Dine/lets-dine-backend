@@ -35,7 +35,12 @@ export class UpdateOrderStatusUsecase {
     private readonly kitchenTicketService: KitchenTicketService
   ) {}
 
-  async execute(id: string, dto: UpdateOrderStatusInput, authEntity: AuthEntity, options?: { claimant?: string }): Promise<IOrderWithItems> {
+  async execute(
+    id: string,
+    dto: UpdateOrderStatusInput,
+    authEntity: AuthEntity,
+    options?: { claimant?: string }
+  ): Promise<IOrderWithItems> {
     const existing = await this.orderRepository.findById(id);
     if (!existing || !isInActiveBranch(authEntity, existing)) {
       throw new NotFoundException(ORDER_ERROR_MESSAGES.NOT_FOUND);

@@ -253,7 +253,11 @@ describe("DiningSessionService", () => {
       await service.endSession(session as any, authUser, tx, { paid: true });
 
       expect(orderRepository.updateItemStatus).toHaveBeenCalledWith("item-1", OrderItemStatus.SERVED, { tx });
-      expect(orderRepository.update).toHaveBeenCalledWith("order-1", expect.objectContaining({ status: OrderStatus.COMPLETED, cancelledAt: null, paidAt: expect.any(Date) }), { tx, actorId: authUser.sub });
+      expect(orderRepository.update).toHaveBeenCalledWith(
+        "order-1",
+        expect.objectContaining({ status: OrderStatus.COMPLETED, cancelledAt: null, paidAt: expect.any(Date) }),
+        { tx, actorId: authUser.sub }
+      );
     });
 
     it("should cancel an order outright when every line was still untouched", async () => {

@@ -16,6 +16,7 @@ model RestaurantMember {
   user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   restaurant Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   branches   BranchMember[]
+  devices    DeviceToken[]
 
   @@unique([restaurantId, userId])
   @@index([userId])

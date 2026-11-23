@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
+import { SERVICE_RAISED } from "../../../notifications/domain/constants";
 import { BadRequestException, NotFoundException } from "../../../../common/exceptions";
 import { AuthEntity, isInActiveBranch } from "../../../../common/interfaces";
 import { FloorRepository } from "../../../floors/domain/repositories/floor.repository";
@@ -33,7 +34,12 @@ export class ServiceRequestUsecase {
   async raise(session: IDiningSession, kind: ServiceRequestKind): Promise<IServiceRequest> {
     // A delivery or floor visit has no table to walk over to.
     if (!session.tableId) throw new BadRequestException(DINING_SESSION_ERROR_MESSAGES.SERVICE_NOT_AVAILABLE);
-    return this.set(session, kind, new Date());
+    const alreadyAsked = session[FIELD[kind]] !== null;
+    const request = await this.set(session, kind, new Date());
+    // Only a diner asking is news: staff clearing a request goes through `set` alone, and asking again while it is still
+    // open re-stamps it without buzzing every phone once more (the call route is open to any diner's QR session).
+    if (!alreadyAsked) await this.eventEmitter.emitAsync(SERVICE_RAISED, { request, kind });
+    return request;
   }
 
   /** Staff side — "on my way" / "bill brought". Same branch check as every other staff action on a visit. */

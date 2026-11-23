@@ -76,7 +76,12 @@ export class KitchenTicketService {
       const jobs = routePrintJobs(tickets, { tableId: order.tableId, floorId: order.floorId, orderType: order.orderType }, printers);
       await this.printJobRepository.createMany(
         // The placing phone prints its own order's slips: the jobs are held for it, and open to any phone once the claim goes stale.
-        jobs.map(job => ({ ...job, branchId: order.branchId, orderId, ...(options?.claimant && { claimedAt: new Date(), claimedBy: options.claimant }) })),
+        jobs.map(job => ({
+          ...job,
+          branchId: order.branchId,
+          orderId,
+          ...(options?.claimant && { claimedAt: new Date(), claimedBy: options.claimant }),
+        })),
         { tx }
       );
     }

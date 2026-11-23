@@ -1,3 +1,4 @@
+import { ORDER_PLACED_BY_DINER } from "../../../notifications/domain/constants";
 import { Injectable } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { DeliveryChannel, OrderType } from "@prisma/client";
@@ -66,8 +67,10 @@ export class CreateOrderUsecase {
       // and only delivery cares about the courier channel.
       const customerSession = !!session.customerId;
       const collecting = customerSession && dto.fulfilment === "PICKUP";
-      if (collecting && !options?.placedByStaff && !restaurant.pickupEnabled) throw new BadRequestException(RESTAURANT_ERROR_MESSAGES.PICKUP_DISABLED);
-      if (customerSession && !collecting && !restaurant.deliveryEnabled) throw new BadRequestException(RESTAURANT_ERROR_MESSAGES.DELIVERY_DISABLED);
+      if (collecting && !options?.placedByStaff && !restaurant.pickupEnabled)
+        throw new BadRequestException(RESTAURANT_ERROR_MESSAGES.PICKUP_DISABLED);
+      if (customerSession && !collecting && !restaurant.deliveryEnabled)
+        throw new BadRequestException(RESTAURANT_ERROR_MESSAGES.DELIVERY_DISABLED);
       if (customerSession && !collecting && !options?.placedByStaff && restaurant.deliveryChannel !== DeliveryChannel.APP) {
         throw new BadRequestException(RESTAURANT_ERROR_MESSAGES.DELIVERY_VIA_WHATSAPP);
       }
@@ -128,6 +131,9 @@ export class CreateOrderUsecase {
     // Emitted after the transaction commits — the pass should never be told
     // about a ticket that a later step in the same transaction might still roll back.
     this.eventEmitter.emit("order.created", order);
+    // Staff ringing an order up at the till already know about it; only a diner's order needs a phone to buzz.
+    // Awaited: on a serverless host the function can be frozen once the response is sent, which would drop a push still in flight.
+    if (!options?.placedByStaff) await this.eventEmitter.emitAsync(ORDER_PLACED_BY_DINER, order);
 
     // Soft usage count: never throws, so a billing fault cannot fail an order that is already committed.
     await this.entitlementService.recordOrder(session.restaurantId);

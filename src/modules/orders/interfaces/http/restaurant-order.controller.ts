@@ -52,7 +52,10 @@ export class RestaurantOrderController {
     // The phone placing it, if it is one: its slips are held for it to print itself.
     @Headers("x-device") device?: string
   ): Promise<IHttpResponse<IOrderWithItems>> {
-    const order = await this.createStaffOrderUsecase.execute(dto, authEntity, { idempotencyKey, claimant: device && device.trim().length >= 8 ? device.trim().slice(0, 64) : undefined });
+    const order = await this.createStaffOrderUsecase.execute(dto, authEntity, {
+      idempotencyKey,
+      claimant: device && device.trim().length >= 8 ? device.trim().slice(0, 64) : undefined,
+    });
     return buildHttpResponse(order, ORDER_SUCCESS_MESSAGES.ORDER_CREATED);
   }
 
@@ -137,7 +140,10 @@ export class RestaurantOrderController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(AuthGuard, AbilityGuard)
   @CheckPolicies(checkPermissionRules([["orders:advance"]]))
-  async reprintTicket(@Param("id", ParseUuidPipe) id: string, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<{ jobs: number }>> {
+  async reprintTicket(
+    @Param("id", ParseUuidPipe) id: string,
+    @AuthUser() authEntity: AuthEntity
+  ): Promise<IHttpResponse<{ jobs: number }>> {
     return buildHttpResponse(await this.reprintKitchenTicketsUsecase.execute(id, authEntity), ORDER_SUCCESS_MESSAGES.TICKETS_REPRINTED);
   }
 

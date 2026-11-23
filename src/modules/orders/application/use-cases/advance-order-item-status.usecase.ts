@@ -5,6 +5,7 @@ import { BadRequestException, NotFoundException } from "../../../../common/excep
 import { AuthEntity, isInActiveBranch } from "../../../../common/interfaces";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
 import { InventoryService } from "../../../inventory/application/inventory.service";
+import { ORDER_ITEM_READY } from "../../../notifications/domain/constants";
 import { ORDER_ERROR_MESSAGES } from "../../domain/constants";
 import { OrderItemEntity } from "../../domain/entity/order-item.entity";
 import { IOrderWithItems } from "../../domain/interfaces/order.interface";
@@ -26,8 +27,15 @@ export class AdvanceOrderItemStatusUsecase {
     private readonly eventEmitter: EventEmitter2
   ) {}
 
-  async execute(orderId: string, itemId: string, dto: AdvanceOrderItemStatusInput, authEntity: AuthEntity): Promise<IOrderWithItems> {
-    return this.orderRepository.$transaction(async tx => {
+  /** `announce: false` for a till handing food straight over: nobody needs a "ready to serve" push for what is already served. */
+  async execute(
+    orderId: string,
+    itemId: string,
+    dto: AdvanceOrderItemStatusInput,
+    authEntity: AuthEntity,
+    options?: { announce?: boolean }
+  ): Promise<IOrderWithItems> {
+    const result = await this.orderRepository.$transaction(async tx => {
       const order = await this.orderRepository.findById(orderId, { tx });
       if (!order || !isInActiveBranch(authEntity, order)) {
         throw new NotFoundException(ORDER_ERROR_MESSAGES.NOT_FOUND);
@@ -88,5 +96,8 @@ export class AdvanceOrderItemStatusUsecase {
 
       return updated;
     });
+    // After the commit, so nobody is told about a line that a rollback then un-readies.
+    if (dto.status === OrderItemStatus.READY && options?.announce !== false) await this.eventEmitter.emitAsync(ORDER_ITEM_READY, result);
+    return result;
   }
 }

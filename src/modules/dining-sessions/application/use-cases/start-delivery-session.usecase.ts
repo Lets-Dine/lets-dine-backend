@@ -35,7 +35,8 @@ export class StartDeliverySessionUsecase {
     // placing the order then checks the option the customer actually chose.
     if (!restaurant.pickupEnabled) {
       if (!restaurant.deliveryEnabled) throw new BadRequestException(RESTAURANT_ERROR_MESSAGES.DELIVERY_DISABLED);
-      if (restaurant.deliveryChannel !== DeliveryChannel.APP) throw new BadRequestException(RESTAURANT_ERROR_MESSAGES.DELIVERY_VIA_WHATSAPP);
+      if (restaurant.deliveryChannel !== DeliveryChannel.APP)
+        throw new BadRequestException(RESTAURANT_ERROR_MESSAGES.DELIVERY_VIA_WHATSAPP);
     }
 
     // Delivery has no table/floor to take a branch from: the customer names one, else the default.

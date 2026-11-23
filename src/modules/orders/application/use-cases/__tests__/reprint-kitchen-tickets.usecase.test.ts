@@ -4,7 +4,14 @@ import { buildAuthEntity } from "../../../../../common/testing";
 import { ReprintKitchenTicketsUsecase } from "../reprint-kitchen-tickets.usecase";
 
 const authUser = buildAuthEntity();
-const order = { id: "o1", branchId: authUser.branchId, restaurantId: authUser.restaurantId, tableId: "t1", floorId: null, status: OrderStatus.PREPARING };
+const order = {
+  id: "o1",
+  branchId: authUser.branchId,
+  restaurantId: authUser.restaurantId,
+  tableId: "t1",
+  floorId: null,
+  status: OrderStatus.PREPARING,
+};
 const ticket = { id: "k1", station: KitchenStation.KITCHEN };
 const printer = { id: "p1", fullKot: true, stations: [], tableAssignment: false, tableIds: [], floorIds: [] };
 

@@ -8,4 +8,14 @@ export class EventEmitter2 {
   emit(_event: string, ..._values: unknown[]): boolean {
     return true;
   }
+
+  emitAsync(_event: string, ..._values: unknown[]): Promise<unknown[]> {
+    return Promise.resolve([]);
+  }
 }
+
+/** Listener classes are unit-tested by calling their handlers directly, so the decorator only has to exist. */
+export const OnEvent =
+  (_event: string) =>
+  (_target: object, _key: string | symbol, _descriptor: PropertyDescriptor): void =>
+    undefined;

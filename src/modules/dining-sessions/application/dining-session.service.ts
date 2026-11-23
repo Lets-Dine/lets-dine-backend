@@ -72,7 +72,12 @@ export class DiningSessionService {
   }
 
   /** `paid`: the visit ends because its bill was taken, so lines nobody started are food the guest paid for — served, not dropped. */
-  async endSession(session: IDiningSession, authEntity: AuthEntity, tx: PrismaTransaction, { paid = false } = {}): Promise<IDiningTable | null> {
+  async endSession(
+    session: IDiningSession,
+    authEntity: AuthEntity,
+    tx: PrismaTransaction,
+    { paid = false } = {}
+  ): Promise<IDiningTable | null> {
     const { closed, tickets } = await this.closeOpenOrders(session, authEntity, tx, paid);
     const ended = await this.diningSessionRepository.update(
       session.id,
@@ -181,7 +186,13 @@ export class DiningSessionService {
       closed.push(
         await this.orderRepository.update(
           order.id,
-          { status: status ?? order.status, cancelledAt, paidAt, completedAt: status === OrderStatus.COMPLETED ? new Date() : null, ...totals },
+          {
+            status: status ?? order.status,
+            cancelledAt,
+            paidAt,
+            completedAt: status === OrderStatus.COMPLETED ? new Date() : null,
+            ...totals,
+          },
           { tx, actorId: authEntity.sub }
         )
       );

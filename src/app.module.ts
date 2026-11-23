@@ -26,6 +26,7 @@ import { SuppliersModule } from "./modules/suppliers/suppliers.module";
 import { LedgerModule } from "./modules/ledger/ledger.module";
 import { MenuCategoriesModule } from "./modules/menu-categories/menu-categories.module";
 import { MenusModule } from "./modules/menus/menus.module";
+import { NotificationsModule } from "./modules/notifications/notifications.module";
 import { OrdersModule } from "./modules/orders/orders.module";
 import { LoyaltyModule } from "./modules/loyalty/loyalty.module";
 import { PaymentsModule } from "./modules/payments/payments.module";
@@ -65,6 +66,7 @@ import { AppController } from "./app.controller";
     MenusModule,
     DiningSessionsModule,
     OrdersModule,
+    NotificationsModule,
     PaymentsModule,
     ReceivablesModule,
     DishMarginsModule,

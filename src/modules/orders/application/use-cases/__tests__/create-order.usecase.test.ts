@@ -1,6 +1,7 @@
 import { EntitlementService } from "../../../../billing/application/entitlement.service";
 import { BranchRepository } from "../../../../branches/domain/repositories/branch.repository";
 import { EventEmitter2 } from "@nestjs/event-emitter";
+import { ORDER_PLACED_BY_DINER } from "../../../../notifications/domain/constants";
 import { Test, TestingModule } from "@nestjs/testing";
 import { OrderType } from "@prisma/client";
 import { BadRequestException, NotFoundException } from "../../../../../common/exceptions";
@@ -106,7 +107,7 @@ describe("CreateOrderUsecase", () => {
         { provide: AddOnRepository, useValue: { findLinkedToDish: jest.fn() } },
         { provide: DishVariantRepository, useValue: { findManyByDishIds: jest.fn() } },
         { provide: CustomerRepository, useValue: { findById: jest.fn(), upsert: jest.fn() } },
-        { provide: EventEmitter2, useValue: { emit: jest.fn() } },
+        { provide: EventEmitter2, useValue: { emit: jest.fn(), emitAsync: jest.fn() } },
         { provide: EntitlementService, useValue: { recordOrder: jest.fn().mockResolvedValue({ used: 1, level: "ok" }) } },
       ],
     }).compile();
@@ -151,6 +152,8 @@ describe("CreateOrderUsecase", () => {
         sessionId: session.id,
       });
       expect(eventEmitter.emit).toHaveBeenCalledWith("order.created", { id: "order-1" });
+      // A diner placed it, so staff phones are told (and the push is awaited, not left to a frozen serverless function).
+      expect(eventEmitter.emitAsync).toHaveBeenCalledWith(ORDER_PLACED_BY_DINER, { id: "order-1" });
     });
 
     it("should count the order against the restaurant's plan once it is placed", async () => {
@@ -501,7 +504,12 @@ describe("CreateOrderUsecase", () => {
 
     it("should place a customer's order as PICKUP when they choose to collect it, whatever the delivery switch and fee say", async () => {
       // Arrange — delivery is off and costs a fee, but this customer is collecting.
-      restaurantRepository.findByIdForBranch.mockResolvedValue({ ...restaurant, deliveryEnabled: false, deliveryChannel: "WHATSAPP", pickupEnabled: true });
+      restaurantRepository.findByIdForBranch.mockResolvedValue({
+        ...restaurant,
+        deliveryEnabled: false,
+        deliveryChannel: "WHATSAPP",
+        pickupEnabled: true,
+      });
       dishRepository.findManyByIds.mockResolvedValue([dish]);
       orderRepository.create.mockResolvedValue({ id: "order-1" } as any);
 

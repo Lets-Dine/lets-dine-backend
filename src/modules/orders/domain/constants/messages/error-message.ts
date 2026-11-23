@@ -1,7 +1,10 @@
 export const ORDER_ERROR_MESSAGES = {
   NOT_FOUND: { key: "ORDER_NOT_FOUND", message: "Order not found" },
   PRINT_JOB_NOT_FOUND: { key: "ORDER_PRINT_JOB_NOT_FOUND", message: "Print job not found" },
-  REMOVE_NOT_ALLOWED: { key: "ORDER_REMOVE_NOT_ALLOWED", message: "Only a manager can take off food the kitchen has started, or change a finished order" },
+  REMOVE_NOT_ALLOWED: {
+    key: "ORDER_REMOVE_NOT_ALLOWED",
+    message: "Only a manager can take off food the kitchen has started, or change a finished order",
+  },
   TICKET_NOT_SENT: { key: "ORDER_TICKET_NOT_SENT", message: "No kitchen ticket has been sent for this order yet" },
   ORDER_NOT_COOKING: { key: "ORDER_NOT_COOKING", message: "The kitchen is done with this order, so its ticket can't be printed again" },
   NO_PRINTER_FOR_ORDER: { key: "ORDER_NO_PRINTER", message: "No active printer is set up to print this order's tickets" },

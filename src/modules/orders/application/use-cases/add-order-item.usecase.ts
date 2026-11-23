@@ -139,7 +139,8 @@ export class AddOrderItemUsecase {
 
         // Staff adding to a table inherits whoever the visit is already for; failing that, the regular it was seated for.
         const inherited = latest?.sessionId === session.id ? latest.customerId : null;
-        const seatedFor = !inherited && dto.customerId ? await this.customerRepository.findById(dto.customerId, authEntity.restaurantId, { tx }) : null;
+        const seatedFor =
+          !inherited && dto.customerId ? await this.customerRepository.findById(dto.customerId, authEntity.restaurantId, { tx }) : null;
         if (!inherited && dto.customerId && !seatedFor) throw new NotFoundException(CUSTOMER_ERROR_MESSAGES.CUSTOMER_NOT_FOUND);
 
         const totals = calculateOrderTotals([{ unitPrice, quantity: 1 }], restaurant);

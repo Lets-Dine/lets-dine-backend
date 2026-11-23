@@ -51,7 +51,11 @@ export class CreateStaffOrderUsecase {
     private readonly advanceOrderItemStatusUsecase: AdvanceOrderItemStatusUsecase
   ) {}
 
-  async execute(dto: CreateStaffOrderInput, authEntity: AuthEntity, options?: { idempotencyKey?: string; claimant?: string }): Promise<IOrderWithItems> {
+  async execute(
+    dto: CreateStaffOrderInput,
+    authEntity: AuthEntity,
+    options?: { idempotencyKey?: string; claimant?: string }
+  ): Promise<IOrderWithItems> {
     // Before any session is opened — a retried tap must not leave an empty floor/delivery visit behind.
     const alreadyPlaced = await this.replayOf(options?.idempotencyKey, authEntity);
     if (alreadyPlaced) return this.finish(alreadyPlaced, dto, authEntity, options?.claimant);
@@ -62,7 +66,11 @@ export class CreateStaffOrderUsecase {
 
     let order: IOrderWithItems;
     try {
-      order = await this.createOrderUsecase.execute(input, session, { idempotencyKey: options?.idempotencyKey, placedByStaff: true, ...(dto.type === "PICKUP" && { pickup: true }) });
+      order = await this.createOrderUsecase.execute(input, session, {
+        idempotencyKey: options?.idempotencyKey,
+        placedByStaff: true,
+        ...(dto.type === "PICKUP" && { pickup: true }),
+      });
     } catch (error) {
       // The same tap, racing itself: the other request's order is the answer to this one too.
       const raced = isUniqueViolation(error) ? await this.replayOf(options?.idempotencyKey, authEntity) : null;
@@ -97,7 +105,7 @@ export class CreateStaffOrderUsecase {
               ? HANDED_OVER.slice(2)
               : [];
       for (const status of rest) {
-        current = await this.advanceOrderItemStatusUsecase.execute(order.id, item.id, { status }, authEntity);
+        current = await this.advanceOrderItemStatusUsecase.execute(order.id, item.id, { status }, authEntity, { announce: false });
       }
     }
     return current;
