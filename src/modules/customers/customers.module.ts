@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { CreateCustomerUsecase } from "./application/use-cases/create-customer.usecase";
 import { GetCustomerUsecase } from "./application/use-cases/get-customer.usecase";
 import { UpdateCustomerUsecase } from "./application/use-cases/update-customer.usecase";
 import { ListCustomersUsecase } from "./application/use-cases/list-customers.usecase";
@@ -11,6 +12,7 @@ import { CustomerController } from "./interfaces/http/customer.controller";
   providers: [
     ListCustomersUsecase,
     GetCustomerUsecase,
+    CreateCustomerUsecase,
     UpdateCustomerUsecase,
     CustomerRepositoryImpl,
     { provide: CustomerRepository, useExisting: CustomerRepositoryImpl },

@@ -65,7 +65,9 @@ export class CompletePaymentUsecase {
     const mayOverride = can(authEntity.role, "payments:discount");
     // Only asked of the manager when something here needs it, so a PIN is never tested for a payment that needed none.
     const approver =
-      !mayOverride && dto.approval && (await this.mightNeedApproval(dto, session, authEntity)) ? await this.approvalService.verify(dto.approval, authEntity) : null;
+      !mayOverride && dto.approval && (await this.mightNeedApproval(dto, session, authEntity))
+        ? await this.approvalService.verify(dto.approval, authEntity)
+        : null;
 
     return this.paymentRepository.$transaction(async tx => {
       // §16b — scopes this charge to one floor order's own bill rather than the whole session's
@@ -103,6 +105,13 @@ export class CompletePaymentUsecase {
         }
       }
 
+      // The invoice is made out to the customer on the bill unless the cashier names someone else (a company, say).
+      // A customer has no PAN on file, so without one typed at the till this stays an abbreviated invoice.
+      const defaultBuyerName =
+        dto.buyerName || !customerId
+          ? null
+          : (pickedName ?? (await this.customerRepository.findById(customerId, authEntity.restaurantId, { tx }))?.name ?? null);
+
       if (!mayOverride) {
         const charged = dto.items ?? [];
         const ordered = split ? [] : await this.orderedLines(order, session, authEntity);
@@ -118,7 +127,14 @@ export class CompletePaymentUsecase {
             throw new ForbiddenException({
               ...PAYMENT_ERROR_MESSAGES.APPROVAL_REQUIRED,
               // What the manager is being asked to approve, so they are not signing blind.
-              detail: { reasons, sessionId: session.id, discount, currency: restaurant.currency, ordered: count(ordered), charged: count(charged) },
+              detail: {
+                reasons,
+                sessionId: session.id,
+                discount,
+                currency: restaurant.currency,
+                ordered: count(ordered),
+                charged: count(charged),
+              },
             });
           }
           await this.auditLogService.record(
@@ -177,6 +193,8 @@ export class CompletePaymentUsecase {
           currency: restaurant.currency,
           createdBy: authEntity.sub,
           createdByName: authEntity.name,
+          buyerName: dto.buyerName ?? defaultBuyerName,
+          buyerPan: dto.buyerPan ?? null,
           items,
         },
         { tx }
@@ -240,7 +258,11 @@ export class CompletePaymentUsecase {
    * Whether this request could need a manager, judged before the transaction opens. Deliberately generous (it only decides whether
    * to test a PIN); the transaction decides for real once the table is locked.
    */
-  private async mightNeedApproval(dto: CompletePaymentInput, session: { id: string; branchId: string }, authEntity: AuthEntity): Promise<boolean> {
+  private async mightNeedApproval(
+    dto: CompletePaymentInput,
+    session: { id: string; branchId: string },
+    authEntity: AuthEntity
+  ): Promise<boolean> {
     if ((dto.discount ?? 0) > 0) return true;
     if (dto.customerId !== undefined && (dto.redeemPoints || dto.credit)) return true;
     if (dto.split) return false;
@@ -253,15 +275,26 @@ export class CompletePaymentUsecase {
    * table's visit that has not been cancelled.
    */
   private async orderedLines(
-    order: { items: { dishId: string; variantId: string | null; addOns: { addOnId: string }[]; quantity: number; status: OrderItemStatus }[] } | null,
+    order: {
+      items: { dishId: string; variantId: string | null; addOns: { addOnId: string }[]; quantity: number; status: OrderItemStatus }[];
+    } | null,
     session: { id: string; branchId: string },
     authEntity: AuthEntity
   ) {
-    const orders = order ? [order] : (await this.orderRepository.findBySessionId(session.id, authEntity.restaurantId, session.branchId)).filter(o => o.status !== OrderStatus.CANCELLED);
+    const orders = order
+      ? [order]
+      : (await this.orderRepository.findBySessionId(session.id, authEntity.restaurantId, session.branchId)).filter(
+          o => o.status !== OrderStatus.CANCELLED
+        );
     return orders.flatMap(o =>
       o.items
         .filter(item => item.status !== OrderItemStatus.CANCELLED)
-        .map(item => ({ dishId: item.dishId, variantId: item.variantId, addOnIds: item.addOns.map(addOn => addOn.addOnId), quantity: item.quantity }))
+        .map(item => ({
+          dishId: item.dishId,
+          variantId: item.variantId,
+          addOnIds: item.addOns.map(addOn => addOn.addOnId),
+          quantity: item.quantity,
+        }))
     );
   }
 

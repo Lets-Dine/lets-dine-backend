@@ -31,7 +31,20 @@ async function setup(over: { member?: Partial<typeof manager> | null; userActive
   const limiter = new ApprovalAttemptLimiter();
   const findByEmail = jest.fn().mockResolvedValue({ id: "user-m", isActive: over.userActive ?? true, pinHash, approvalPinHash });
   const service = new PaymentApprovalService(
-    { findById: jest.fn().mockResolvedValue(member), fetchAll: jest.fn().mockResolvedValue({ rows: [manager, { ...manager, id: "owner", role: StaffRole.OWNER, branchIds: [] }, { ...manager, id: "staff", role: StaffRole.STAFF }, { ...manager, id: "elsewhere", branchIds: ["other-branch"] }, { ...manager, id: "left", isActive: false }, { ...manager, id: "no-pin", hasApprovalPin: false }], count: 6 }) } as never,
+    {
+      findById: jest.fn().mockResolvedValue(member),
+      fetchAll: jest.fn().mockResolvedValue({
+        rows: [
+          manager,
+          { ...manager, id: "owner", role: StaffRole.OWNER, branchIds: [] },
+          { ...manager, id: "staff", role: StaffRole.STAFF },
+          { ...manager, id: "elsewhere", branchIds: ["other-branch"] },
+          { ...manager, id: "left", isActive: false },
+          { ...manager, id: "no-pin", hasApprovalPin: false },
+        ],
+        count: 6,
+      }),
+    } as never,
     { findByEmail } as never,
     { record: audit } as never,
     limiter
@@ -48,18 +61,28 @@ describe("PaymentApprovalService", () => {
 
   it("should refuse the sign-in PIN: it is not the approval PIN, so seeing it typed at a till opens nothing", async () => {
     const { service } = await setup();
-    await expect(service.verify({ memberId: manager.id, pin: "4821" }, cashier)).rejects.toThrow(new ForbiddenException(PAYMENT_ERROR_MESSAGES.APPROVAL_INVALID));
+    await expect(service.verify({ memberId: manager.id, pin: "4821" }, cashier)).rejects.toThrow(
+      new ForbiddenException(PAYMENT_ERROR_MESSAGES.APPROVAL_INVALID)
+    );
   });
 
   it("should refuse a manager who has not set an approval PIN, whatever they type", async () => {
     const { service } = await setup({ approvalPin: null });
-    for (const pin of ["4821", "7351", "0000"]) await expect(service.verify({ memberId: manager.id, pin }, cashier)).rejects.toThrow(new ForbiddenException(PAYMENT_ERROR_MESSAGES.APPROVAL_INVALID));
+    for (const pin of ["4821", "7351", "0000"])
+      await expect(service.verify({ memberId: manager.id, pin }, cashier)).rejects.toThrow(
+        new ForbiddenException(PAYMENT_ERROR_MESSAGES.APPROVAL_INVALID)
+      );
   });
 
   it("should refuse a wrong PIN with the same answer as any other refusal, and record the attempt", async () => {
     const { service, audit } = await setup();
-    await expect(service.verify({ memberId: manager.id, pin: "0000" }, cashier)).rejects.toThrow(new ForbiddenException(PAYMENT_ERROR_MESSAGES.APPROVAL_INVALID));
-    expect(audit).toHaveBeenCalledWith(expect.objectContaining({ action: AuditAction.payment_override_denied, subject: "Bimal Rai" }), cashier);
+    await expect(service.verify({ memberId: manager.id, pin: "0000" }, cashier)).rejects.toThrow(
+      new ForbiddenException(PAYMENT_ERROR_MESSAGES.APPROVAL_INVALID)
+    );
+    expect(audit).toHaveBeenCalledWith(
+      expect.objectContaining({ action: AuditAction.payment_override_denied, subject: "Bimal Rai" }),
+      cashier
+    );
   });
 
   it("should refuse somebody who cannot approve, whatever PIN they give", async () => {
@@ -70,15 +93,21 @@ describe("PaymentApprovalService", () => {
       { branchIds: ["a-branch-this-till-is-not-in"] },
     ]) {
       const { service } = await setup({ member });
-      await expect(service.verify({ memberId: manager.id, pin: "7351" }, cashier)).rejects.toThrow(new ForbiddenException(PAYMENT_ERROR_MESSAGES.APPROVAL_INVALID));
+      await expect(service.verify({ memberId: manager.id, pin: "7351" }, cashier)).rejects.toThrow(
+        new ForbiddenException(PAYMENT_ERROR_MESSAGES.APPROVAL_INVALID)
+      );
     }
     const { service } = await setup({ member: null });
-    await expect(service.verify({ memberId: manager.id, pin: "7351" }, cashier)).rejects.toThrow(new ForbiddenException(PAYMENT_ERROR_MESSAGES.APPROVAL_INVALID));
+    await expect(service.verify({ memberId: manager.id, pin: "7351" }, cashier)).rejects.toThrow(
+      new ForbiddenException(PAYMENT_ERROR_MESSAGES.APPROVAL_INVALID)
+    );
   });
 
   it("should refuse an approver whose account is switched off", async () => {
     const { service } = await setup({ userActive: false });
-    await expect(service.verify({ memberId: manager.id, pin: "7351" }, cashier)).rejects.toThrow(new ForbiddenException(PAYMENT_ERROR_MESSAGES.APPROVAL_INVALID));
+    await expect(service.verify({ memberId: manager.id, pin: "7351" }, cashier)).rejects.toThrow(
+      new ForbiddenException(PAYMENT_ERROR_MESSAGES.APPROVAL_INVALID)
+    );
   });
 
   it("should let an owner approve at any branch", async () => {
@@ -88,8 +117,13 @@ describe("PaymentApprovalService", () => {
 
   it("should lock a cashier out after five wrong PINs, even for the right one, until the window passes", async () => {
     const { service, limiter } = await setup();
-    for (let i = 0; i < 5; i++) await expect(service.verify({ memberId: manager.id, pin: "0000" }, cashier)).rejects.toThrow(PAYMENT_ERROR_MESSAGES.APPROVAL_INVALID.message);
-    await expect(service.verify({ memberId: manager.id, pin: "7351" }, cashier)).rejects.toThrow(new ForbiddenException(PAYMENT_ERROR_MESSAGES.APPROVAL_LOCKED));
+    for (let i = 0; i < 5; i++)
+      await expect(service.verify({ memberId: manager.id, pin: "0000" }, cashier)).rejects.toThrow(
+        PAYMENT_ERROR_MESSAGES.APPROVAL_INVALID.message
+      );
+    await expect(service.verify({ memberId: manager.id, pin: "7351" }, cashier)).rejects.toThrow(
+      new ForbiddenException(PAYMENT_ERROR_MESSAGES.APPROVAL_LOCKED)
+    );
     expect(limiter.isLocked(manager.id, cashier.sub, Date.now() + 16 * 60_000)).toBe(false);
   });
 
@@ -102,7 +136,9 @@ describe("PaymentApprovalService", () => {
 
   it("should count a burst of parallel guesses as they arrive, not after each has been checked", async () => {
     const { service, userLookups } = await setup();
-    await Promise.all(Array.from({ length: 40 }, (_, i) => service.verify({ memberId: manager.id, pin: String(1000 + i) }, cashier).catch(() => undefined)));
+    await Promise.all(
+      Array.from({ length: 40 }, (_, i) => service.verify({ memberId: manager.id, pin: String(1000 + i) }, cashier).catch(() => undefined))
+    );
     // Five get as far as testing a PIN; the rest are turned away before any slow work.
     expect(userLookups()).toBeLessThanOrEqual(5);
   });

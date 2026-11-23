@@ -50,7 +50,10 @@ export class ApprovalAttemptLimiter {
   }
 
   isLocked(approverId: string, requesterId: string, now = Date.now()): boolean {
-    return this.recent(this.byApprover, approverId, now).length >= MAX_PER_APPROVER || this.recent(this.byRequester, requesterId, now).length >= MAX_PER_REQUESTER;
+    return (
+      this.recent(this.byApprover, approverId, now).length >= MAX_PER_APPROVER ||
+      this.recent(this.byRequester, requesterId, now).length >= MAX_PER_REQUESTER
+    );
   }
 }
 
@@ -98,7 +101,11 @@ export class PaymentApprovalService {
     if (!eligible || !pinOk) {
       // Outside any payment transaction on purpose: a refused attempt must leave its mark even though the payment is refused.
       await this.auditLogService.record(
-        { action: AuditAction.payment_override_denied, subject: member?.name ?? "Unknown approver", detail: "A manager approval was refused" },
+        {
+          action: AuditAction.payment_override_denied,
+          subject: member?.name ?? "Unknown approver",
+          detail: "A manager approval was refused",
+        },
         authEntity
       );
       throw new ForbiddenException(PAYMENT_ERROR_MESSAGES.APPROVAL_INVALID);

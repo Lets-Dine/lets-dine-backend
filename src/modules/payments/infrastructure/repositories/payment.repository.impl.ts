@@ -1,9 +1,16 @@
 import { Injectable } from "@nestjs/common";
-import { ExpenseKind, Prisma, TenderStatus } from "@prisma/client";
+import { ExpenseKind, InvoiceSeries, Prisma, TenderStatus } from "@prisma/client";
 import { buildPaginationQuery } from "../../../../common/helpers";
 import { PaginatedResponse } from "../../../../common/interfaces";
 import { PrismaService, PrismaTransaction } from "../../../../common/prisma";
-import { IPaymentRefund, IPaymentsSummary, IPaymentTender, IPaymentWithItems } from "../../domain/interfaces/payment.interface";
+import { fiscalYearOf } from "../../domain/utils/fiscal-year.util";
+import {
+  IPaymentRegister,
+  IPaymentRefund,
+  IPaymentsSummary,
+  IPaymentTender,
+  IPaymentWithItems,
+} from "../../domain/interfaces/payment.interface";
 import {
   IActor,
   IPaymentCreate,
@@ -33,6 +40,9 @@ const REFUND_SELECT = {
   reason: true,
   createdAt: true,
   createdByName: true,
+  fiscalYear: true,
+  creditNoteNumber: true,
+  taxReversed: true,
 } satisfies Prisma.PaymentRefundSelect;
 
 const WITH_CUSTOMER = {
@@ -50,6 +60,19 @@ function withCustomerName<T extends { customer: { name: string } | null }>({
   return { ...payment, customerName: customer?.name ?? null };
 }
 
+/**
+ * The next number in a restaurant's gapless series for a fiscal year. One atomic upsert, and it runs in the caller's
+ * transaction, so concurrent bills queue on the counter row and a rollback hands the number back.
+ */
+async function nextNumber(tx: PrismaTransaction, restaurantId: string, fiscalYear: string, series: InvoiceSeries): Promise<number> {
+  const [row] = await tx.$queryRaw<{ last: number }[]>`
+    INSERT INTO "public"."invoice_counters" ("restaurant_id", "fiscal_year", "series", "last")
+    VALUES (${restaurantId}::uuid, ${fiscalYear}, ${series}::"public"."InvoiceSeries", 1)
+    ON CONFLICT ("restaurant_id", "fiscal_year", "series") DO UPDATE SET "last" = "invoice_counters"."last" + 1
+    RETURNING "last"`;
+  return row.last;
+}
+
 @Injectable()
 class PaymentRepositoryImpl implements PaymentRepository {
   constructor(private prisma: PrismaService) {}
@@ -59,12 +82,28 @@ class PaymentRepositoryImpl implements PaymentRepository {
   }
 
   async create(data: IPaymentCreate, options?: { tx?: PrismaTransaction }): Promise<IPaymentWithItems> {
-    const prisma = options?.tx ?? this.prisma;
+    // The number must commit or roll back with the bill, so a caller without a transaction gets one here.
+    if (!options?.tx) return this.prisma.$transaction(tx => this.create(data, { tx }));
+    const prisma = options.tx;
     const { items, tenders, ...payment } = data;
+    // Every bill is an IRD invoice, so numbering lives here, where every way of creating one passes, and not in each caller.
+    const restaurant = await prisma.restaurant.findUniqueOrThrow({
+      where: { id: data.restaurantId },
+      select: { timezone: true },
+    });
+    // The rate is read back from what was charged, not from the restaurant's setting: a branch can override the rate, and
+    // the receipt and register must describe the bill as it was made.
+    const taxable = data.subtotal - data.discount + data.serviceCharge;
+    const taxRate = data.tax > 0 && taxable > 0 ? Math.round((data.tax / taxable) * 10000) / 10000 : 0;
+    const fiscalYear = fiscalYearOf(new Date(), restaurant.timezone);
+    const invoiceNumber = await nextNumber(prisma, data.restaurantId, fiscalYear, InvoiceSeries.INVOICE);
     return withCustomerName(
       await prisma.payment.create({
         data: {
           ...payment,
+          fiscalYear,
+          invoiceNumber,
+          taxRate,
           items: { create: items },
           tenders: {
             create: tenders.map(t => ({
@@ -191,9 +230,26 @@ class PaymentRepositoryImpl implements PaymentRepository {
       WHERE "id" = ${paymentId}::uuid AND "restaurant_id" = ${actor.restaurantId}::uuid AND "branch_id" = ${actor.branchId}::uuid
         AND "refunded_amount" + ${refund.amount} <= "paid_amount"`;
     if (moved === 0) return null;
+    // A refund is a credit note against the invoice: its own number, and the VAT it hands back. A bill from before numbering
+    // has no invoice to reverse, so its refunds stay unnumbered rather than point at "null".
+    const [original, restaurant] = await Promise.all([
+      tx.payment.findUniqueOrThrow({
+        where: { id: paymentId },
+        select: { tax: true, total: true, invoiceNumber: true, refundedAmount: true },
+      }),
+      tx.restaurant.findUniqueOrThrow({ where: { id: actor.restaurantId }, select: { timezone: true } }),
+    ]);
+    const fiscalYear = original.invoiceNumber === null ? null : fiscalYearOf(new Date(), restaurant.timezone);
+    const creditNoteNumber = fiscalYear === null ? null : await nextNumber(tx, actor.restaurantId, fiscalYear, InvoiceSeries.CREDIT_NOTE);
+    // Cumulative rounding: the VAT handed back over all refunds always adds up to exactly the VAT charged, however it was split.
+    const vatUpTo = (refunded: number) => (original.total > 0 ? Math.round((refunded * original.tax) / original.total) : 0);
+    const taxReversed = vatUpTo(original.refundedAmount) - vatUpTo(original.refundedAmount - refund.amount);
     const created = await tx.paymentRefund.create({
       data: {
         ...refund,
+        fiscalYear,
+        creditNoteNumber,
+        taxReversed,
         paymentId,
         restaurantId: actor.restaurantId,
         branchId: actor.branchId,
@@ -218,6 +274,60 @@ class PaymentRepositoryImpl implements PaymentRepository {
       },
     });
     return created;
+  }
+
+  async recordPrint(paymentId: string, restaurantId: string, branchId: string): Promise<number | null> {
+    const moved = await this.prisma.payment.updateManyAndReturn({
+      where: { id: paymentId, restaurantId, branchId },
+      data: { printCount: { increment: 1 } },
+      select: { printCount: true },
+    });
+    return moved[0]?.printCount ?? null;
+  }
+
+  async register(restaurantId: string, year?: string): Promise<IPaymentRegister> {
+    const { timezone } = await this.prisma.restaurant.findUniqueOrThrow({ where: { id: restaurantId }, select: { timezone: true } });
+    const fiscalYear = year ?? fiscalYearOf(new Date(), timezone);
+    const [payments, refunds] = await Promise.all([
+      this.prisma.payment.findMany({
+        where: { restaurantId, fiscalYear, invoiceNumber: { not: null } },
+        orderBy: { invoiceNumber: "asc" },
+      }),
+      this.prisma.paymentRefund.findMany({
+        where: { restaurantId, fiscalYear, creditNoteNumber: { not: null } },
+        orderBy: { creditNoteNumber: "asc" },
+        include: { payment: { select: { fiscalYear: true, invoiceNumber: true, buyerName: true, buyerPan: true } } },
+      }),
+    ]);
+    return {
+      sales: payments.map(p => {
+        // VAT is charged on the discounted subtotal plus service charge (see `calculateOrderTotals`); a bill with no VAT is all exempt.
+        const taxed = p.tax > 0;
+        return {
+          number: `${p.fiscalYear}-${p.invoiceNumber}`,
+          against: null,
+          issuedAt: p.createdAt,
+          buyerName: p.buyerName,
+          buyerPan: p.buyerPan,
+          total: p.total,
+          // Whatever carried no VAT: the whole bill when none was charged, or a delivery fee on top of a taxed one.
+          exempt: taxed ? p.total - (p.subtotal - p.discount + p.serviceCharge) - p.tax : p.total,
+          taxable: taxed ? p.subtotal - p.discount + p.serviceCharge : 0,
+          vat: p.tax,
+        };
+      }),
+      returns: refunds.map(r => ({
+        number: `${r.fiscalYear}-${r.creditNoteNumber}`,
+        against: `${r.payment.fiscalYear}-${r.payment.invoiceNumber}`,
+        issuedAt: r.createdAt,
+        buyerName: r.payment.buyerName,
+        buyerPan: r.payment.buyerPan,
+        total: r.amount,
+        exempt: r.taxReversed > 0 ? 0 : r.amount,
+        taxable: r.taxReversed > 0 ? r.amount - r.taxReversed : 0,
+        vat: r.taxReversed,
+      })),
+    };
   }
 
   async billedItems(sessionId: string, options?: { tx?: PrismaTransaction }): Promise<{ orderItemId: string | null; quantity: number }[]> {

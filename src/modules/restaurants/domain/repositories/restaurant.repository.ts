@@ -22,6 +22,7 @@ export interface IRestaurantCreate {
   whatsappNumber?: string | null;
   autoConsumeStock?: boolean;
   vatPanNumber?: string | null;
+  vatRegistered?: boolean;
   addressName?: string | null;
   latitude?: number | null;
   longitude?: number | null;

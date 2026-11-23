@@ -165,6 +165,7 @@ async function seedDemoRestaurant(): Promise<void> {
       serviceChargeRate: 0.1,
       taxRate: 0.13,
       vatPanNumber: "609123456",
+      vatRegistered: true,
     },
   });
 

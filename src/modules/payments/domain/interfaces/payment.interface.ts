@@ -33,6 +33,11 @@ export interface IPaymentRefund {
   reason: string;
   createdAt: Date;
   createdByName: string | null;
+  /** Credit note identity ("2083/84", 7); null on refunds from before numbering. */
+  fiscalYear: string | null;
+  creditNoteNumber: number | null;
+  /** The VAT inside `amount`. */
+  taxReversed: number;
 }
 
 export interface IPayment {
@@ -61,6 +66,14 @@ export interface IPayment {
   createdAt: Date;
   createdBy: string | null;
   createdByName: string | null;
+  /** IRD invoice identity; null on bills issued before numbering existed. */
+  fiscalYear: string | null;
+  invoiceNumber: number | null;
+  /** The VAT rate the bill was charged at. */
+  taxRate: number;
+  buyerName: string | null;
+  buyerPan: string | null;
+  printCount: number;
 }
 
 /** What both the receipt and any later lookup actually need: the charge and exactly what it was for. */
@@ -79,4 +92,25 @@ export interface IPaymentsSummary {
   refunded: number;
   /** `sold − collected`; a payment's collected amount never exceeds its total. */
   owed: number;
+}
+
+/** One line of IRD's sales register (an invoice) or sales-return register (a credit note), in minor units. */
+export interface IRegisterRow {
+  /** "2083/84-41". */
+  number: string;
+  /** Credit notes name the invoice they reverse. */
+  against: string | null;
+  issuedAt: Date;
+  buyerName: string | null;
+  buyerPan: string | null;
+  total: number;
+  /** The part of `total` that carried no VAT (a restaurant charging none, or a bill at a 0% rate). */
+  exempt: number;
+  taxable: number;
+  vat: number;
+}
+
+export interface IPaymentRegister {
+  sales: IRegisterRow[];
+  returns: IRegisterRow[];
 }

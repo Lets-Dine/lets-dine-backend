@@ -6,8 +6,27 @@ describe("billDiffersFromOrder", () => {
   it("should accept exactly what was ordered, however the lines are split or ordered", () => {
     expect(billDiffersFromOrder([momo], [momo])).toBe(false);
     // The same dish ordered in two rounds is one line on the bill.
-    expect(billDiffersFromOrder([{ ...momo, quantity: 3 }], [{ ...momo, quantity: 1 }, { ...momo, quantity: 2 }])).toBe(false);
-    expect(billDiffersFromOrder([{ ...momo, addOnIds: ["b", "a"] }, { dishId: "tea", quantity: 1 }], [{ dishId: "tea", quantity: 1 }, { ...momo, addOnIds: ["a", "b"] }])).toBe(false);
+    expect(
+      billDiffersFromOrder(
+        [{ ...momo, quantity: 3 }],
+        [
+          { ...momo, quantity: 1 },
+          { ...momo, quantity: 2 },
+        ]
+      )
+    ).toBe(false);
+    expect(
+      billDiffersFromOrder(
+        [
+          { ...momo, addOnIds: ["b", "a"] },
+          { dishId: "tea", quantity: 1 },
+        ],
+        [
+          { dishId: "tea", quantity: 1 },
+          { ...momo, addOnIds: ["a", "b"] },
+        ]
+      )
+    ).toBe(false);
   });
 
   it("should flag a dropped line, a smaller quantity, an extra line and a swapped dish", () => {

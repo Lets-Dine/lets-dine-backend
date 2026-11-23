@@ -11,12 +11,13 @@ import { RefundPaymentUsecase } from "../../application/use-cases/refund-payment
 import { ListPaymentApproversUsecase, IPaymentApprover } from "../../application/use-cases/list-payment-approvers.usecase";
 import { CompletePaymentUsecase } from "../../application/use-cases/complete-payment.usecase";
 import { FetchBilledItemsUsecase } from "../../application/use-cases/fetch-billed-items.usecase";
-import { GetPaymentUsecase } from "../../application/use-cases/get-payment.usecase";
+import { GetPaymentUsecase, RecordPaymentPrintUsecase } from "../../application/use-cases/get-payment.usecase";
+import { PaymentRegisterDto } from "../../application/dto/payment-register.dto";
 import { FetchPaymentsSummaryDto } from "../../application/dto/fetch-payments-summary.dto";
-import { SummarizePaymentsUsecase } from "../../application/use-cases/summarize-payments.usecase";
+import { PaymentRegisterUsecase, SummarizePaymentsUsecase } from "../../application/use-cases/summarize-payments.usecase";
 import { ListPaymentsUsecase } from "../../application/use-cases/list-payments.usecase";
 import { PAYMENT_SUCCESS_MESSAGES } from "../../domain/constants";
-import { IPaymentsSummary, IPaymentWithItems } from "../../domain/interfaces/payment.interface";
+import { IPaymentRegister, IPaymentsSummary, IPaymentWithItems } from "../../domain/interfaces/payment.interface";
 
 @Controller("restaurant/payments")
 export class PaymentController {
@@ -24,7 +25,9 @@ export class PaymentController {
     private readonly completePaymentUsecase: CompletePaymentUsecase,
     private readonly listPaymentsUsecase: ListPaymentsUsecase,
     private readonly summarizePaymentsUsecase: SummarizePaymentsUsecase,
+    private readonly paymentRegisterUsecase: PaymentRegisterUsecase,
     private readonly getPaymentUsecase: GetPaymentUsecase,
+    private readonly recordPaymentPrintUsecase: RecordPaymentPrintUsecase,
     private readonly collectPaymentUsecase: CollectPaymentUsecase,
     private readonly refundPaymentUsecase: RefundPaymentUsecase,
     private readonly fetchBilledItemsUsecase: FetchBilledItemsUsecase,
@@ -62,6 +65,14 @@ export class PaymentController {
     return buildHttpResponse(await this.refundPaymentUsecase.execute(id, dto, authEntity), PAYMENT_SUCCESS_MESSAGES.PAYMENT_REFUNDED);
   }
 
+  /** Logs a print of the invoice and says which one it is; call before printing so a reprint can read "Copy of Original". */
+  @Post(":id/prints")
+  @UseGuards(AuthGuard, AbilityGuard)
+  @CheckPolicies(checkPermissionRules([["orders:advance"]]))
+  async print(@Param("id", ParseUuidPipe) id: string, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<{ printCount: number }>> {
+    return buildHttpResponse(await this.recordPaymentPrintUsecase.execute(id, authEntity), PAYMENT_SUCCESS_MESSAGES.PAYMENT_FETCHED);
+  }
+
   @Get()
   @UseGuards(AuthGuard, AbilityGuard)
   @CheckPolicies(checkPermissionRules([["payments:view"]]))
@@ -90,6 +101,14 @@ export class PaymentController {
       await this.summarizePaymentsUsecase.execute(query, authEntity),
       PAYMENT_SUCCESS_MESSAGES.PAYMENTS_SUMMARY_FETCHED
     );
+  }
+
+  /** Declared before `:id`. A fiscal year's invoices and credit notes for the books; restaurant-wide, so managers and owners only. */
+  @Get("register")
+  @UseGuards(AuthGuard, AbilityGuard)
+  @CheckPolicies(checkPermissionRules([["ledger:manage"]]))
+  async register(@Query() query: PaymentRegisterDto, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<IPaymentRegister>> {
+    return buildHttpResponse(await this.paymentRegisterUsecase.execute(query, authEntity), PAYMENT_SUCCESS_MESSAGES.PAYMENTS_FETCHED);
   }
 
   /** Declared before `:id`. Which order lines split bills already cover on a session. */

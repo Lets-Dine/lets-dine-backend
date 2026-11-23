@@ -31,6 +31,7 @@ function buildRestaurant(overrides: Partial<IRestaurant> = {}): IRestaurant {
     whatsappNumber: null,
     autoConsumeStock: true,
     vatPanNumber: null,
+    vatRegistered: false,
     addressName: null,
     latitude: null,
     longitude: null,

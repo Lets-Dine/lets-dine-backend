@@ -15,3 +15,15 @@ export class GetPaymentUsecase {
     return payment;
   }
 }
+
+/** Counts a print of the invoice. The first is the original; every later one is stamped "Copy of Original", so the count is IRD's reprint log. */
+@Injectable()
+export class RecordPaymentPrintUsecase {
+  constructor(private readonly paymentRepository: PaymentRepository) {}
+
+  async execute(id: string, authEntity: AuthEntity): Promise<{ printCount: number }> {
+    const printCount = await this.paymentRepository.recordPrint(id, authEntity.restaurantId, authEntity.branchId);
+    if (printCount === null) throw new NotFoundException(PAYMENT_ERROR_MESSAGES.NOT_FOUND);
+    return { printCount };
+  }
+}

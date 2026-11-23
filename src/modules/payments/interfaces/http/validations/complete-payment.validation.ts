@@ -72,10 +72,17 @@ export const completePaymentSchema = z
      * PIN. Used for this payment only; ignored when the caller can already do it.
      */
     approval: z.object({ memberId: z.string().uuid(), pin: z.string().regex(/^\d{4,8}$/, "PIN must be 4 to 8 digits") }).optional(),
+    /** Who the invoice is made out to. Name with a 9-digit PAN makes a full tax invoice; either alone is refused, since half a buyer is no buyer. */
+    buyerName: z.string().trim().min(1).max(120).optional(),
+    buyerPan: z
+      .string()
+      .regex(/^\d{9}$/, "PAN must be 9 digits")
+      .optional(),
     /** Also ends the visit — every order still on the session gets marked completed in the same motion. */
     endSession: z.boolean().optional(),
   })
   .refine(body => !!body.items !== !!body.split, { message: "Give either items or a split, not both", path: ["items"] })
+  .refine(body => !body.buyerPan || !!body.buyerName, { message: "A buyer PAN needs the buyer's name", path: ["buyerName"] })
   .refine(body => !body.split || !body.orderId, { message: "A floor order can't be split by item", path: ["split"] })
   .refine(body => body.method || body.tenders?.length || body.credit, {
     message: "Give a method, tenders, or mark the bill as credit",

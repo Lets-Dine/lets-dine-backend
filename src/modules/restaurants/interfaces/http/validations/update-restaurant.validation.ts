@@ -39,6 +39,8 @@ export const updateRestaurantSchema = z
       .max(30)
       .nullish()
       .transform(v => (v === undefined ? undefined : v || null)),
+    /** Whether the restaurant is VAT-registered (needs a PAN to count); off, its bills say they are not tax invoices. */
+    vatRegistered: z.boolean().optional(),
     /** Pinned on a map; the name is free text the owner can edit. Send all three, or all null to clear. */
     addressName: z.string().trim().min(1).max(200).nullish(),
     latitude: z.number().min(-90).max(90).nullish(),

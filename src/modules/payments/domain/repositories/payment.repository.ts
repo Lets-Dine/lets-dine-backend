@@ -1,7 +1,7 @@
 import { PaymentMethod, PaymentStatus } from "@prisma/client";
 import { IPaginationOptions, PaginatedResponse } from "../../../../common/interfaces";
 import { PrismaTransaction } from "../../../../common/prisma";
-import { IPaymentRefund, IPaymentsSummary, IPaymentTender, IPaymentWithItems } from "../interfaces/payment.interface";
+import { IPaymentRegister, IPaymentRefund, IPaymentsSummary, IPaymentTender, IPaymentWithItems } from "../interfaces/payment.interface";
 
 export interface IPaymentItemCreate {
   dishId: string;
@@ -34,6 +34,9 @@ export interface IPaymentCreate {
   currency: string;
   createdBy?: string | null;
   createdByName?: string | null;
+  /** Who the invoice is made out to; both present makes it a full tax invoice, otherwise an abbreviated one. */
+  buyerName?: string | null;
+  buyerPan?: string | null;
   items: IPaymentItemCreate[];
   tenders: ITenderCreate[];
 }
@@ -113,6 +116,10 @@ export abstract class PaymentRepository {
    * What this session's bills already cover, per order line. `orderItemId` is null for a line charged on a
    * whole-table bill, which names no order line — its presence means the session was not billed by item.
    */
+  /** Counts one more print of the invoice and returns the new count (1 = the original), or null when it isn't this branch's. */
+  abstract recordPrint(paymentId: string, restaurantId: string, branchId: string): Promise<number | null>;
+  /** Every invoice and credit note of a fiscal year across the restaurant's branches, in number order, for the books. Defaults to the current fiscal year. */
+  abstract register(restaurantId: string, fiscalYear?: string): Promise<IPaymentRegister>;
   abstract billedItems(
     sessionId: string,
     options?: { tx?: PrismaTransaction }

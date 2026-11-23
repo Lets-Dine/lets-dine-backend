@@ -69,7 +69,12 @@ describe("CompletePaymentUsecase", () => {
         { provide: AddOnRepository, useValue: { findManyByIds: jest.fn() } },
         {
           provide: OrderRepository,
-          useValue: { findById: jest.fn(), findBySessionId: jest.fn().mockResolvedValue([]), update: jest.fn(), updateItemStatus: jest.fn() },
+          useValue: {
+            findById: jest.fn(),
+            findBySessionId: jest.fn().mockResolvedValue([]),
+            update: jest.fn(),
+            updateItemStatus: jest.fn(),
+          },
         },
         { provide: RestaurantRepository, useValue: { findByIdForBranch: jest.fn() } },
         { provide: AuditLogService, useValue: { record: jest.fn() } },
@@ -133,6 +138,33 @@ describe("CompletePaymentUsecase", () => {
 
       // Assert
       expect(loyaltyService.earnForPayment).toHaveBeenCalledWith({ ...payment, loyaltyDiscount: 0, orderId: null }, tx);
+    });
+
+    describe("who the invoice is made out to", () => {
+      beforeEach(() => {
+        paymentRepository.create.mockResolvedValue({ id: "payment-1" } as any);
+        orderRepository.findBySessionId.mockResolvedValue([{ customerId: "customer-1", status: "UNPAID", items: [] }] as any);
+        customerRepository.findById.mockResolvedValue({ id: "customer-1", name: "Sita Rai" } as any);
+      });
+
+      it("should default the buyer to the customer on the bill, with no PAN", async () => {
+        await usecase.execute({ sessionId: "session-1", items: requestItems, method }, authUser);
+
+        const [createArgs] = paymentRepository.create.mock.calls[0];
+        expect(createArgs.buyerName).toBe("Sita Rai");
+        expect(createArgs.buyerPan).toBeNull();
+      });
+
+      it("should keep the buyer the cashier typed instead of the customer", async () => {
+        await usecase.execute(
+          { sessionId: "session-1", items: requestItems, method, buyerName: "Himal Traders", buyerPan: "123456789" },
+          authUser
+        );
+
+        const [createArgs] = paymentRepository.create.mock.calls[0];
+        expect(createArgs.buyerName).toBe("Himal Traders");
+        expect(createArgs.buyerPan).toBe("123456789");
+      });
     });
 
     describe("variants and add-ons", () => {
@@ -334,7 +366,9 @@ describe("CompletePaymentUsecase", () => {
     it("should ask for a manager's approval when a role without payments:discount tries to discount", async () => {
       // Arrange
       const staffUser = buildAuthEntity({ role: StaffRole.STAFF });
-      orderRepository.findBySessionId.mockResolvedValue([{ status: "PENDING", items: [{ dishId: "dish-1", variantId: null, addOns: [], quantity: 2, status: "PENDING" }] }] as any);
+      orderRepository.findBySessionId.mockResolvedValue([
+        { status: "PENDING", items: [{ dishId: "dish-1", variantId: null, addOns: [], quantity: 2, status: "PENDING" }] },
+      ] as any);
 
       // Act & Assert
       await expect(usecase.execute({ sessionId: "session-1", items: requestItems, method, discount: 50 }, staffUser)).rejects.toThrow(
@@ -356,7 +390,11 @@ describe("CompletePaymentUsecase", () => {
         paymentRepository.create.mockResolvedValue({ id: "payment-1" } as any);
         // The order's own lines match what is charged, so plain staff are not asked to get anyone's approval for it.
         orderRepository.findBySessionId.mockResolvedValue([
-          { customerId: CUSTOMER_ID, status: "PENDING", items: [{ dishId: "dish-1", variantId: null, addOns: [], quantity: 2, status: "PENDING" }] },
+          {
+            customerId: CUSTOMER_ID,
+            status: "PENDING",
+            items: [{ dishId: "dish-1", variantId: null, addOns: [], quantity: 2, status: "PENDING" }],
+          },
         ] as any);
         loyaltyService.planRedemption.mockResolvedValue(100);
       });
@@ -510,7 +548,9 @@ describe("CompletePaymentUsecase", () => {
       it("should refuse a delivery here — its money is taken when the courier run is settled", async () => {
         orderRepository.findById.mockResolvedValue({ ...floorOrder, orderType: "DELIVERY" } as any);
 
-        await expect(usecase.execute({ sessionId: "session-1", orderId: "order-1", items: requestItems, method }, authUser)).rejects.toBeInstanceOf(ConflictException);
+        await expect(
+          usecase.execute({ sessionId: "session-1", orderId: "order-1", items: requestItems, method }, authUser)
+        ).rejects.toBeInstanceOf(ConflictException);
         expect(paymentRepository.create).not.toHaveBeenCalled();
       });
 
