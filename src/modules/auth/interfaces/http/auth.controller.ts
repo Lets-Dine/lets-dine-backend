@@ -1,8 +1,10 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Patch, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Patch, Post, UseGuards } from "@nestjs/common";
 import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
 import { AllowWhenSuspended, AuthGuard, AuthUser } from "../../../../common/auth";
 import { type AuthEntity, IHttpResponse } from "../../../../common/interfaces";
 import { buildHttpResponse } from "../../../../common/utils";
+import { DeleteOwnAccountDto } from "../../application/dto/delete-own-account.dto";
+import { DeleteOwnAccountUsecase } from "../../application/use-cases/delete-own-account.usecase";
 import { SignUpDto } from "../../application/dto/sign-up.dto";
 import { SetApprovalPinDto } from "../../application/dto/set-approval-pin.dto";
 import { SetApprovalPinUsecase } from "../../application/use-cases/set-approval-pin.usecase";
@@ -28,7 +30,8 @@ export class AuthController {
     private readonly switchBranchUsecase: SwitchBranchUsecase,
     private readonly updateOwnProfileUsecase: UpdateOwnProfileUsecase,
     private readonly changeOwnPinUsecase: ChangeOwnPinUsecase,
-    private readonly setApprovalPinUsecase: SetApprovalPinUsecase
+    private readonly setApprovalPinUsecase: SetApprovalPinUsecase,
+    private readonly deleteOwnAccountUsecase: DeleteOwnAccountUsecase
   ) {}
 
   // ponytail: per-IP, in-memory counters (per instance); move to a shared store if the API scales out. Behind a proxy, enable `trust proxy`.
@@ -83,6 +86,18 @@ export class AuthController {
   async changePin(@Body() dto: ChangeOwnPinDto, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<null>> {
     await this.changeOwnPinUsecase.execute(dto, authEntity);
     return buildHttpResponse(null, AUTH_SUCCESS_MESSAGES.PIN_CHANGED);
+  }
+
+  // Open to an owner even while the restaurant is suspended. Other staff are locked out by billing like every other route, so they still need the web deletion path.
+  // Throttled like the PIN change: it takes the sign-in PIN, which a stolen session must not be able to guess.
+  @Delete("/me")
+  @HttpCode(HttpStatus.OK)
+  @AllowWhenSuspended()
+  @UseGuards(AuthGuard, ThrottlerGuard)
+  @Throttle({ default: { limit: 5, ttl: 15 * 60_000 } })
+  async deleteAccount(@Body() dto: DeleteOwnAccountDto, @AuthUser() authEntity: AuthEntity): Promise<IHttpResponse<null>> {
+    await this.deleteOwnAccountUsecase.execute(dto, authEntity);
+    return buildHttpResponse(null, AUTH_SUCCESS_MESSAGES.ACCOUNT_DELETED);
   }
 
   // Throttled like the sign-in PIN change: it takes the sign-in PIN, which a stolen session must not be able to guess.

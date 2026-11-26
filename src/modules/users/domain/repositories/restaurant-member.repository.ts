@@ -36,6 +36,8 @@ export abstract class RestaurantMemberRepository {
     options?: RestaurantMemberFetchOptions
   ): Promise<IStaffMember | null>;
   abstract findActiveByUserId(userId: string, options?: RestaurantMemberFetchOptions): Promise<IStaffMember[]>;
+  /** True only when the membership AND the user behind it are both active. Runs on every authenticated request, so it reads one flag. */
+  abstract isActiveMember(id: string, options?: RestaurantMemberFetchOptions): Promise<boolean>;
   /** Records a sign-in. Deliberately not part of `update`, which is for staff management and bumps who edited the row. */
   abstract touchLastSignIn(id: string, at: Date): Promise<void>;
   abstract countActiveByRole(restaurantId: string, role: StaffRole, options?: RestaurantMemberFetchOptions): Promise<number>;

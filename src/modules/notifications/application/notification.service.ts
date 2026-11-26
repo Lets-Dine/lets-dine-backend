@@ -80,4 +80,10 @@ export class NotificationService {
   unregister(auth: { memberId: string }, token: string): Promise<unknown> {
     return this.prisma.deviceToken.deleteMany({ where: { token, memberId: auth.memberId } });
   }
+
+  /** Account deletion: every phone a membership ever registered. Pushes already stop for inactive members; this drops the stored tokens too. */
+  removeAllForMembers(memberIds: string[]): Promise<unknown> {
+    if (memberIds.length === 0) return Promise.resolve();
+    return this.prisma.deviceToken.deleteMany({ where: { memberId: { in: memberIds } } });
+  }
 }

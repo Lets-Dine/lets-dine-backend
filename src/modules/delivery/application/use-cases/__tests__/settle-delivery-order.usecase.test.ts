@@ -55,7 +55,12 @@ function build(over: { order?: unknown; run?: unknown } = {}) {
     findById: jest.fn().mockResolvedValue("order" in over ? over.order : order),
     update: jest.fn().mockImplementation(async (id, patch) => ({ ...order, id, ...patch })),
   };
-  const paymentRepo = { create: jest.fn().mockImplementation(async data => ({ id: "pay-1", ...data })) };
+  const paymentRepo = {
+    create: jest.fn().mockImplementation(async data => ({ id: "pay-1", ...data })),
+    findByIdempotencyKey: jest.fn().mockResolvedValue(null),
+    addTender: jest.fn().mockResolvedValue({ id: "tender-1" }),
+    findById: jest.fn().mockImplementation(async id => ({ ...order, id, paidAmount: 0, paymentStatus: "UNPAID" })),
+  };
   const ledger = { createExpense: jest.fn() };
   const audit = { record: jest.fn() };
   const events = { emit: jest.fn() };
@@ -163,6 +168,43 @@ describe("SettleDeliveryOrderUsecase", () => {
       expect(ledger.createExpense).toHaveBeenCalledWith(expect.objectContaining({ method: "CARD", amount: 6000 }), expect.anything());
     });
 
+    it("should record only the cash the courier handed over and leave the rest owed by the customer", async () => {
+      // Arrange: 100000 of 105000 handed over
+      const { paymentRepo, usecase } = build();
+
+      // Act
+      await usecase.execute(ORDER_ID, { ...dto, payFee: false }, authUser);
+
+      // Assert
+      expect(paymentRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          total: 105000,
+          paidAmount: 100000,
+          paymentStatus: "PARTIALLY_PAID",
+          tenders: [{ method: "CASH", amount: 100000 }],
+        }),
+        expect.anything()
+      );
+    });
+
+    it("should leave the whole bill owed when the courier handed over nothing", async () => {
+      const { paymentRepo, usecase } = build({ run: { ...run, cashCollected: 0 } });
+
+      await usecase.execute(ORDER_ID, { ...dto, payFee: false }, authUser);
+
+      expect(paymentRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ paidAmount: 0, paymentStatus: "UNPAID", tenders: [] }),
+        expect.anything()
+      );
+    });
+
+    it("should refuse a short hand-over when there is no customer to owe the rest", async () => {
+      const { paymentRepo, usecase } = build({ order: { ...order, customerId: null } });
+
+      await expect(usecase.execute(ORDER_ID, { ...dto, payFee: false }, authUser)).rejects.toBeInstanceOf(BadRequestException);
+      expect(paymentRepo.create).not.toHaveBeenCalled();
+    });
+
     it("should book a prepaid order as a card payment with no cash to receive", async () => {
       // Arrange
       const { deliveryRepo, paymentRepo, usecase } = build({ run: { ...run, cashToCollect: 0, cashCollected: 0 } });
@@ -225,6 +267,40 @@ describe("SettleDeliveryOrderUsecase", () => {
       const { paymentRepo, usecase } = build({ order: { ...order, branchId: "other-branch" } });
 
       await expect(usecase.execute(ORDER_ID, dto, authUser)).rejects.toBeInstanceOf(NotFoundException);
+      expect(paymentRepo.create).not.toHaveBeenCalled();
+    });
+
+    it("should collect the courier's cash against the bill opened at dispatch, instead of booking a second sale", async () => {
+      // Arrange
+      const { paymentRepo, loyalty, usecase } = build();
+      paymentRepo.findByIdempotencyKey.mockResolvedValue({ id: "opened-1", total: 105000, paidAmount: 0 });
+
+      // Act
+      await usecase.execute(ORDER_ID, dto, authUser);
+
+      // Assert
+      expect(paymentRepo.findByIdempotencyKey).toHaveBeenCalledWith(scope.restaurantId, "delivery-dispatch:" + ORDER_ID, expect.anything());
+      expect(paymentRepo.create).not.toHaveBeenCalled();
+      expect(paymentRepo.addTender).toHaveBeenCalledWith(
+        "opened-1",
+        expect.objectContaining({ restaurantId: scope.restaurantId, branchId: scope.branchId }),
+        { amount: 100000, method: "CASH" },
+        expect.anything()
+      );
+      // Points were earned when the bill opened at dispatch
+      expect(loyalty.earnForPayment).not.toHaveBeenCalled();
+    });
+
+    it("should leave the opened bill unpaid when the courier handed over nothing", async () => {
+      // Arrange
+      const { paymentRepo, usecase } = build({ run: { ...run, cashCollected: 0 } });
+      paymentRepo.findByIdempotencyKey.mockResolvedValue({ id: "opened-1", total: 105000, paidAmount: 0 });
+
+      // Act
+      await usecase.execute(ORDER_ID, dto, authUser);
+
+      // Assert
+      expect(paymentRepo.addTender).not.toHaveBeenCalled();
       expect(paymentRepo.create).not.toHaveBeenCalled();
     });
   });

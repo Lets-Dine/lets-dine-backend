@@ -8,6 +8,8 @@ const paymentFilters = {
   /** Any collection taken by this method, so a split bill matches both of its methods. */
   method: z.nativeEnum(PaymentMethod).optional(),
   customerId: z.string().uuid().optional(),
+  /** Every bill a dining session produced — how an order finds its invoice. */
+  sessionId: z.string().uuid().optional(),
   from: z.coerce.date().optional(),
   to: z.coerce.date().optional(),
 };

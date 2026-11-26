@@ -7,6 +7,7 @@ import { DELIVERY_ERROR_MESSAGES } from "../../domain/constants";
 import { IDeliveryAssignment } from "../../domain/interfaces/delivery.interface";
 import { DeliveryRepository } from "../../domain/repositories/delivery.repository";
 import { AssignDeliveryInput } from "../../interfaces/http/validations/assign-delivery.validation";
+import { DeliveryPaymentService } from "../delivery-payment.service";
 
 /**
  * Hands a delivery order to a rider or a partner and snapshots what they will be paid and what they
@@ -17,7 +18,8 @@ import { AssignDeliveryInput } from "../../interfaces/http/validations/assign-de
 export class AssignDeliveryUsecase {
   constructor(
     private readonly deliveryRepository: DeliveryRepository,
-    private readonly auditLogService: AuditLogService
+    private readonly auditLogService: AuditLogService,
+    private readonly deliveryPayment: DeliveryPaymentService
   ) {}
 
   async execute(orderId: string, dto: AssignDeliveryInput, authEntity: AuthEntity): Promise<IDeliveryAssignment> {
@@ -81,6 +83,8 @@ export class AssignDeliveryUsecase {
         authEntity,
         tx
       );
+      // The order already left with no courier named: its cash-on-delivery bill opens now, as the dispatch would have opened it.
+      if (order.status === OrderStatus.OUT_FOR_DELIVERY) await this.deliveryPayment.openForDispatch(order.id, authEntity, tx);
       return created;
     });
     return assignment;

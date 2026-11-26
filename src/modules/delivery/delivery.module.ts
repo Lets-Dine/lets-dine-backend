@@ -6,6 +6,8 @@ import { OrdersModule } from "../orders/orders.module";
 import { PaymentsModule } from "../payments/payments.module";
 import { AssignDeliveryUsecase } from "./application/use-cases/assign-delivery.usecase";
 import { CompleteDeliveryUsecase } from "./application/use-cases/complete-delivery.usecase";
+import { DeliveryPaymentService } from "./application/delivery-payment.service";
+import { DispatchPaymentListener } from "./application/dispatch-payment.listener";
 import { CreatePartnerUsecase } from "./application/use-cases/create-partner.usecase";
 import { CreateRiderUsecase } from "./application/use-cases/create-rider.usecase";
 import { GetCourierDetailUsecase } from "./application/use-cases/get-courier-detail.usecase";
@@ -37,6 +39,8 @@ import { DeliveryController } from "./interfaces/http/delivery.controller";
     AssignDeliveryUsecase,
     CompleteDeliveryUsecase,
     SettleDeliveryOrderUsecase,
+    DeliveryPaymentService,
+    DispatchPaymentListener,
     RecordSettlementUsecase,
     DeliveryRepositoryImpl,
     { provide: DeliveryRepository, useExisting: DeliveryRepositoryImpl },

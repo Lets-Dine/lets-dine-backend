@@ -1,35 +1,31 @@
+import { PAYMENT_ERROR_MESSAGES } from "../../../payments/domain/constants";
 import { openingTenders } from "../../../payments/domain/utils/tender.util";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Injectable } from "@nestjs/common";
-import {
-  AuditAction,
-  DeliverySettlementDirection,
-  DeliverySettlementMethod,
-  OrderItemStatus,
-  OrderStatus,
-  OrderType,
-  PaymentMethod,
-} from "@prisma/client";
+import { AuditAction, DeliverySettlementDirection, DeliverySettlementMethod, OrderStatus, OrderType, PaymentMethod } from "@prisma/client";
 import { can } from "../../../../common/auth/permissions";
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from "../../../../common/exceptions";
 import { AuthEntity, isInActiveBranch } from "../../../../common/interfaces";
 import { AuditLogService } from "../../../audit-logs/application/audit-log.service";
 import { LedgerRepository } from "../../../ledger/domain/repositories/ledger.repository";
 import { LoyaltyService } from "../../../loyalty/application/loyalty.service";
-import { IOrderWithItems } from "../../../orders/domain/interfaces/order.interface";
 import { OrderRepository } from "../../../orders/domain/repositories/order.repository";
+import { IOrderWithItems } from "../../../orders/domain/interfaces/order.interface";
 import { PaymentRepository } from "../../../payments/domain/repositories/payment.repository";
+import { IPaymentWithItems } from "../../../payments/domain/interfaces/payment.interface";
 import { DELIVERY_ERROR_MESSAGES } from "../../domain/constants";
 import { DeliveryRepository } from "../../domain/repositories/delivery.repository";
 import { ledgerPostingsFor } from "../../domain/utils/delivery-ledger.util";
 import { SettleDeliveryOrderInput } from "../../interfaces/http/validations/settle-delivery-order.validation";
+import { billOf, dispatchKey } from "../delivery-payment.service";
 
 /**
  * Settles a delivered order: the money side of a delivery, in one transaction.
  *
  *  - The sale is booked as the order's `Payment` — cash when the courier collected it at the door (or
  *    there was no courier), card when the order was already paid — so it is counted in the cash book
- *    like any other sale.
+ *    like any other sale. A cash-on-delivery bill was already opened when the order went out
+ *    (`DeliveryPaymentService`); the cash the courier brings back is added to that bill as its collection.
  *  - The cash the courier collected is received from them. That cash is the payment above, so it posts
  *    nothing further: counting it again as income would double it.
  *  - The courier's fee is paid now (an expense, posted to the cash book) or left owed. Leaving it
@@ -66,40 +62,42 @@ export class SettleDeliveryOrderUsecase {
 
     // Cash when it was taken at the door or there is no courier to say otherwise; card when it was paid up front.
     const method = run && run.cashToCollect === 0 ? PaymentMethod.CARD : PaymentMethod.CASH;
+    // Only what the courier actually handed over is paid. A short hand-over leaves the rest owed by the customer, the
+    // way a part-paid bill at the till does — never booked as fully collected.
+    const collected = method === PaymentMethod.CASH && run ? Math.min(Math.max(run.cashCollected ?? 0, 0), order.total) : order.total;
+    const tenders = collected === order.total ? undefined : collected > 0 ? [{ method, amount: collected }] : [];
+    if (collected < order.total && !order.customerId) throw new BadRequestException(PAYMENT_ERROR_MESSAGES.CREDIT_NEEDS_CUSTOMER);
     const courier = run ? (run.riderName ?? run.partnerName ?? "the courier") : null;
 
     const updated = await this.deliveryRepository.$transaction(async tx => {
       const now = new Date();
-      const payment = await this.paymentRepository.create(
-        {
-          ...scope,
-          sessionId: order.sessionId,
-          tableId: null,
-          customerId: order.customerId,
-          subtotal: order.subtotal,
-          serviceCharge: order.serviceCharge,
-          tax: order.tax,
-          discount: order.discount,
-          total: order.total,
-          ...openingTenders(order.total, method),
-          method,
-          currency: order.currency,
-          createdBy: authEntity.sub,
-          createdByName: authEntity.name,
-          items: order.items
-            .filter(item => item.status !== OrderItemStatus.CANCELLED)
-            .map(item => ({
-              dishId: item.dishId,
-              dishNameSnapshot: item.dishNameSnapshot,
-              unitPrice: item.unitPrice,
-              quantity: item.quantity,
-            })),
-        },
-        { tx }
-      );
-
-      // Points commit with the bill they were earned on.
-      await this.loyaltyService.earnForPayment({ ...payment, orderId: order.id }, tx);
+      // A cash-on-delivery bill was opened when the order went out, so the courier's cash is collected against it. Otherwise
+      // (paid up front, or a dispatch that never opened one) the bill is booked here, as it always was.
+      const opened = await this.paymentRepository.findByIdempotencyKey(scope.restaurantId, dispatchKey(order.id), { tx });
+      let payment: IPaymentWithItems;
+      if (opened) {
+        if (collected > 0) {
+          const tender = await this.paymentRepository.addTender(
+            opened.id,
+            { ...scope, createdBy: authEntity.sub, createdByName: authEntity.name },
+            { amount: collected, method },
+            { tx }
+          );
+          if (!tender) throw new ConflictException(PAYMENT_ERROR_MESSAGES.OVER_OWED);
+        }
+        payment = (await this.paymentRepository.findById(opened.id, scope.restaurantId, scope.branchId, { tx })) ?? opened;
+      } else {
+        payment = await this.paymentRepository.create(
+          {
+            ...billOf(order, authEntity),
+            ...openingTenders(order.total, method, tenders),
+            method,
+          },
+          { tx }
+        );
+        // Points commit with the bill they were earned on (a part-paid bill earns on what it was charged, as at the till).
+        await this.loyaltyService.earnForPayment({ ...payment, orderId: order.id }, tx);
+      }
 
       const completed = await this.orderRepository.update(
         order.id,
@@ -172,7 +170,7 @@ export class SettleDeliveryOrderUsecase {
         {
           action: AuditAction.payment_completed,
           subject: `Order ${order.reference}`,
-          detail: `Settled ${payment.total} ${payment.currency} via ${payment.method}${run ? ` — ${courier} ${payFee ? "paid" : "fee left owed"}` : ""}`,
+          detail: `Settled ${payment.total} ${payment.currency} via ${payment.method}${payment.paymentStatus === "PAID" ? "" : ` (${payment.paymentStatus}, ${payment.total - payment.paidAmount} owed)`}${run ? ` — ${courier} ${payFee ? "paid" : "fee left owed"}` : ""}`,
         },
         authEntity,
         tx

@@ -25,3 +25,13 @@ export abstract class StaffAccessPolicy {
   /** Throws ForbiddenException when this member is locked out. `allowedWhenSuspended` is true for sign-in and for @AllowWhenSuspended routes. */
   abstract assertCanAccess(subject: IStaffAccessSubject, options?: { allowedWhenSuspended?: boolean }): Promise<void>;
 }
+
+/**
+ * Whether a token's membership is still live. A token outlives the decision that ended the membership (a deactivated
+ * staff member, a deleted account), so AuthGuard asks this on every request. Like StaffAccessPolicy, the users module
+ * provides the implementation so `common/auth` stays free of feature imports.
+ */
+export abstract class StaffMembershipPolicy {
+  /** Throws UnauthorizedException when the membership or the user behind it is no longer active. */
+  abstract assertIsActiveMember(subject: { memberId: string }): Promise<void>;
+}

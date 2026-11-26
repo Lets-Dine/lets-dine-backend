@@ -11,8 +11,9 @@ export interface IUserCreate {
   isActive?: boolean;
 }
 
-export type IUserUpdate = Partial<Omit<IUserCreate, "email" | "phone" | "avatarUrl">> & {
+export type IUserUpdate = Partial<Omit<IUserCreate, "email" | "phone" | "avatarUrl" | "emailKey">> & {
   email?: string;
+  emailKey?: string | null;
   phone?: string | null;
   avatarUrl?: string | null;
   approvalPinHash?: string | null;

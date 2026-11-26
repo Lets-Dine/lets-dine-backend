@@ -82,6 +82,8 @@ export class UpdateOrderStatusUsecase {
     });
 
     this.eventEmitter.emit("order.updated", updated);
+    // A delivery sent out: the delivery module opens its cash-on-delivery bill (`DispatchPaymentListener`).
+    if (dto.status === OrderStatus.OUT_FOR_DELIVERY) this.eventEmitter.emit("order.dispatched", { orderId: id, actor: authEntity });
     this.kitchenTicketService.announce(tickets);
 
     return updated;

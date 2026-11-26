@@ -7,5 +7,6 @@ import { DeviceController } from "./interfaces/http/device.controller";
 @Module({
   controllers: [DeviceController],
   providers: [PushService, NotificationService, NotificationListener],
+  exports: [NotificationService],
 })
 export class NotificationsModule {}

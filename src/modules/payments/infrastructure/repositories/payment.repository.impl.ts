@@ -127,6 +127,7 @@ class PaymentRepositoryImpl implements PaymentRepository {
       ...(query.tableId && { tableId: query.tableId }),
       ...(query.paymentStatus && { paymentStatus: query.paymentStatus }),
       ...(query.customerId && { customerId: query.customerId }),
+      ...(query.sessionId && { sessionId: query.sessionId }),
       ...(query.method && { tenders: { some: { method: query.method, status: TenderStatus.SUCCEEDED } } }),
       ...((query.from || query.to) && {
         createdAt: { ...(query.from && { gte: query.from }), ...(query.to && { lte: query.to }) },

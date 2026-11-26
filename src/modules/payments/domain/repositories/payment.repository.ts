@@ -70,6 +70,7 @@ export interface IPaymentsFetchQuery {
   paymentStatus?: PaymentStatus;
   method?: PaymentMethod;
   customerId?: string;
+  sessionId?: string;
   from?: Date;
   to?: Date;
 }

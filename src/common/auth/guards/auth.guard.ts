@@ -5,7 +5,7 @@ import { Request } from "express";
 import { AUTH_ERROR_MESSAGES } from "../../constants/auth-error-message";
 import { UnauthorizedException } from "../../exceptions";
 import { AuthEntity } from "../../interfaces/auth-entity.interface";
-import { ALLOW_WHEN_SUSPENDED_KEY, StaffAccessPolicy } from "../staff-access.policy";
+import { ALLOW_WHEN_SUSPENDED_KEY, StaffAccessPolicy, StaffMembershipPolicy } from "../staff-access.policy";
 
 /**
  * Verifies the staff bearer token and attaches the decoded AuthEntity to the
@@ -14,14 +14,16 @@ import { ALLOW_WHEN_SUSPENDED_KEY, StaffAccessPolicy } from "../staff-access.pol
  * A valid token is not enough on its own: the token outlives a suspension (it is good
  * for days), so every request also asks the access policy whether this member may
  * still be in the app. That is what makes a suspension take effect immediately, not
- * only for the next sign-in.
+ * only for the next sign-in. The same goes for membership: a deactivated staff member
+ * or a deleted account must stop working at once, not when the token expires.
  */
 @Injectable()
 export class AuthGuard implements CanActivate {
   constructor(
     private readonly jwtService: JwtService,
     private readonly reflector: Reflector,
-    @Optional() private readonly staffAccessPolicy?: StaffAccessPolicy
+    @Optional() private readonly staffAccessPolicy?: StaffAccessPolicy,
+    @Optional() private readonly staffMembershipPolicy?: StaffMembershipPolicy
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -38,7 +40,9 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException(AUTH_ERROR_MESSAGES.INVALID_TOKEN);
     }
 
-    // Outside the try above on purpose: its ForbiddenException must reach the caller as itself, not become "invalid token".
+    // Outside the try above on purpose: its exceptions must reach the caller as themselves, not become "invalid token".
+    if (this.staffMembershipPolicy) await this.staffMembershipPolicy.assertIsActiveMember(authEntity);
+
     if (this.staffAccessPolicy) {
       const allowedWhenSuspended = this.reflector.getAllAndOverride<boolean>(ALLOW_WHEN_SUSPENDED_KEY, [
         context.getHandler(),

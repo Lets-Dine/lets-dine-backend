@@ -50,6 +50,15 @@ class RestaurantMemberRepositoryImpl implements RestaurantMemberRepository {
     return members.map(member => this.toStaffMember(member));
   }
 
+  async isActiveMember(id: string, options?: RestaurantMemberFetchOptions): Promise<boolean> {
+    const prisma = options?.tx ?? this.prisma;
+    const member = await prisma.restaurantMember.findUnique({
+      where: { id },
+      select: { isActive: true, user: { select: { isActive: true } } },
+    });
+    return Boolean(member?.isActive && member.user.isActive);
+  }
+
   async touchLastSignIn(id: string, at: Date): Promise<void> {
     await this.prisma.restaurantMember.update({ where: { id }, data: { lastSignInAt: at }, select: { id: true } });
   }

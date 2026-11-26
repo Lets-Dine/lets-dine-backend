@@ -3,6 +3,7 @@ import { buildAuthEntity } from "../../../../../common/testing";
 import { AuditLogService } from "../../../../audit-logs/application/audit-log.service";
 import { DELIVERY_ERROR_MESSAGES } from "../../../domain/constants";
 import { DeliveryRepository } from "../../../domain/repositories/delivery.repository";
+import { DeliveryPaymentService } from "../../delivery-payment.service";
 import { AssignDeliveryUsecase } from "../assign-delivery.usecase";
 
 const authUser = buildAuthEntity();
@@ -35,7 +36,13 @@ function build(over: Record<string, unknown> = {}) {
     ...over,
   };
   const audit = { record: jest.fn() };
-  return { repo, audit, usecase: new AssignDeliveryUsecase(repo as unknown as DeliveryRepository, audit as unknown as AuditLogService) };
+  const deliveryPayment = { openForDispatch: jest.fn() };
+  const usecase = new AssignDeliveryUsecase(
+    repo as unknown as DeliveryRepository,
+    audit as unknown as AuditLogService,
+    deliveryPayment as unknown as DeliveryPaymentService
+  );
+  return { repo, audit, deliveryPayment, usecase };
 }
 
 describe("AssignDeliveryUsecase", () => {
@@ -140,6 +147,25 @@ describe("AssignDeliveryUsecase", () => {
       await expect(usecase.execute(ORDER_ID, { ...dto, partnerId: PARTNER_ID }, authUser)).rejects.toMatchObject({
         message: DELIVERY_ERROR_MESSAGES.RIDER_PARTNER_MISMATCH.message,
       });
+    });
+
+    it("should open the cash bill straight away when the courier is named after the order already left", async () => {
+      // Arrange
+      const { deliveryPayment, usecase } = build({ findOrder: jest.fn().mockResolvedValue({ ...order, status: "OUT_FOR_DELIVERY" }) });
+
+      // Act
+      await usecase.execute(ORDER_ID, dto, authUser);
+
+      // Assert
+      expect(deliveryPayment.openForDispatch).toHaveBeenCalledWith(ORDER_ID, authUser, expect.anything());
+    });
+
+    it("should leave the bill to dispatch while the order is still ready", async () => {
+      const { deliveryPayment, usecase } = build();
+
+      await usecase.execute(ORDER_ID, dto, authUser);
+
+      expect(deliveryPayment.openForDispatch).not.toHaveBeenCalled();
     });
   });
 });
