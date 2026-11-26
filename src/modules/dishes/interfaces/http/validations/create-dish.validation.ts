@@ -2,7 +2,8 @@ import { DishDietaryType, KitchenStation } from "@prisma/client";
 import { z } from "zod";
 
 export const createDishSchema = z.object({
-  categoryId: z.string().uuid(),
+  /** Omitted = filed under the branch's "Uncategorized" section. */
+  categoryId: z.string().uuid().optional(),
   name: z.string().min(1).max(120),
   description: z.string().max(2000).optional(),
   imageUrl: z.string().url().max(500).nullish(),

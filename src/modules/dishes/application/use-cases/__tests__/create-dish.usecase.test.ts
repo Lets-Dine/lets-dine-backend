@@ -22,7 +22,7 @@ describe("CreateDishUsecase", () => {
       providers: [
         CreateDishUsecase,
         { provide: DishRepository, useValue: { findBySlug: jest.fn(), create: jest.fn() } },
-        { provide: MenuCategoryRepository, useValue: { findById: jest.fn() } },
+        { provide: MenuCategoryRepository, useValue: { findById: jest.fn(), findByName: jest.fn(), fetchAll: jest.fn(), create: jest.fn() } },
         { provide: AuditLogService, useValue: { record: jest.fn() } },
       ],
     }).compile();
@@ -58,6 +58,39 @@ describe("CreateDishUsecase", () => {
         expect.objectContaining({ action: AuditAction.dish_created, subject: dto.name }),
         authUser
       );
+    });
+
+    describe("without a categoryId", () => {
+      const { categoryId: _omitted, ...noCategory } = dto;
+      const uncategorized = { id: "category-u", restaurantId: authUser.restaurantId, branchId: authUser.branchId, name: "Uncategorized" } as any;
+
+      beforeEach(() => {
+        dishRepository.findBySlug.mockResolvedValue(null);
+        dishRepository.create.mockResolvedValue({ id: "dish-1", name: dto.name } as any);
+      });
+
+      it("should file the dish under the existing Uncategorized section", async () => {
+        menuCategoryRepository.findByName.mockResolvedValue(uncategorized);
+
+        await usecase.execute(noCategory, authUser);
+
+        expect(menuCategoryRepository.create).not.toHaveBeenCalled();
+        expect(dishRepository.create).toHaveBeenCalledWith(expect.objectContaining({ categoryId: "category-u" }), { actorId: authUser.sub });
+      });
+
+      it("should create Uncategorized after the last section when it does not exist yet", async () => {
+        menuCategoryRepository.findByName.mockResolvedValue(null);
+        menuCategoryRepository.fetchAll.mockResolvedValue({ rows: [{ sortOrder: 4 }], count: 5 } as any);
+        menuCategoryRepository.create.mockResolvedValue(uncategorized);
+
+        await usecase.execute(noCategory, authUser);
+
+        expect(menuCategoryRepository.create).toHaveBeenCalledWith(
+          expect.objectContaining({ name: "Uncategorized", sortOrder: 5, branchId: authUser.branchId }),
+          { actorId: authUser.sub }
+        );
+        expect(dishRepository.create).toHaveBeenCalledWith(expect.objectContaining({ categoryId: "category-u" }), { actorId: authUser.sub });
+      });
     });
 
     it("should throw NotFoundException when the category belongs to another restaurant", async () => {
